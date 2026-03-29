@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Sprint Review'
+  short_description: 'Run structured sprint reviews and capture outcomes'
+  default_prompt: 'Use $sprint-review to run a structured sprint review and record outcomes.'

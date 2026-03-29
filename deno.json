@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@ghawb/shared": "./packages/shared/src/index.ts",
+    "@ghawb/sdk": "./packages/sdk/src/index.ts",
+    "@ghawb/cli": "./packages/cli/src/index.ts"
+  }
+}

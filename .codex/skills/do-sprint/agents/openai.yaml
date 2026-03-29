@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Do Sprint'
+  short_description: 'Execute sprint backlog items with persona, branch, and PR gates'
+  default_prompt: 'Use $do-sprint to execute the current sprint backlog item-by-item with explicit personas, feature branches, PR-based review, and item-level Product Owner acceptance.'

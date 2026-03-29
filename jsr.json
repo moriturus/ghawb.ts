@@ -1,0 +1,9 @@
+{
+  "name": "@ghawb/sdk",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./packages/sdk/src/index.ts",
+    "./shared": "./packages/shared/src/index.ts",
+    "./cli": "./packages/cli/src/index.ts"
+  }
+}

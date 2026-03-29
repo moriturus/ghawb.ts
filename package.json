@@ -1,0 +1,31 @@
+{
+  "name": "ghawb",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "generate:workflows": "bun run packages/cli/src/bin.ts render --input ./workflows/ci.ts --output ./.github/workflows/ci.yml",
+    "verify:workflows": "bun run scripts/verify-workflows.ts",
+    "verify:pre-push": "bun run scripts/verify-pre-push.ts",
+    "test": "bun run test:vitest && bun run test:deno",
+    "test:vitest": "vitest run",
+    "test:vitest:node": "node ./node_modules/vitest/vitest.mjs run",
+    "test:deno": "deno test tests/deno",
+    "lint": "node ./node_modules/oxlint/bin/oxlint -c oxlint.config.ts . --deny-warnings",
+    "format": "oxfmt -c oxfmt.config.ts .",
+    "format:check": "oxfmt -c oxfmt.config.ts --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "bun run format:check && bun run lint && bun run typecheck && bun run test"
+  },
+  "devDependencies": {
+    "@ghawb/sdk": "workspace:*",
+    "@types/node": "^24.6.0",
+    "oxfmt": "^0.42.0",
+    "oxlint": "^1.57.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "bun@1.3.11"
+}

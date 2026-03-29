@@ -1,0 +1,4 @@
+interface:
+  display_name: "Finish Sprint Planning"
+  short_description: "Persist sprint backlog and finalize readiness"
+  default_prompt: "Use $finish-sprint-planning to persist a decision-complete sprint backlog, align planning docs, and finalize sprint readiness."

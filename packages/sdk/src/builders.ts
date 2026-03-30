@@ -1,6 +1,7 @@
 import { WorkflowValidationError, type JobId, type WorkflowId } from '@ghawb/shared';
 
 import type {
+  FilteredTriggerType,
   RunsOnTarget,
   StepMetadata,
   TriggerFilter,
@@ -43,6 +44,19 @@ function cloneFilter(filter: TriggerFilter): TriggerFilter {
   };
 }
 
+function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
+  if (trigger.type === 'workflow_dispatch') {
+    return {
+      type: 'workflow_dispatch',
+    };
+  }
+
+  return {
+    type: trigger.type,
+    ...cloneFilter(trigger),
+  };
+}
+
 function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
   return {
     ...(metadata.name !== undefined ? { name: metadata.name } : {}),
@@ -75,6 +89,18 @@ function createValidationIssues(
     }
 
     seenTriggerTypes.add(trigger.type);
+
+    if (trigger.type === 'workflow_dispatch') {
+      if ('branches' in trigger) {
+        issues.push('trigger "workflow_dispatch" does not support branches');
+      }
+
+      if ('paths' in trigger) {
+        issues.push('trigger "workflow_dispatch" does not support paths');
+      }
+
+      continue;
+    }
 
     for (const [label, values] of [
       ['branches', trigger.branches],
@@ -254,18 +280,25 @@ export class WorkflowBuilder {
     this.name = name;
   }
 
-  onPush(filter: TriggerFilter = {}): this {
+  private addFilteredTrigger(type: FilteredTriggerType, filter: TriggerFilter): this {
     this.triggers.push({
-      type: 'push',
+      type,
       ...cloneFilter(filter),
     });
     return this;
   }
 
+  onPush(filter: TriggerFilter = {}): this {
+    return this.addFilteredTrigger('push', filter);
+  }
+
   onPullRequest(filter: TriggerFilter = {}): this {
+    return this.addFilteredTrigger('pull_request', filter);
+  }
+
+  onWorkflowDispatch(): this {
     this.triggers.push({
-      type: 'pull_request',
-      ...cloneFilter(filter),
+      type: 'workflow_dispatch',
     });
     return this;
   }
@@ -293,10 +326,7 @@ export class WorkflowBuilder {
     return deepFreeze({
       id: this.id,
       name: this.name.trim(),
-      on: this.triggers.map((trigger) => ({
-        type: trigger.type,
-        ...cloneFilter(trigger),
-      })),
+      on: this.triggers.map(cloneTrigger),
       jobs,
     });
   }

@@ -8,7 +8,7 @@ Capacity: 15 story points.
 
 Selected implementation units for Sprint 5: 13/15 story points.
 
-Status: ready
+Status: in progress
 
 Completed At: N/A
 
@@ -39,9 +39,9 @@ Completed At: N/A
 - Definition of Done: The SDK can build and render workflows with `workflow_dispatch`, invalid definitions fail explicitly, documentation reflects the new supported trigger, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: A representative workflow can emit a top-level `workflow_dispatch` trigger, the builder does not silently coerce invalid trigger definitions, and rendering remains deterministic across repeated runs.
 - Story Points: 2
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [TEAM.md](../TEAM.md). Planning decision: Sprint 5 keeps this slice AST-first and validation-driven, and expects Mio Kanda to carry the primary implementation responsibility with Haru Nishimura as the preferred non-implementing reviewer.
+- Status: done
+- Completed At: 2026-03-30T13:28:43Z
+- Notes/Links: [SPEC.md](../SPEC.md), [TEAM.md](../TEAM.md), [PR #1](https://github.com/moriturus/ghawb.ts/pull/1). Planning decision: Sprint 5 keeps this slice AST-first and validation-driven, and expects Mio Kanda to carry the primary implementation responsibility with Haru Nishimura as the preferred non-implementing reviewer. Closeout evidence: commit [`f431c23`](https://github.com/moriturus/ghawb.ts/commit/f431c239b8ee10fd1089e280afe0db0bd859b298), PR [`#1`](https://github.com/moriturus/ghawb.ts/pull/1) merged at `2026-03-30T13:28:43Z`, hosted check run [`check`](https://github.com/moriturus/ghawb.ts/actions/runs/23747108284/job/69178583410) succeeded, non-implementing review comment recorded on the PR, and Product Owner acceptance recorded in [issue comment](https://github.com/moriturus/ghawb.ts/pull/1#issuecomment-4155099289).
 
 ### Item 11: Support scheduled workflow triggers
 

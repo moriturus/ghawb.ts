@@ -24,6 +24,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - `workflow_dispatch` as a manual top-level trigger without additional supported fields such as `inputs` in the current slice
   - `schedule` as a top-level trigger with one or more explicit cron entries and no additional supported fields such as `timezone`
   - job-level `needs` dependencies referencing one or more previously declared job identifiers
+  - job-level `strategy.matrix` objects whose axis keys map to non-empty string arrays
   - jobs with `runs-on` in string or string-array form
   - steps using either `uses` or `run`
   - step metadata fields `name`, `env`, `with`, and `if`
@@ -34,6 +35,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - `workflow_dispatch` is currently limited to a bare manual trigger entry; unsupported adjacent shapes such as trigger inputs must fail explicitly rather than being coerced or silently ignored.
 - `schedule` rejects unsupported trigger fields such as branch or path filters, requires one or more non-blank cron entries, and treats malformed cron strings as explicit validation errors.
 - job `needs` preserves declared dependency order, rejects unknown dependency identifiers, rejects duplicate dependency entries, and currently requires each dependency to reference a previously declared job identifier.
+- job `strategy.matrix` currently supports only direct axis-to-string-array mappings, rejects empty axes and malformed values explicitly, and treats broader matrix features such as `include` or `exclude` as unsupported in the current slice.
 - Built workflow objects are deeply frozen, including nested trigger filters, job arrays, step arrays, and step maps such as `env` and `with`.
 - Bun and Node unit/integration coverage run on Vitest, with Bun-run Vitest as the primary repository test authority.
 - Deno remains intentionally scoped to smoke and compatibility coverage.
@@ -114,7 +116,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - The internal AST is a GitHub Actions semantic model, not a generic YAML AST.
 - Deterministic output is required for a given emitter and configuration.
 - The current renderer boundary is `createWorkflowRenderPayload()` plus `renderWorkflow(workflow, emitter)`.
-- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`, `schedule`); declared job order; declared `needs` order within each job; and declared step order.
+- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`, `schedule`); declared job order; declared `needs` order within each job; declared matrix axis order within each job strategy; and declared step order.
 
 ## Open Questions
 

@@ -2,11 +2,14 @@ import { WorkflowValidationError, type JobId, type WorkflowId } from '@ghawb/sha
 
 import type {
   FilteredTriggerType,
+  MatrixAxisValues,
   RunsOnTarget,
   StepMetadata,
   TriggerFilter,
   WorkflowDefinition,
   WorkflowJob,
+  WorkflowMatrix,
+  WorkflowStrategy,
   WorkflowStep,
   WorkflowTrigger,
 } from './model.ts';
@@ -20,6 +23,9 @@ interface WorkflowStepDraft extends StepMetadata {
 interface WorkflowJobDraft {
   readonly id: JobId;
   readonly needs?: readonly JobId[];
+  readonly strategy?: {
+    readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
+  };
   readonly runsOn?: string | readonly string[];
   readonly steps: readonly WorkflowStepDraft[];
 }
@@ -77,6 +83,17 @@ function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
     ...(metadata.with ? { with: { ...metadata.with } } : {}),
     ...(metadata.if !== undefined ? { if: metadata.if } : {}),
   };
+}
+
+function cloneMatrix(
+  matrix: Readonly<Record<string, readonly unknown[] | unknown>>
+): Readonly<Record<string, readonly unknown[] | unknown>> {
+  return Object.fromEntries(
+    Object.entries(matrix).map(([key, values]) => [
+      key,
+      Array.isArray(values) ? [...values] : values,
+    ])
+  );
 }
 
 function createValidationIssues(
@@ -225,6 +242,48 @@ function createValidationIssues(
       }
     }
 
+    if (job.strategy !== undefined) {
+      const matrixEntries = Object.entries(job.strategy.matrix);
+
+      if (matrixEntries.length === 0) {
+        issues.push(`job "${jobId}" strategy.matrix must define at least one axis`);
+      }
+
+      for (const [axis, values] of matrixEntries) {
+        if (axis.trim().length === 0) {
+          issues.push(`job "${jobId}" strategy.matrix must not contain blank axis names`);
+          continue;
+        }
+
+        if (axis === 'include' || axis === 'exclude') {
+          issues.push(`job "${jobId}" strategy.matrix does not support axis "${axis}"`);
+        }
+
+        if (!Array.isArray(values)) {
+          issues.push(`job "${jobId}" strategy.matrix axis "${axis}" must be an array`);
+          continue;
+        }
+
+        if (values.length === 0) {
+          issues.push(`job "${jobId}" strategy.matrix axis "${axis}" must not be empty`);
+          continue;
+        }
+
+        for (const value of values) {
+          if (typeof value !== 'string') {
+            issues.push(`job "${jobId}" strategy.matrix axis "${axis}" must contain only strings`);
+            continue;
+          }
+
+          if (value.trim().length === 0) {
+            issues.push(
+              `job "${jobId}" strategy.matrix axis "${axis}" must not contain blank values`
+            );
+          }
+        }
+      }
+    }
+
     if (job.steps.length === 0) {
       issues.push(`job "${jobId}" must define at least one step`);
     }
@@ -298,10 +357,36 @@ function finalizeNeeds(needs: readonly JobId[]): readonly [JobId, ...JobId[]] {
   return [...needs] as [JobId, ...JobId[]];
 }
 
+function finalizeMatrixAxisValues(values: readonly unknown[]): MatrixAxisValues {
+  return values.map((value) => String(value).trim()) as unknown as MatrixAxisValues;
+}
+
+function finalizeMatrix(
+  matrix: Readonly<Record<string, readonly unknown[] | unknown>>
+): WorkflowMatrix {
+  return Object.fromEntries(
+    Object.entries(matrix).map(([key, values]) => [
+      key,
+      finalizeMatrixAxisValues(values as readonly unknown[]),
+    ])
+  );
+}
+
+function finalizeStrategy(strategy: {
+  readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
+}): WorkflowStrategy {
+  return {
+    matrix: finalizeMatrix(strategy.matrix),
+  };
+}
+
 class JobBuilder {
   readonly id: JobId;
 
   private jobNeeds?: readonly JobId[];
+  private jobStrategy?: {
+    readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
+  };
   private jobRunsOn?: string | readonly string[];
   private readonly jobSteps: WorkflowStepDraft[] = [];
 
@@ -311,6 +396,13 @@ class JobBuilder {
 
   needs(dependencies: JobId | readonly [JobId, ...JobId[]]): this {
     this.jobNeeds = (Array.isArray(dependencies) ? [...dependencies] : [dependencies]) as JobId[];
+    return this;
+  }
+
+  strategyMatrix(matrix: WorkflowMatrix): this {
+    this.jobStrategy = {
+      matrix: cloneMatrix(matrix),
+    };
     return this;
   }
 
@@ -341,6 +433,9 @@ class JobBuilder {
     return {
       id: this.id,
       ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
+      ...(this.jobStrategy !== undefined
+        ? { strategy: { matrix: cloneMatrix(this.jobStrategy.matrix) } }
+        : {}),
       ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
       steps: this.jobSteps.map((step) => ({
         kind: step.kind,
@@ -412,6 +507,7 @@ export class WorkflowBuilder {
     const jobs: WorkflowJob[] = this.jobs.map((job) => ({
       id: job.id,
       ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
+      ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
       runsOn: finalizeRunsOn(job.runsOn!),
       steps: job.steps.map(finalizeStep),
     }));

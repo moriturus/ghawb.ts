@@ -220,6 +220,48 @@ describe('workflow builder', () => {
     ]);
   });
 
+  it('builds workflows with workflow-level and job-level permissions', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('permissions'),
+      name: 'Permissions',
+    })
+      .onPush()
+      .permissions({
+        actions: 'read',
+        contents: 'write',
+        'pull-requests': 'none',
+      })
+      .addJob(createJobId('check'), (job) => {
+        job
+          .permissions({
+            checks: 'write',
+            'id-token': 'write',
+            models: 'read',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      })
+      .build();
+
+    expect(workflow).toMatchObject({
+      permissions: {
+        actions: 'read',
+        contents: 'write',
+        'pull-requests': 'none',
+      },
+      jobs: [
+        {
+          id: 'check',
+          permissions: {
+            checks: 'write',
+            'id-token': 'write',
+            models: 'read',
+          },
+        },
+      ],
+    });
+  });
+
   it('validates the full Sprint 1 slice at build time', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid'),
@@ -500,6 +542,63 @@ describe('workflow builder', () => {
         'job "test" strategy.matrix axis "os" must not be empty',
         'job "test" strategy.matrix axis "node" must not contain blank values',
         'job "test" strategy.matrix axis "runtime" must contain only strings',
+      ])
+    );
+  });
+
+  it('rejects invalid workflow and job permissions entries', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_permissions'),
+      name: 'Invalid Permissions',
+    })
+      .onPush()
+      .permissions({
+        actions: 'admin' as 'read',
+        unknown: 'read',
+      } as unknown as import('./index.ts').WorkflowPermissions)
+      .addJob(createJobId('check'), (job) => {
+        job
+          .permissions({
+            contents: 'write',
+            models: 'write',
+            unknown: 'none',
+          } as unknown as import('./index.ts').WorkflowPermissions)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'workflow permissions entry "actions" must be one of read, write, none',
+        'workflow permissions contains unsupported key "unknown"',
+        'job "check" permissions entry "models" must be one of read, none',
+        'job "check" permissions contains unsupported key "unknown"',
+      ])
+    );
+  });
+
+  it('rejects permissions entries with undefined values', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('undefined_permissions'),
+      name: 'Undefined Permissions',
+    })
+      .onPush()
+      .permissions({
+        contents: undefined,
+      } as unknown as import('./index.ts').WorkflowPermissions)
+      .addJob(createJobId('check'), (job) => {
+        job
+          .permissions({
+            checks: undefined,
+          } as unknown as import('./index.ts').WorkflowPermissions)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'workflow permissions entry "contents" must be one of read, write, none',
+        'job "check" permissions entry "checks" must be one of read, write, none',
       ])
     );
   });

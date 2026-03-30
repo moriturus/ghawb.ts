@@ -1,17 +1,21 @@
 import { WorkflowValidationError, type JobId, type WorkflowId } from '@ghawb/shared';
 
-import type {
-  FilteredTriggerType,
-  MatrixAxisValues,
-  RunsOnTarget,
-  StepMetadata,
-  TriggerFilter,
-  WorkflowDefinition,
-  WorkflowJob,
-  WorkflowMatrix,
-  WorkflowStrategy,
-  WorkflowStep,
-  WorkflowTrigger,
+import {
+  WORKFLOW_PERMISSION_KEYS,
+  type FilteredTriggerType,
+  type MatrixAxisValues,
+  type RunsOnTarget,
+  type StepMetadata,
+  type TriggerFilter,
+  type WorkflowDefinition,
+  type WorkflowJob,
+  type WorkflowMatrix,
+  type WorkflowPermissionKey,
+  type WorkflowPermissionLevel,
+  type WorkflowPermissions,
+  type WorkflowStrategy,
+  type WorkflowStep,
+  type WorkflowTrigger,
 } from './model.ts';
 
 interface WorkflowStepDraft extends StepMetadata {
@@ -23,12 +27,35 @@ interface WorkflowStepDraft extends StepMetadata {
 interface WorkflowJobDraft {
   readonly id: JobId;
   readonly needs?: readonly JobId[];
+  readonly permissions?: WorkflowPermissions;
   readonly strategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
   readonly runsOn?: string | readonly string[];
   readonly steps: readonly WorkflowStepDraft[];
 }
+
+const WORKFLOW_PERMISSION_LEVELS = ['read', 'write', 'none'] as const;
+
+const WORKFLOW_PERMISSION_ALLOWED_LEVELS: Readonly<
+  Record<WorkflowPermissionKey, readonly WorkflowPermissionLevel[]>
+> = {
+  actions: WORKFLOW_PERMISSION_LEVELS,
+  'artifact-metadata': WORKFLOW_PERMISSION_LEVELS,
+  attestations: WORKFLOW_PERMISSION_LEVELS,
+  checks: WORKFLOW_PERMISSION_LEVELS,
+  contents: WORKFLOW_PERMISSION_LEVELS,
+  deployments: WORKFLOW_PERMISSION_LEVELS,
+  discussions: WORKFLOW_PERMISSION_LEVELS,
+  'id-token': ['write', 'none'],
+  issues: WORKFLOW_PERMISSION_LEVELS,
+  models: ['read', 'none'],
+  packages: WORKFLOW_PERMISSION_LEVELS,
+  pages: WORKFLOW_PERMISSION_LEVELS,
+  'pull-requests': WORKFLOW_PERMISSION_LEVELS,
+  'security-events': WORKFLOW_PERMISSION_LEVELS,
+  statuses: WORKFLOW_PERMISSION_LEVELS,
+};
 
 function deepFreeze<T>(value: T): T {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -85,6 +112,18 @@ function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
   };
 }
 
+function clonePermissions(permissions: WorkflowPermissions): WorkflowPermissions {
+  return { ...permissions };
+}
+
+function canonicalizePermissions(permissions: WorkflowPermissions): WorkflowPermissions {
+  return Object.fromEntries(
+    WORKFLOW_PERMISSION_KEYS.flatMap((key) =>
+      permissions[key] !== undefined ? [[key, permissions[key]]] : []
+    )
+  ) as WorkflowPermissions;
+}
+
 function cloneMatrix(
   matrix: Readonly<Record<string, readonly unknown[] | unknown>>
 ): Readonly<Record<string, readonly unknown[] | unknown>> {
@@ -112,6 +151,8 @@ function createValidationIssues(
   }
 
   const seenTriggerTypes = new Set<string>();
+
+  validatePermissions('workflow', workflow.getPermissions(), issues);
 
   for (const trigger of workflow.triggers) {
     if (seenTriggerTypes.has(trigger.type)) {
@@ -242,6 +283,8 @@ function createValidationIssues(
       }
     }
 
+    validatePermissions(`job "${jobId}"`, job.permissions, issues);
+
     if (job.strategy !== undefined) {
       const matrixEntries = Object.entries(job.strategy.matrix);
 
@@ -322,6 +365,34 @@ function createValidationIssues(
   return issues;
 }
 
+function validatePermissions(
+  owner: string,
+  permissions: WorkflowPermissions | undefined,
+  issues: string[]
+): void {
+  if (permissions === undefined) {
+    return;
+  }
+
+  for (const key of Object.keys(permissions)) {
+    if (!WORKFLOW_PERMISSION_KEYS.includes(key as WorkflowPermissionKey)) {
+      issues.push(`${owner} permissions contains unsupported key "${key}"`);
+      continue;
+    }
+
+    const permissionKey = key as WorkflowPermissionKey;
+    const value = permissions[permissionKey];
+
+    const allowedLevels = WORKFLOW_PERMISSION_ALLOWED_LEVELS[permissionKey];
+
+    if (value === undefined || !allowedLevels.includes(value)) {
+      issues.push(
+        `${owner} permissions entry "${permissionKey}" must be one of ${allowedLevels.join(', ')}`
+      );
+    }
+  }
+}
+
 function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   const base = {
     ...(step.name !== undefined ? { name: step.name.trim() } : {}),
@@ -384,6 +455,7 @@ class JobBuilder {
   readonly id: JobId;
 
   private jobNeeds?: readonly JobId[];
+  private jobPermissions?: WorkflowPermissions;
   private jobStrategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
@@ -396,6 +468,11 @@ class JobBuilder {
 
   needs(dependencies: JobId | readonly [JobId, ...JobId[]]): this {
     this.jobNeeds = (Array.isArray(dependencies) ? [...dependencies] : [dependencies]) as JobId[];
+    return this;
+  }
+
+  permissions(permissions: WorkflowPermissions): this {
+    this.jobPermissions = clonePermissions(permissions);
     return this;
   }
 
@@ -433,6 +510,9 @@ class JobBuilder {
     return {
       id: this.id,
       ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
+      ...(this.jobPermissions !== undefined
+        ? { permissions: clonePermissions(this.jobPermissions) }
+        : {}),
       ...(this.jobStrategy !== undefined
         ? { strategy: { matrix: cloneMatrix(this.jobStrategy.matrix) } }
         : {}),
@@ -453,6 +533,7 @@ export class WorkflowBuilder {
   readonly triggers: WorkflowTrigger[] = [];
 
   private readonly jobs: WorkflowJobDraft[] = [];
+  private permissionsDraft?: WorkflowPermissions;
 
   constructor(id: WorkflowId, name: string) {
     this.id = id;
@@ -490,6 +571,15 @@ export class WorkflowBuilder {
     return this;
   }
 
+  permissions(permissions: WorkflowPermissions): this {
+    this.permissionsDraft = clonePermissions(permissions);
+    return this;
+  }
+
+  getPermissions(): WorkflowPermissions | undefined {
+    return this.permissionsDraft;
+  }
+
   addJob(id: JobId, configure: (job: JobBuilder) => void): this {
     const builder = new JobBuilder(id);
     configure(builder);
@@ -507,6 +597,9 @@ export class WorkflowBuilder {
     const jobs: WorkflowJob[] = this.jobs.map((job) => ({
       id: job.id,
       ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
+      ...(job.permissions !== undefined
+        ? { permissions: canonicalizePermissions(job.permissions) }
+        : {}),
       ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
       runsOn: finalizeRunsOn(job.runsOn!),
       steps: job.steps.map(finalizeStep),
@@ -516,6 +609,9 @@ export class WorkflowBuilder {
       id: this.id,
       name: this.name.trim(),
       on: this.triggers.map(cloneTrigger),
+      ...(this.permissionsDraft !== undefined
+        ? { permissions: canonicalizePermissions(this.permissionsDraft) }
+        : {}),
       jobs,
     });
   }

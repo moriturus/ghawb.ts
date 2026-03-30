@@ -57,6 +57,11 @@ function assertAllowedKeys(value: object, allowedKeys: readonly string[], label:
 }
 
 function createTriggerPayload(trigger: WorkflowTrigger): WorkflowRenderTriggerPayload | null {
+  if (trigger.type === 'workflow_dispatch') {
+    assertAllowedKeys(trigger, ['type'], `trigger "${trigger.type}"`);
+    return null;
+  }
+
   assertAllowedKeys(trigger, ['type', 'branches', 'paths'], `trigger "${trigger.type}"`);
 
   const payload: WorkflowRenderTriggerPayload = {
@@ -98,7 +103,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
 
   const on: Partial<Record<TriggerType, WorkflowRenderTriggerPayload | null>> = {};
 
-  for (const triggerType of ['push', 'pull_request'] as const) {
+  for (const triggerType of ['push', 'pull_request', 'workflow_dispatch'] as const) {
     const trigger = workflow.on.find((candidate) => candidate.type === triggerType);
 
     if (trigger) {

@@ -90,6 +90,24 @@ describe('workflow builder', () => {
     ]);
   });
 
+  it('builds workflows with workflow_dispatch triggers', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('manual'),
+      name: 'Manual',
+    })
+      .onWorkflowDispatch()
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'workflow_dispatch',
+      },
+    ]);
+  });
+
   it('validates the full Sprint 1 slice at build time', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid'),
@@ -160,6 +178,53 @@ describe('workflow builder', () => {
     );
   });
 
+  it('rejects duplicate workflow_dispatch trigger definitions', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('duplicate_dispatch_triggers'),
+      name: 'Duplicate Dispatch Triggers',
+    })
+      .onWorkflowDispatch()
+      .onWorkflowDispatch()
+      .addJob(createJobId('lint'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run lint');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['duplicate trigger "workflow_dispatch"'])
+    );
+  });
+
+  it('fails explicitly when workflow_dispatch is given unsupported filters', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_dispatch'),
+      name: 'Invalid Dispatch',
+    }).addJob(createJobId('lint'), (job) => {
+      job.runsOn('ubuntu-latest').run('bun run lint');
+    });
+
+    (
+      builder.triggers as unknown as Array<
+        | {
+            type: 'workflow_dispatch';
+            branches?: readonly string[];
+            paths?: readonly string[];
+          }
+        | Record<string, never>
+      >
+    ).push({
+      type: 'workflow_dispatch',
+      branches: ['main'],
+      paths: ['packages/**'],
+    });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" does not support branches',
+        'trigger "workflow_dispatch" does not support paths',
+      ])
+    );
+  });
+
   it('deep-freezes workflow output including nested arrays and maps', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('immutable'),
@@ -184,7 +249,9 @@ describe('workflow builder', () => {
     expect(Object.isFrozen(workflow)).toBe(true);
     expect(Object.isFrozen(workflow.on)).toBe(true);
     expect(Object.isFrozen(workflow.on[0]!)).toBe(true);
-    expect(Object.isFrozen(workflow.on[0]!.branches!)).toBe(true);
+    expect(Object.isFrozen((workflow.on[0]! as { branches: readonly string[] }).branches)).toBe(
+      true
+    );
     expect(Object.isFrozen(workflow.jobs)).toBe(true);
     expect(Object.isFrozen(workflow.jobs[0]!)).toBe(true);
     expect(Object.isFrozen(workflow.jobs[0]!.steps)).toBe(true);

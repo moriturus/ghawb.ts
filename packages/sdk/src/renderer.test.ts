@@ -87,6 +87,50 @@ describe('workflow renderer', () => {
     });
   });
 
+  it('renders workflow_dispatch in canonical trigger order', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('manual'),
+      name: 'Manual',
+    })
+      .onWorkflowDispatch()
+      .onPush({
+        branches: ['main'],
+      })
+      .onPullRequest({
+        branches: ['main'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'Manual',
+      on: {
+        push: {
+          branches: ['main'],
+        },
+        pull_request: {
+          branches: ['main'],
+        },
+        workflow_dispatch: null,
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+    expect(Object.keys(payload.on)).toEqual(['push', 'pull_request', 'workflow_dispatch']);
+  });
+
   it('renders identical output across repeated runs with the same emitter', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('repeatable'),
@@ -99,6 +143,35 @@ describe('workflow renderer', () => {
       .build();
 
     expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it('renders workflow_dispatch deterministically as a null-payload trigger', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('manual'),
+      name: 'Manual',
+    })
+      .onWorkflowDispatch()
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: 'Manual',
+      on: {
+        workflow_dispatch: null,
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
   });
 
   it('fails explicitly before emission when unsupported workflow fields are present', () => {
@@ -140,5 +213,52 @@ describe('workflow renderer', () => {
       })
     ).toThrowError(new WorkflowRenderError('unsupported workflow field "permissions"'));
     expect(emitterCalls).toBe(0);
+  });
+
+  it('fails explicitly before emission when workflow_dispatch has unsupported fields', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('unsupported_dispatch'),
+      name: 'Unsupported Dispatch',
+      on: [
+        {
+          type: 'workflow_dispatch',
+          inputs: {
+            environment: {
+              required: true,
+            },
+          },
+        },
+      ],
+      jobs: [
+        {
+          id: createJobId('test'),
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition & {
+      on: Array<
+        | WorkflowDefinition['on'][number]
+        | {
+            type: 'workflow_dispatch';
+            inputs: {
+              environment: {
+                required: boolean;
+              };
+            };
+          }
+      >;
+    };
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(
+      new WorkflowRenderError('unsupported trigger "workflow_dispatch" field "inputs"')
+    );
   });
 });

@@ -33,55 +33,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-The team reprioritized after Sprint 4 closeout and added the following unselected backlog items.
-
-### Item 10: Support manual workflow dispatch triggers
-
-- Why: `workflow_dispatch` is one of the most common GitHub Actions entrypoints for release, maintenance, and recovery flows, and the current SDK cannot model it at all.
-- Prerequisites: The current trigger model and renderer contract from Sprint 1 and Sprint 2 must remain deterministic and emitter-agnostic.
-- Implementation Plan: Extend the workflow AST and builder API to support `workflow_dispatch`, validate its allowed shape explicitly, render it deterministically, and cover representative success and failure cases in Bun and Node tests.
-- Definition of Done: The SDK can build and render workflows with `workflow_dispatch`, invalid definitions fail explicitly, documentation reflects the new supported trigger, and the change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: A representative workflow can emit a top-level `workflow_dispatch` trigger, the builder does not silently coerce invalid trigger definitions, and rendering remains deterministic across repeated runs.
-- Story Points: 2
-- Status: todo
-- Completed At: N/A
-- Notes/Links: [SPEC.md](./SPEC.md), [TEAM.md](./TEAM.md). Team discussion: Aoi prioritized this as the smallest high-value workflow-surface expansion, Mio wants it to stay an AST-first change, and Haru requires explicit validation coverage before broader trigger expansion.
-
-### Item 11: Support scheduled workflow triggers
-
-- Why: Many practical CI and maintenance workflows rely on cron-based `schedule` triggers, and their absence blocks a meaningful class of GitHub Actions workflows.
-- Prerequisites: `Item 10` should land first so trigger-surface expansion proceeds from the simplest manual trigger to the first structured time-based trigger without reopening trigger modeling decisions twice.
-- Implementation Plan: Add `schedule` trigger support with explicit cron-list modeling and validation, extend deterministic rendering for schedule arrays, and document the supported schedule contract and failure cases.
-- Definition of Done: The SDK can express scheduled workflows with explicit validation and deterministic rendering, tests cover success and failure paths, and the completed change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: A workflow can emit one or more cron schedules under `on.schedule`, blank or malformed schedule entries fail explicitly, and emitted trigger ordering remains stable.
-- Story Points: 3
-- Status: todo
-- Completed At: N/A
-- Notes/Links: [SPEC.md](./SPEC.md), [LEARN.md](./LEARN.md). Team discussion: Aoi grouped this immediately after `workflow_dispatch` because both expand trigger coverage, and Haru flagged schedule validation as the minimum quality bar for accepting time-based trigger support.
-
-### Item 12: Support job dependency graphs with `needs`
-
-- Why: Without `needs`, the SDK cannot express basic multi-job pipelines with explicit execution order, which sharply limits real workflow composition.
-- Prerequisites: Existing job identifier validation and immutable built-workflow guarantees must remain intact.
-- Implementation Plan: Extend the workflow job model and builder surface to support `needs`, validate referenced job identifiers and duplicate dependency values, render dependency arrays deterministically, and add regression tests for topological and failure cases.
-- Definition of Done: Supported workflows can declare job dependencies through the SDK, invalid dependency references fail explicitly before emission, documentation reflects the new job capability, and the change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: Jobs can depend on one or more previously declared job identifiers, unknown or duplicate `needs` entries fail explicitly, and the rendered YAML preserves declared dependency order.
-- Story Points: 3
-- Status: todo
-- Completed At: N/A
-- Notes/Links: [SPEC.md](./SPEC.md), [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md). Team discussion: Mio argued this is the first essential job-graph feature, Aoi agreed because it unlocks realistic CI composition, and Ren wanted it sequenced before broader matrix expansion.
-
-### Item 13: Support matrix strategy on jobs
-
-- Why: Matrix builds are core GitHub Actions functionality for runtime and platform coverage, and they are currently impossible to author through `ghawb`.
-- Prerequisites: `Item 12` should be completed first so multi-job dependency modeling is settled before adding higher-cardinality job expansion.
-- Implementation Plan: Add job strategy and matrix modeling to the AST and builder API, validate supported matrix shapes and empty-value failures, render deterministic matrix objects, and demonstrate representative Bun, Node, or Deno variant workflows.
-- Definition of Done: The SDK supports a bounded initial matrix strategy surface with explicit validation and deterministic rendering, tests cover representative matrices, and the change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: A job can define a supported strategy matrix, invalid empty or malformed matrix definitions fail explicitly, and repeated renders produce identical YAML structure for the same matrix input.
-- Story Points: 5
-- Status: todo
-- Completed At: N/A
-- Notes/Links: [SPEC.md](./SPEC.md), [README.md](../README.md). Team discussion: Aoi wants matrix support as the first major feature after dependency graphs, while Haru asked to keep the initial slice narrow enough that deterministic rendering and validation remain credible.
+The team reprioritized after Sprint 4 closeout. Sprint 5 committed `Item 10` through `Item 13`, and the following backlog items remain unselected.
 
 ### Item 14: Support workflow and job permissions
 
@@ -157,13 +109,13 @@ The team reprioritized after Sprint 4 closeout and added the following unselecte
 
 ## Prioritization Notes
 
-- Team intake decision: After Sprint 4 closeout, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, repository ergonomics, and hardening work.
+- Team intake decision: After Sprint 4 closeout, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, repository ergonomics, and hardening work. Sprint 5 has now committed the first four of those items into the sprint backlog.
 - Product Owner final decision: Aoi Sakamoto confirms that the backlog order in this document is the authoritative priority order for future sprint selection unless a later sprint review, retrospective, or urgent defect intake explicitly reprioritizes it.
-- Product Owner ranked order: `Item 10` -> `Item 11` -> `Item 12` -> `Item 13` -> `Item 14` -> `Item 15` -> `Item 16` -> `Item 17` -> `Item 18` -> `Item 19`.
-- Product Owner rationale: prioritize the smallest SDK features that unlock common GitHub Actions authoring paths first, especially triggers, job graphs, and permissions, before wider CLI ergonomics.
+- Product Owner ranked order for remaining unselected work: `Item 14` -> `Item 15` -> `Item 16` -> `Item 17` -> `Item 18` -> `Item 19`.
+- Product Owner rationale: after Sprint 5 commits trigger and initial job-graph expansion, prioritize the next smallest SDK features that unlock common GitHub Actions authoring paths, especially permissions and execution controls, before wider repository and CLI ergonomics.
 - Scrum Master rationale: keep dependency order explicit so trigger work lands before richer job modeling, repository-local workflow contract expansion stays isolated as its own step, and hardening work remains visible rather than disappearing into feature items.
 - Developer rationale: preserve the repository rule that SDK and renderer work come before CLI expansion, require explicit validation and deterministic rendering for each new surface, and treat adjacent unsupported fields as future backlog intake instead of silent scope creep.
-- Ordered delivery decision: deliver thin SDK and renderer slices first (`Item 10` through `Item 16`), then widen the repository's committed-workflow contract and the CLI surface (`Item 17` and `Item 18`), and finally strengthen cross-runtime proof (`Item 19`).
+- Ordered delivery decision for remaining work: continue the thin SDK and renderer slices first (`Item 14` through `Item 16`), then widen the repository's committed-workflow contract and the CLI surface (`Item 17` and `Item 18`), and finally strengthen cross-runtime proof (`Item 19`).
 - Sprint 4 retrospective guidance remains in force: if future scope broadens workflow authoring beyond the current repository-local and explicit path, that expansion must stay explicit in backlog text and must not silently widen existing guardrails.
 
 ## Sprint Backlog Records
@@ -172,3 +124,4 @@ The team reprioritized after Sprint 4 closeout and added the following unselecte
 - [Sprint 2 Backlog](./sprint_backlogs/sp2.md)
 - [Sprint 3 Backlog](./sprint_backlogs/sp3.md)
 - [Sprint 4 Backlog](./sprint_backlogs/sp4.md)
+- [Sprint 5 Backlog](./sprint_backlogs/sp5.md)

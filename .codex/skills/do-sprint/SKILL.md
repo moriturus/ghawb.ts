@@ -113,6 +113,10 @@ Before editing files, publish a short execution plan that includes:
 - Perform code review through a persona other than the implementation owner.
 - Open or update the current item's pull request once the branch is ready for review.
 - Treat the pull request as the normal review vehicle for the item unless the repository or user explicitly requires a different review path.
+- After the pull request exists, add a pull-request review record automatically under the non-implementing review persona instead of stopping at PR creation.
+- Prefer a real GitHub review submission on the pull request so the review record is durable and visible in the normal review surface.
+- If the same GitHub account authored the pull request and GitHub blocks self-approval, fall back to a review comment or review-request comment that clearly records the non-implementing persona's findings and states whether any blocking issues remain.
+- Do not report review as missing merely because self-approval is impossible from the current account when a durable pull-request review comment can still be recorded.
 - After implementation and verification are complete, have the Product Owner persona check the item's Definition of Done and Acceptance Criteria directly.
 - Product Owner acceptance happens item-by-item after implementation and verification, not later during sprint review.
 - Confirm the backlog item satisfies its full definition of done before moving on.
@@ -145,6 +149,7 @@ Update project records when the change requires it:
 - Require all explicit Acceptance Criteria, review expectations, and evidence requirements to be satisfied before declaring the item complete.
 - Require item-level Product Owner acceptance after implementation and verification and before declaring the item complete.
 - Require the item to be isolated on its own feature branch and normally reviewed through its own pull request before the sprint moves on.
+- Treat a pull-request review comment recorded under the non-implementing persona as acceptable review evidence when GitHub account constraints prevent formal self-approval from the current session.
 - If code changes are ready but an external proof step remains pending, report the item as in progress with a short list of remaining completion blockers.
 - Do not advance to the next backlog item while the current item is still missing required completion evidence.
 - Treat the sprint itself as complete only when every committed backlog item is `done`.

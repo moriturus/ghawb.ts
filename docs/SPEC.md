@@ -21,12 +21,15 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - `@ghawb/sdk` currently supports a minimal builder-centered workflow model with:
   - workflow name and explicit workflow identifier
   - `push` and `pull_request` triggers with optional `branches` and `paths`
+  - `workflow_dispatch` as a manual top-level trigger without additional supported fields such as `inputs` in the current slice
   - jobs with `runs-on` in string or string-array form
   - steps using either `uses` or `run`
   - step metadata fields `name`, `env`, `with`, and `if`
 - Validation occurs at `build()` time and fails through explicit exceptions for invalid definitions.
 - Identifier factories reject surrounding whitespace instead of silently normalizing values.
 - Duplicate trigger definitions are rejected during `build()`.
+- `workflow_dispatch` rejects unsupported trigger fields such as branch or path filters instead of silently coercing them.
+- `workflow_dispatch` is currently limited to a bare manual trigger entry; unsupported adjacent shapes such as trigger inputs must fail explicitly rather than being coerced or silently ignored.
 - Built workflow objects are deeply frozen, including nested trigger filters, job arrays, step arrays, and step maps such as `env` and `with`.
 - Bun and Node unit/integration coverage run on Vitest, with Bun-run Vitest as the primary repository test authority.
 - Deno remains intentionally scoped to smoke and compatibility coverage.
@@ -107,7 +110,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - The internal AST is a GitHub Actions semantic model, not a generic YAML AST.
 - Deterministic output is required for a given emitter and configuration.
 - The current renderer boundary is `createWorkflowRenderPayload()` plus `renderWorkflow(workflow, emitter)`.
-- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, and `jobs`; canonical trigger key order; declared job order; and declared step order.
+- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`); declared job order; and declared step order.
 
 ## Open Questions
 

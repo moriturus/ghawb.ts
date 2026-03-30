@@ -33,43 +33,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-The team reprioritized after Sprint 4 closeout. Sprint 5 committed `Item 10` through `Item 13`, and the following backlog items remain unselected.
-
-### Item 14: Support workflow and job permissions
-
-- Why: Real GitHub Actions workflows need explicit `permissions` control for least-privilege execution, and the current renderer even treats permissions as unsupported runtime fields.
-- Prerequisites: The renderer's unsupported-field guardrail behavior from Sprint 2 must be preserved for still-unsupported keys.
-- Implementation Plan: Add top-level and job-level permissions modeling, validate supported permission scopes explicitly, extend rendering in deterministic key order, and add regression tests covering both acceptance and still-unsupported permission shapes.
-- Definition of Done: The SDK and renderer support the agreed permissions surface with explicit validation, unsupported permission structures still fail clearly, docs reflect the new support boundary, and the change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: A workflow can emit supported top-level and job-level `permissions`, invalid permission entries fail explicitly, and workflows that use unsupported permission structures still produce actionable errors rather than silent degradation.
-- Story Points: 4
-- Status: todo
-- Completed At: N/A
-- Notes/Links: [SPEC.md](./SPEC.md), [packages/sdk/src/renderer.test.ts](../packages/sdk/src/renderer.test.ts). Team discussion: Aoi prioritized this as the highest-value safety feature after matrix support, and Mio explicitly wants the supported boundary documented so renderer guarantees stay honest.
-
-### Item 15: Support execution environment metadata on jobs and run steps
-
-- Why: Practical workflow authoring needs `timeout-minutes`, `defaults.run.shell`, and `defaults.run.working-directory` style execution controls to avoid ad hoc shell duplication and brittle step definitions.
-- Prerequisites: The team must agree on the initial execution-metadata slice so the first implementation does not overreach into every optional GitHub Actions field at once.
-- Implementation Plan: Introduce a bounded first slice of execution-environment metadata for jobs and run steps, validate empty and conflicting values explicitly, extend rendering deterministically, and add representative builder and renderer coverage.
-- Definition of Done: The agreed execution-metadata slice is supported end-to-end through builder, validation, and rendering, unsupported adjacent fields still fail clearly, and the change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: A supported workflow can define the agreed timeout and run-default fields without manual escape hatches, blank metadata values fail explicitly, and emitted YAML preserves deterministic field ordering.
-- Story Points: 5
-- Status: todo
-- Completed At: N/A
-- Notes/Links: [SPEC.md](./SPEC.md), [TEAM.md](./TEAM.md). Team discussion: Yui surfaced repeated workflow-authoring friction around shell and working-directory repetition, and Aoi accepted a narrow metadata slice rather than a broad unbounded field dump.
-
-### Item 16: Support workflow and job concurrency controls
-
-- Why: Concurrency is a common operational safeguard for canceling superseded runs and protecting shared environments, and its absence limits the usefulness of generated workflows in real repositories.
-- Prerequisites: `Item 15` should land first so job-level execution metadata conventions are in place before introducing another job and workflow control surface.
-- Implementation Plan: Add explicit concurrency modeling for workflow and job scopes, validate required group values and cancellation options, render the supported shape deterministically, and cover representative cancellation policies in tests.
-- Definition of Done: The SDK can express the agreed concurrency controls with explicit validation and deterministic rendering, docs describe the supported boundary, and the change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: Supported workflows can emit top-level and job-level concurrency blocks, missing or blank concurrency groups fail explicitly, and unsupported concurrency shapes still fail before emission.
-- Story Points: 3
-- Status: todo
-- Completed At: N/A
-- Notes/Links: [SPEC.md](./SPEC.md), [README.md](../README.md). Team discussion: Aoi ranked this after permissions and execution metadata because it is operationally valuable but less foundational than trigger and dependency coverage.
+The team reprioritized after Sprint 4 closeout. Sprint 5 committed `Item 10` through `Item 13`, Sprint 6 has now committed `Item 14` through `Item 16` into the sprint backlog, and the following backlog items remain unselected.
 
 ### Item 17: Support multiple committed workflow modules in repository guardrails
 
@@ -111,11 +75,11 @@ The team reprioritized after Sprint 4 closeout. Sprint 5 committed `Item 10` thr
 
 - Team intake decision: After Sprint 4 closeout, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, repository ergonomics, and hardening work. Sprint 5 has now committed the first four of those items into the sprint backlog.
 - Product Owner final decision: Aoi Sakamoto confirms that the backlog order in this document is the authoritative priority order for future sprint selection unless a later sprint review, retrospective, or urgent defect intake explicitly reprioritizes it.
-- Product Owner ranked order for remaining unselected work: `Item 14` -> `Item 15` -> `Item 16` -> `Item 17` -> `Item 18` -> `Item 19`.
-- Product Owner rationale: after Sprint 5 commits trigger and initial job-graph expansion, prioritize the next smallest SDK features that unlock common GitHub Actions authoring paths, especially permissions and execution controls, before wider repository and CLI ergonomics.
-- Scrum Master rationale: keep dependency order explicit so trigger work lands before richer job modeling, repository-local workflow contract expansion stays isolated as its own step, and hardening work remains visible rather than disappearing into feature items.
-- Developer rationale: preserve the repository rule that SDK and renderer work come before CLI expansion, require explicit validation and deterministic rendering for each new surface, and treat adjacent unsupported fields as future backlog intake instead of silent scope creep.
-- Ordered delivery decision for remaining work: continue the thin SDK and renderer slices first (`Item 14` through `Item 16`), then widen the repository's committed-workflow contract and the CLI surface (`Item 17` and `Item 18`), and finally strengthen cross-runtime proof (`Item 19`).
+- Product Owner ranked order for remaining unselected work: `Item 17` -> `Item 18` -> `Item 19`.
+- Product Owner rationale: after Sprint 6 commits the next thin SDK and renderer slices for permissions, execution metadata, and concurrency, shift priority to the repository's multi-workflow contract before widening CLI ergonomics or conformance hardening.
+- Scrum Master rationale: keep dependency order explicit so repository-local workflow contract expansion stays isolated ahead of batch CLI work, and preserve cross-runtime hardening as visible backlog work rather than folding it into feature delivery.
+- Developer rationale: preserve the repository rule that repository-contract work comes before CLI expansion, require explicit validation and deterministic mapping for each new surface, and treat adjacent unsupported fields as future backlog intake instead of silent scope creep.
+- Ordered delivery decision for remaining work: widen the repository's committed-workflow contract first (`Item 17`), then add the explicit batch CLI surface (`Item 18`), and finally strengthen cross-runtime proof (`Item 19`).
 - Sprint 4 retrospective guidance remains in force: if future scope broadens workflow authoring beyond the current repository-local and explicit path, that expansion must stay explicit in backlog text and must not silently widen existing guardrails.
 
 ## Sprint Backlog Records
@@ -125,3 +89,4 @@ The team reprioritized after Sprint 4 closeout. Sprint 5 committed `Item 10` thr
 - [Sprint 3 Backlog](./sprint_backlogs/sp3.md)
 - [Sprint 4 Backlog](./sprint_backlogs/sp4.md)
 - [Sprint 5 Backlog](./sprint_backlogs/sp5.md)
+- [Sprint 6 Backlog](./sprint_backlogs/sp6.md)

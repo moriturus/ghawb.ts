@@ -8,7 +8,7 @@ Capacity: 15 story points.
 
 Selected implementation units for Sprint 6: 12/15 story points.
 
-Status: ready
+Status: in progress
 
 Completed At: N/A
 
@@ -38,9 +38,9 @@ Completed At: N/A
 - Definition of Done: The SDK and renderer support the agreed permissions surface with explicit validation, unsupported permission structures still fail clearly, docs reflect the new support boundary, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: A workflow can emit supported top-level and job-level `permissions`, invalid permission entries fail explicitly, workflows that use unsupported permission structures still produce actionable errors rather than silent degradation, and the supported permission-key surface covers the full set of known GitHub Actions permission keys without shorthand permission forms.
 - Story Points: 4
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [packages/sdk/src/renderer.test.ts](../../packages/sdk/src/renderer.test.ts), [TEAM.md](../TEAM.md). Planning decision: Aoi prioritized this as the highest-value safety feature after matrix support, and Sprint 6 fixes the supported boundary at top-level and job-level permission maps spanning all currently known GitHub Actions permission keys while leaving shorthand forms such as `read-all` and `write-all` out of scope.
+- Status: done
+- Completed At: 2026-03-30T17:26:53Z
+- Notes/Links: [SPEC.md](../SPEC.md), [packages/sdk/src/renderer.test.ts](../../packages/sdk/src/renderer.test.ts), [TEAM.md](../TEAM.md), [PR #9](https://github.com/moriturus/ghawb.ts/pull/9). Planning decision: Aoi prioritized this as the highest-value safety feature after matrix support, and Sprint 6 fixes the supported boundary at top-level and job-level permission maps spanning all currently known GitHub Actions permission keys while leaving shorthand forms such as `read-all` and `write-all` out of scope. Closeout evidence: commit [`dd17480`](https://github.com/moriturus/ghawb.ts/commit/dd17480), PR review record by Haru Nishimura at [review #4032168587](https://github.com/moriturus/ghawb.ts/pull/9#pullrequestreview-4032168587), Product Owner acceptance by Aoi Sakamoto at [issue comment](https://github.com/moriturus/ghawb.ts/pull/9#issuecomment-4156790267), and verification via `bun test packages/sdk/src/workflow.test.ts packages/sdk/src/renderer.test.ts`, `bun run typecheck`, `bun run test:vitest`, and `bun run test:vitest:node`.
 
 ### Item 15: Support execution environment metadata on jobs and run steps
 

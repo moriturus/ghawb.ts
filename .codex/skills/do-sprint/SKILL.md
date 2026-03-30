@@ -9,7 +9,7 @@ description: Execute a repository sprint backlog under explicit Scrum personas a
 
 Execute the current sprint backlog one item at a time under explicit team personas. Gate execution on backlog readiness first, prefer sub-agent or multi-agent collaboration inside each current item, and keep Product Owner and Scrum Master personas out of implementation work. By default, continue from one backlog item to the next in sprint order until every committed item is `done` or a stop condition is hit.
 
-Each backlog item should normally be delivered on its own feature branch and reviewed through its own pull request before the sprint moves on.
+Each sprint should normally run on a dedicated sprint branch. Each backlog item should normally be delivered on its own feature branch created from the latest sprint branch state, reviewed through its own pull request targeting the sprint branch, and the sprint branch itself should be merged back to `main` only through a final sprint-level pull request.
 
 ## Run Order
 
@@ -19,11 +19,11 @@ Each backlog item should normally be delivered on its own feature branch and rev
 4. Stop immediately if any sprint backlog item is not `ready`.
 5. Announce the active personas and the current top-most item before making changes.
 6. Prefer sub-agents or multi-agent collaboration for the current item when the environment supports it.
-7. Create or confirm a dedicated feature branch for the current item before implementation work starts.
+7. Create or confirm the sprint branch first, then create or confirm a dedicated feature branch for the current item from the latest sprint branch state before implementation work starts.
 8. Execute only the current top-most ready item. Do not implement multiple backlog items in parallel.
 9. Verify, review, obtain Product Owner acceptance for the item, and update docs that must stay aligned with the change.
-10. After the current item reaches `done`, re-read the sprint backlog and continue with the next top-most item that is not done on a new item branch.
-11. Stop only when every committed sprint item is `done` or a defined stop condition is encountered.
+10. After the current item reaches `done`, merge it into the sprint branch, re-read the sprint backlog, and continue with the next top-most item that is not done on a new item branch from the updated sprint branch.
+11. After every committed sprint item is `done`, open the sprint-level pull request from the sprint branch into `main`, verify the final sprint closeout proof, and only then stop.
 
 ## Ready Gate
 
@@ -89,15 +89,18 @@ Before editing files, publish a short execution plan that includes:
 - ready gate result
 - active backlog item
 - persona assignments with explicit names from `docs/TEAM.md`
+- sprint branch plan
 - item branch and PR plan
 - delegation plan for sub-agents or a note that the environment cannot delegate
 - verification plan
 
 ### 3. Prepare The Item Branch
 
-- Create or switch to a dedicated feature branch for the current backlog item before editing files unless the user explicitly provided an existing item branch.
+- Create or confirm a dedicated sprint branch before item implementation starts unless the user explicitly provided an existing sprint branch.
+- Create or switch to a dedicated feature branch for the current backlog item from the latest sprint branch state before editing files unless the user explicitly provided an existing item branch.
 - Prefer one backlog item per branch and one pull request per backlog item.
 - Keep branch naming explicit and item-scoped so review history maps cleanly back to the sprint backlog.
+- Target the current item's pull request at the sprint branch rather than `main`.
 - Do not mix later sprint items into the current item's branch or pull request.
 
 ### 4. Execute the Current Item
@@ -105,6 +108,7 @@ Before editing files, publish a short execution plan that includes:
 - Let the Product Owner persona clarify scope if backlog language is ambiguous.
 - Let the Scrum Master persona confirm dependencies and review path.
 - Let Developer personas implement only what is needed for the active item.
+- Use Conventional Commits for any commit created during the sprint, including item-level implementation commits and final sprint closeout commits.
 - Follow repository engineering rules such as TDD, coverage expectations, and documentation alignment.
 
 ### 5. Verify, Review, And Accept The Item
@@ -112,7 +116,7 @@ Before editing files, publish a short execution plan that includes:
 - Run relevant tests, build steps, and checks for the changed surface.
 - Perform code review through a persona other than the implementation owner.
 - Open or update the current item's pull request once the branch is ready for review.
-- Treat the pull request as the normal review vehicle for the item unless the repository or user explicitly requires a different review path.
+- Treat the pull request into the sprint branch as the normal review vehicle for the item unless the repository or user explicitly requires a different review path.
 - After the pull request exists, add a pull-request review record automatically under the non-implementing review persona instead of stopping at PR creation.
 - Prefer a real GitHub review submission on the pull request so the review record is durable and visible in the normal review surface.
 - If the same GitHub account authored the pull request and GitHub blocks self-approval, fall back to a review comment or review-request comment that clearly records the non-implementing persona's findings and states whether any blocking issues remain.
@@ -138,9 +142,10 @@ Update project records when the change requires it:
 
 ### 7. Continue Through The Sprint
 
-- After an item is marked `done`, re-read the sprint backlog and identify the next top-most committed item that is not done.
+- After an item is marked `done`, merge it into the sprint branch, re-read the sprint backlog, and identify the next top-most committed item that is not done.
 - Publish a refreshed short plan for that next item before editing again, including a fresh explicit persona declaration.
 - Continue item-by-item until all committed sprint items are `done`.
+- After the final committed item is done, open the sprint closeout pull request from the sprint branch to `main`, verify the sprint-level hosted proof when required, and only then stop.
 - Do not stop merely because one item finished if later committed sprint items are still pending and no stop condition applies.
 
 ## Completion Gate
@@ -148,7 +153,8 @@ Update project records when the change requires it:
 - Treat the backlog item's Definition of Done as the final completion gate, not as a suggestion.
 - Require all explicit Acceptance Criteria, review expectations, and evidence requirements to be satisfied before declaring the item complete.
 - Require item-level Product Owner acceptance after implementation and verification and before declaring the item complete.
-- Require the item to be isolated on its own feature branch and normally reviewed through its own pull request before the sprint moves on.
+- Require the item to be isolated on its own feature branch, reviewed through its own pull request into the sprint branch, and merged into the sprint branch before the sprint moves on.
+- Require the sprint branch itself to be merged into `main` through a final sprint-level pull request before treating the sprint as complete.
 - Treat a pull-request review comment recorded under the non-implementing persona as acceptable review evidence when GitHub account constraints prevent formal self-approval from the current session.
 - If code changes are ready but an external proof step remains pending, report the item as in progress with a short list of remaining completion blockers.
 - Do not advance to the next backlog item while the current item is still missing required completion evidence.
@@ -163,6 +169,7 @@ Stop and report instead of pushing forward when any of these are true:
 - the next active item is blocked by missing prerequisites
 - repository instructions conflict and the conflict cannot be resolved from local docs
 - required review cannot be performed under the persona boundary rules
+- a sprint branch cannot be established or the sprint-level pull-request path into `main` cannot be established
 - a dedicated item branch or normal pull-request review path cannot be established for the current item
 - Product Owner acceptance for the current item cannot be performed after implementation and verification
 - the current item's Definition of Done cannot yet be fully satisfied, even if implementation work is otherwise complete
@@ -175,10 +182,11 @@ When using this skill, make the sprint state obvious in the response.
 - Start by naming the target sprint and the current active item.
 - State whether the ready gate passed or failed.
 - Name the personas in use with explicit assignment lines such as `Product Owner: ...`, `Scrum Master: ...`, `Implementation: ...`, `Validation/Review: ...`, and `Tooling support: ...` when applicable.
+- State the sprint branch and the current item branch.
 - State the current item branch and pull request plan or status.
 - State whether sub-agents or multi-agent collaboration will be used.
 - State explicitly whether the current item is `in progress` or `done` against its Definition of Done.
 - State whether Product Owner acceptance for the current item is still pending or completed.
-- State whether sprint execution is continuing to the next item or has stopped, and why.
+- State whether sprint execution is continuing to the next item, waiting on the sprint closeout pull request, or has stopped, and why.
 - If any DoD evidence is still missing, name the missing evidence and do not present the item as complete.
 - If execution is blocked, stop there and list blockers instead of proposing implementation details.

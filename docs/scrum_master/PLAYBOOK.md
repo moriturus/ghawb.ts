@@ -26,6 +26,9 @@ Restate the team's standing working agreements before sprint execution begins.
 - Confirm that Product Owner and Scrum Master personas will not act as implementers.
 - Confirm that sprint backlog work will proceed from the top item downward.
 - Confirm that the team will not implement multiple sprint backlog items in parallel.
+- Confirm the sprint branch name and base branch before any item work starts.
+- Confirm that each feature branch will be created from the latest sprint branch state.
+- Confirm that item pull requests will target the sprint branch and that the sprint will close through one final sprint-branch-to-`main` pull request.
 - Confirm which Developer persona is expected to carry the primary implementation responsibility for the current top item.
 - Confirm how sub-agents or multi-agent collaboration will be used first for the current sprint, and which persona owns each delegated slice.
 
@@ -42,6 +45,7 @@ Record which repository documents are expected to change during the sprint.
 
 Minimum output:
 
+- sprint branch and base branch
 - expected docs to update
 - responsible role
 - review point for each update
@@ -54,6 +58,7 @@ Lock down the working agreement for verification before feature work begins.
 - State whether Deno is part of the primary suite or smoke-only coverage.
 - State the expected `typecheck` surface.
 - State the root verification command that will be treated as the sprint's minimum quality gate.
+- State that sprint commits will use Conventional Commits and confirm the expected commit-message convention before implementation starts.
 
 Minimum output:
 
@@ -61,6 +66,7 @@ Minimum output:
 - secondary or smoke runners
 - `typecheck` target
 - minimum closeout command
+- commit-message convention
 
 ### 3. Confirm review ownership expectations
 
@@ -69,6 +75,7 @@ Lock down the review boundary before implementation starts.
 - State that every backlog item's Definition of Done includes code review.
 - State which non-implementing persona is the expected reviewer for the current top-most sprint backlog item.
 - Confirm that the primary implementer for a change cannot also satisfy its review requirement.
+- Confirm that backlog-item review happens on pull requests into the sprint branch and that the final sprint closeout review happens on the sprint branch pull request into `main`.
 - Confirm which artifact will prove each backlog item's closeout claim, such as a passing test file, command result, generated output, or review note.
 
 ## Sprint Planning And Refinement Protocol
@@ -102,6 +109,17 @@ Prefer:
 ## Sprint Closeout Protocol
 
 Run this protocol before sprint review starts.
+
+### 0. Sprint branch merge readiness
+
+Before final closeout, confirm that the sprint branch can be merged to `main` through the planned sprint pull request.
+
+Check:
+
+- every committed backlog item is already merged into the sprint branch
+- the sprint branch reflects the intended integrated sprint state
+- the sprint closeout pull request from the sprint branch to `main` exists or is ready to open
+- any final hosted proof expected for the sprint branch merge is identified explicitly
 
 ### 1. Pre-review consistency check
 

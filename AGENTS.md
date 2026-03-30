@@ -29,6 +29,7 @@ This file defines repository-specific instructions for contributors and coding a
 
 - Practice test-driven development by default.
 - Maintain 100% code coverage as a project goal.
+- Use Conventional Commits for commit messages, including sprint item commits and sprint closeout commits.
 - Keep the implementation 100% Pure TypeScript.
 - Do not introduce dependencies outside Node modules.
 - Do not add YAML input or parser support to the core architecture unless the specification and ADRs are updated first.
@@ -41,6 +42,10 @@ This file defines repository-specific instructions for contributors and coding a
 ## Sprint Execution
 
 - When executing sprint backlog items, prioritize using sub-agents or multi-agent collaboration in alignment with the personas defined in `docs/TEAM.md`.
+- Create a dedicated sprint branch at sprint start from the agreed sprint base.
+- Create each backlog item's feature branch from the latest sprint branch state rather than directly from `main`.
+- Target backlog-item pull requests at the sprint branch rather than at `main`.
+- After the final committed sprint item is integrated into the sprint branch, create one sprint-level pull request from the sprint branch into `main`.
 - Use the Product Owner persona to refine scope, acceptance criteria, and sequencing decisions before or alongside implementation when backlog interpretation is needed.
 - Use the Scrum Master persona to track dependencies, risks, impediments, and task ordering across concurrent work.
 - Use Developer personas to split implementation by concern, such as SDK architecture, validation or testing, and tooling or packaging, when parallel work is beneficial.

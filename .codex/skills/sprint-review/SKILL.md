@@ -5,7 +5,7 @@ description: Run a structured sprint review for a completed sprint. Use when the
 
 # Sprint Review
 
-Run the review as a short evidence-based workflow. Focus on the increment that actually exists in the repository, not on the original sprint intent alone.
+Run the review as a short evidence-based workflow. Focus on the increment that actually exists in the repository, not on the original sprint intent alone. By default, when the repository already uses sprint review documents under `docs/sprint_reviews/`, do not stop at a live summary: write or update the sprint review note in the same turn unless the user explicitly asks for discussion only.
 
 ## Build Context
 
@@ -51,6 +51,7 @@ Use this order unless the user explicitly asks for something narrower.
 ### 5. Record the review
 
 - Write a concise sprint review note when the user asks for documentation.
+- If the repository already has a `docs/sprint_reviews/` convention, treat documentation as the default closeout path for a sprint review even when the user does not separately ask for a file.
 - Include:
   - delivered increment summary
   - demo scope
@@ -59,6 +60,12 @@ Use this order unless the user explicitly asks for something narrower.
   - relevant links to spec, backlog, and review artifacts
 - Record sprint-specific completion facts in `docs/sprint_backlogs/sp<N>.md` and product-priority decisions in `docs/PRODUCT_BACKLOG.md` when the repository uses that split structure.
 - If adding a new document under `docs/`, update the documentation index if the repository requires it.
+
+## Default Documentation Behavior
+
+- When this skill is invoked for a completed sprint review and the repository contains `docs/sprint_reviews/`, create or update the corresponding `docs/sprint_reviews/sp<N>.md` note by default.
+- Only skip writing the review note when the user explicitly asks for a verbal summary, brainstorming, or a no-file response.
+- Treat the written sprint review as part of the normal completion path for this skill, not as an optional extra follow-up.
 
 ## Response Shape
 

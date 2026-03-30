@@ -51,9 +51,9 @@ Completed At: N/A
 - Definition of Done: The SDK can express scheduled workflows with explicit validation and deterministic rendering, tests cover success and failure paths, and the completed change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: A workflow can emit one or more cron schedules under `on.schedule`, blank or malformed schedule entries fail explicitly, and emitted trigger ordering remains stable.
 - Story Points: 3
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [LEARN.md](../LEARN.md). Planning decision: Sprint 5 treats this as the second trigger-surface slice immediately after `Item 10`, with hosted proof expectations aligned to a green pull-request run at closeout.
+- Status: done
+- Completed At: 2026-03-30T13:47:16Z
+- Notes/Links: [SPEC.md](../SPEC.md), [LEARN.md](../LEARN.md), [PR #3](https://github.com/moriturus/ghawb.ts/pull/3). Planning decision: Sprint 5 treats this as the second trigger-surface slice immediately after `Item 10`, with hosted proof expectations aligned to a green pull-request run at closeout. Closeout evidence: commit [`5c4fab0`](https://github.com/moriturus/ghawb.ts/commit/5c4fab0d6f19a3c7f0e663252163e4e34435e03c), PR [`#3`](https://github.com/moriturus/ghawb.ts/pull/3) hosted check run [`check`](https://github.com/moriturus/ghawb.ts/actions/runs/23748049809/job/69181977408) succeeded, non-implementing review comment recorded on the PR, and Product Owner acceptance recorded in [issue comment](https://github.com/moriturus/ghawb.ts/pull/3#issuecomment-4155181425).
 
 ### Item 12: Support job dependency graphs with `needs`
 

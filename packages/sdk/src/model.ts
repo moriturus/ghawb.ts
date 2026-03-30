@@ -1,7 +1,7 @@
 import type { JobId, WorkflowId } from '@ghawb/shared';
 
 export type FilteredTriggerType = 'push' | 'pull_request';
-export type TriggerType = FilteredTriggerType | 'workflow_dispatch';
+export type TriggerType = FilteredTriggerType | 'workflow_dispatch' | 'schedule';
 
 export interface TriggerFilter {
   readonly branches?: readonly string[];
@@ -16,7 +16,12 @@ export interface WorkflowDispatchTrigger {
   readonly type: 'workflow_dispatch';
 }
 
-export type WorkflowTrigger = FilteredWorkflowTrigger | WorkflowDispatchTrigger;
+export interface ScheduleTrigger {
+  readonly type: 'schedule';
+  readonly cron: readonly [string, ...string[]];
+}
+
+export type WorkflowTrigger = FilteredWorkflowTrigger | WorkflowDispatchTrigger | ScheduleTrigger;
 
 export interface StepMetadata {
   readonly name?: string;

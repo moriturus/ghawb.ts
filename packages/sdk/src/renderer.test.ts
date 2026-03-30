@@ -131,6 +131,46 @@ describe('workflow renderer', () => {
     expect(Object.keys(payload.on)).toEqual(['push', 'pull_request', 'workflow_dispatch']);
   });
 
+  it('renders schedule in canonical trigger order after workflow_dispatch', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('nightly'),
+      name: 'Nightly',
+    })
+      .onSchedule(['0 0 * * *', '30 12 * * 1-5'])
+      .onWorkflowDispatch()
+      .onPush({
+        branches: ['main'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'Nightly',
+      on: {
+        push: {
+          branches: ['main'],
+        },
+        workflow_dispatch: null,
+        schedule: [{ cron: '0 0 * * *' }, { cron: '30 12 * * 1-5' }],
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+    expect(Object.keys(payload.on)).toEqual(['push', 'workflow_dispatch', 'schedule']);
+  });
+
   it('renders identical output across repeated runs with the same emitter', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('repeatable'),
@@ -160,6 +200,35 @@ describe('workflow renderer', () => {
       name: 'Manual',
       on: {
         workflow_dispatch: null,
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  it('renders schedule deterministically as an ordered cron-entry array', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('nightly'),
+      name: 'Nightly',
+    })
+      .onSchedule(['0 0 * * *', '30 12 * * 1-5'])
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: 'Nightly',
+      on: {
+        schedule: [{ cron: '0 0 * * *' }, { cron: '30 12 * * 1-5' }],
       },
       jobs: {
         test: {
@@ -260,5 +329,35 @@ describe('workflow renderer', () => {
     ).toThrowError(
       new WorkflowRenderError('unsupported trigger "workflow_dispatch" field "inputs"')
     );
+  });
+
+  it('fails explicitly before emission when schedule has unsupported fields', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('unsupported_schedule'),
+      name: 'Unsupported Schedule',
+      on: [
+        {
+          type: 'schedule',
+          cron: ['0 0 * * *'],
+          timezone: 'UTC',
+        },
+      ],
+      jobs: [
+        {
+          id: createJobId('test'),
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('unsupported trigger "schedule" field "timezone"'));
   });
 });

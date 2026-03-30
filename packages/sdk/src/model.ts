@@ -42,6 +42,30 @@ export interface UsesStep extends StepMetadata {
 
 export type WorkflowStep = RunStep | UsesStep;
 
+export const WORKFLOW_PERMISSION_KEYS = [
+  'actions',
+  'artifact-metadata',
+  'attestations',
+  'checks',
+  'contents',
+  'deployments',
+  'discussions',
+  'id-token',
+  'issues',
+  'models',
+  'packages',
+  'pages',
+  'pull-requests',
+  'security-events',
+  'statuses',
+] as const;
+
+export type WorkflowPermissionKey = (typeof WORKFLOW_PERMISSION_KEYS)[number];
+export type WorkflowPermissionLevel = 'read' | 'write' | 'none';
+export type WorkflowPermissions = Readonly<
+  Partial<Record<WorkflowPermissionKey, WorkflowPermissionLevel>>
+>;
+
 export type RunsOnTarget = string | readonly [string, ...string[]];
 export type MatrixAxisValues = readonly [string, ...string[]];
 export type WorkflowMatrix = Readonly<Record<string, MatrixAxisValues>>;
@@ -53,6 +77,7 @@ export interface WorkflowStrategy {
 export interface WorkflowJob {
   readonly id: JobId;
   readonly needs?: readonly [JobId, ...JobId[]];
+  readonly permissions?: WorkflowPermissions;
   readonly strategy?: WorkflowStrategy;
   readonly runsOn: RunsOnTarget;
   readonly steps: readonly WorkflowStep[];
@@ -62,5 +87,6 @@ export interface WorkflowDefinition {
   readonly id: WorkflowId;
   readonly name: string;
   readonly on: readonly WorkflowTrigger[];
+  readonly permissions?: WorkflowPermissions;
   readonly jobs: readonly WorkflowJob[];
 }

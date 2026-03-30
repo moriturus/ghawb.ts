@@ -23,6 +23,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - `push` and `pull_request` triggers with optional `branches` and `paths`
   - `workflow_dispatch` as a manual top-level trigger without additional supported fields such as `inputs` in the current slice
   - `schedule` as a top-level trigger with one or more explicit cron entries and no additional supported fields such as `timezone`
+  - top-level and job-level `permissions` maps covering the current GitHub Actions permission keys `actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, and `statuses`
   - job-level `needs` dependencies referencing one or more previously declared job identifiers
   - job-level `strategy.matrix` objects whose axis keys map to non-empty string arrays
   - jobs with `runs-on` in string or string-array form
@@ -34,6 +35,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - `workflow_dispatch` rejects unsupported trigger fields such as branch or path filters instead of silently coercing them.
 - `workflow_dispatch` is currently limited to a bare manual trigger entry; unsupported adjacent shapes such as trigger inputs must fail explicitly rather than being coerced or silently ignored.
 - `schedule` rejects unsupported trigger fields such as branch or path filters, requires one or more non-blank cron entries, and treats malformed cron strings as explicit validation errors.
+- `permissions` currently support only explicit object maps at the workflow and job levels, reject unknown permission keys and shorthand forms such as `read-all` or `write-all`, and validate allowed access values per supported key before rendering.
 - job `needs` preserves declared dependency order, rejects unknown dependency identifiers, rejects duplicate dependency entries, and currently requires each dependency to reference a previously declared job identifier.
 - job `strategy.matrix` currently supports only direct axis-to-string-array mappings, rejects empty axes and malformed values explicitly, and treats broader matrix features such as `include` or `exclude` as unsupported in the current slice.
 - Built workflow objects are deeply frozen, including nested trigger filters, job arrays, step arrays, and step maps such as `env` and `with`.
@@ -116,7 +118,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - The internal AST is a GitHub Actions semantic model, not a generic YAML AST.
 - Deterministic output is required for a given emitter and configuration.
 - The current renderer boundary is `createWorkflowRenderPayload()` plus `renderWorkflow(workflow, emitter)`.
-- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`, `schedule`); declared job order; declared `needs` order within each job; declared matrix axis order within each job strategy; and declared step order.
+- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, `permissions`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`, `schedule`); canonical permission key order (`actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, `statuses`); declared job order; job-local field order `needs`, `permissions`, `strategy`, `runs-on`, `steps`; declared `needs` order within each job; declared matrix axis order within each job strategy; and declared step order.
 
 ## Open Questions
 

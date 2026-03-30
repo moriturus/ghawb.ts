@@ -341,6 +341,58 @@ describe('workflow renderer', () => {
     expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
   });
 
+  it('renders workflow-level and job-level permissions deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('permissions'),
+      name: 'Permissions',
+    })
+      .onPush()
+      .permissions({
+        contents: 'read',
+        actions: 'write',
+        'pull-requests': 'none',
+      })
+      .addJob(createJobId('check'), (job) => {
+        job
+          .permissions({
+            models: 'read',
+            checks: 'write',
+            'id-token': 'write',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: 'Permissions',
+      on: {
+        push: null,
+      },
+      permissions: {
+        actions: 'write',
+        contents: 'read',
+        'pull-requests': 'none',
+      },
+      jobs: {
+        check: {
+          permissions: {
+            checks: 'write',
+            'id-token': 'write',
+            models: 'read',
+          },
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
   it('fails explicitly before emission when unsupported workflow fields are present', () => {
     let emitterCalls = 0;
 
@@ -364,12 +416,12 @@ describe('workflow renderer', () => {
           ],
         },
       ],
-      permissions: {
-        contents: 'read',
+      concurrency: {
+        group: 'deploy',
       },
     } as WorkflowDefinition & {
-      permissions: {
-        contents: string;
+      concurrency: {
+        group: string;
       };
     };
 
@@ -378,8 +430,78 @@ describe('workflow renderer', () => {
         emitterCalls += 1;
         return emitPseudoYaml(payload);
       })
-    ).toThrowError(new WorkflowRenderError('unsupported workflow field "permissions"'));
+    ).toThrowError(new WorkflowRenderError('unsupported workflow field "concurrency"'));
     expect(emitterCalls).toBe(0);
+  });
+
+  it('fails explicitly before emission when permissions contain unsupported keys or values', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('unsupported_permissions'),
+      name: 'Unsupported Permissions',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      permissions: {
+        unknown: 'read',
+      },
+      jobs: [
+        {
+          id: createJobId('check'),
+          permissions: {
+            models: 'write',
+          },
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('unsupported workflow permissions key "unknown"'));
+  });
+
+  it('fails explicitly before emission when permissions contain undefined values', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('undefined_permissions'),
+      name: 'Undefined Permissions',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      permissions: {
+        contents: undefined,
+      },
+      jobs: [
+        {
+          id: createJobId('check'),
+          permissions: {
+            checks: undefined,
+          },
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(
+      new WorkflowRenderError('unsupported workflow permissions value "contents: undefined"')
+    );
   });
 
   it('fails explicitly before emission when workflow_dispatch has unsupported fields', () => {

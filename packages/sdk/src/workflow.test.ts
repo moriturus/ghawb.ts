@@ -220,6 +220,128 @@ describe('workflow builder', () => {
     ]);
   });
 
+  it('builds workflows with workflow-level and job-level permissions', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('permissions'),
+      name: 'Permissions',
+    })
+      .onPush()
+      .permissions({
+        actions: 'read',
+        contents: 'write',
+        'pull-requests': 'none',
+      })
+      .addJob(createJobId('check'), (job) => {
+        job
+          .permissions({
+            checks: 'write',
+            'id-token': 'write',
+            models: 'read',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      })
+      .build();
+
+    expect(workflow).toMatchObject({
+      permissions: {
+        actions: 'read',
+        contents: 'write',
+        'pull-requests': 'none',
+      },
+      jobs: [
+        {
+          id: 'check',
+          permissions: {
+            checks: 'write',
+            'id-token': 'write',
+            models: 'read',
+          },
+        },
+      ],
+    });
+  });
+
+  it('builds workflows with execution environment metadata on jobs and run steps', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('execution_metadata'),
+      name: 'Execution Metadata',
+    })
+      .onPush()
+      .addJob(createJobId('check'), (job) => {
+        job
+          .timeoutMinutes(15)
+          .defaultsRun({
+            shell: 'bash',
+            workingDirectory: './packages/sdk',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test', {
+            shell: 'sh',
+            workingDirectory: './packages/sdk',
+          });
+      })
+      .build();
+
+    expect(workflow.jobs).toEqual([
+      {
+        id: 'check',
+        timeoutMinutes: 15,
+        defaults: {
+          run: {
+            shell: 'bash',
+            workingDirectory: './packages/sdk',
+          },
+        },
+        runsOn: 'ubuntu-latest',
+        steps: [
+          {
+            kind: 'run',
+            run: 'bun test',
+            shell: 'sh',
+            workingDirectory: './packages/sdk',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('builds workflows with workflow-level and job-level concurrency controls', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('concurrency'),
+      name: 'Concurrency',
+    })
+      .onPush()
+      .concurrency({
+        group: 'deploy',
+        cancelInProgress: true,
+      })
+      .addJob(createJobId('check'), (job) => {
+        job
+          .concurrency({
+            group: 'check-${{ github.ref }}',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      })
+      .build();
+
+    expect(workflow).toMatchObject({
+      concurrency: {
+        group: 'deploy',
+        cancelInProgress: true,
+      },
+      jobs: [
+        {
+          id: 'check',
+          concurrency: {
+            group: 'check-${{ github.ref }}',
+          },
+        },
+      ],
+    });
+  });
+
   it('validates the full Sprint 1 slice at build time', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid'),
@@ -500,6 +622,124 @@ describe('workflow builder', () => {
         'job "test" strategy.matrix axis "os" must not be empty',
         'job "test" strategy.matrix axis "node" must not contain blank values',
         'job "test" strategy.matrix axis "runtime" must contain only strings',
+      ])
+    );
+  });
+
+  it('rejects invalid workflow and job permissions entries', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_permissions'),
+      name: 'Invalid Permissions',
+    })
+      .onPush()
+      .permissions({
+        actions: 'admin' as 'read',
+        unknown: 'read',
+      } as unknown as import('./index.ts').WorkflowPermissions)
+      .addJob(createJobId('check'), (job) => {
+        job
+          .permissions({
+            contents: 'write',
+            models: 'write',
+            unknown: 'none',
+          } as unknown as import('./index.ts').WorkflowPermissions)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'workflow permissions entry "actions" must be one of read, write, none',
+        'workflow permissions contains unsupported key "unknown"',
+        'job "check" permissions entry "models" must be one of read, none',
+        'job "check" permissions contains unsupported key "unknown"',
+      ])
+    );
+  });
+
+  it('rejects invalid execution environment metadata values', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_execution_metadata'),
+      name: 'Invalid Execution Metadata',
+    })
+      .onPush()
+      .addJob(createJobId('check'), (job) => {
+        job
+          .timeoutMinutes(0.5)
+          .defaultsRun({
+            shell: ' ',
+            workingDirectory: ' ',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test', {
+            shell: ' ',
+            workingDirectory: ' ',
+          });
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "check" timeout-minutes must be a positive integer',
+        'job "check" defaults.run.shell must not be empty',
+        'job "check" defaults.run.working-directory must not be empty',
+        'job "check" step 1 shell must not be empty',
+        'job "check" step 1 working-directory must not be empty',
+      ])
+    );
+  });
+
+  it('rejects invalid concurrency values', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_concurrency'),
+      name: 'Invalid Concurrency',
+    })
+      .onPush()
+      .concurrency({
+        group: ' ',
+        cancelInProgress: 'yes' as unknown as boolean,
+      })
+      .addJob(createJobId('check'), (job) => {
+        job
+          .concurrency({
+            group: ' ',
+            cancelInProgress: 'no' as unknown as boolean,
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'workflow concurrency group must not be empty',
+        'workflow concurrency cancel-in-progress must be a boolean',
+        'job "check" concurrency group must not be empty',
+        'job "check" concurrency cancel-in-progress must be a boolean',
+      ])
+    );
+  });
+
+  it('rejects permissions entries with undefined values', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('undefined_permissions'),
+      name: 'Undefined Permissions',
+    })
+      .onPush()
+      .permissions({
+        contents: undefined,
+      } as unknown as import('./index.ts').WorkflowPermissions)
+      .addJob(createJobId('check'), (job) => {
+        job
+          .permissions({
+            checks: undefined,
+          } as unknown as import('./index.ts').WorkflowPermissions)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'workflow permissions entry "contents" must be one of read, write, none',
+        'job "check" permissions entry "checks" must be one of read, write, none',
       ])
     );
   });

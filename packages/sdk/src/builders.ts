@@ -1,34 +1,71 @@
 import { WorkflowValidationError, type JobId, type WorkflowId } from '@ghawb/shared';
 
-import type {
-  FilteredTriggerType,
-  MatrixAxisValues,
-  RunsOnTarget,
-  StepMetadata,
-  TriggerFilter,
-  WorkflowDefinition,
-  WorkflowJob,
-  WorkflowMatrix,
-  WorkflowStrategy,
-  WorkflowStep,
-  WorkflowTrigger,
+import {
+  WORKFLOW_PERMISSION_KEYS,
+  type FilteredTriggerType,
+  type MatrixAxisValues,
+  type RunStepMetadata,
+  type RunsOnTarget,
+  type StepMetadata,
+  type TriggerFilter,
+  type WorkflowConcurrency,
+  type WorkflowDefinition,
+  type WorkflowDefaultsRun,
+  type WorkflowJob,
+  type WorkflowMatrix,
+  type WorkflowPermissionKey,
+  type WorkflowPermissionLevel,
+  type WorkflowPermissions,
+  type WorkflowStrategy,
+  type WorkflowStep,
+  type WorkflowTrigger,
 } from './model.ts';
 
 interface WorkflowStepDraft extends StepMetadata {
   readonly kind: 'run' | 'uses';
   readonly run?: string;
+  readonly shell?: string;
   readonly uses?: string;
+  readonly workingDirectory?: string;
 }
 
 interface WorkflowJobDraft {
   readonly id: JobId;
   readonly needs?: readonly JobId[];
+  readonly permissions?: WorkflowPermissions;
+  readonly timeoutMinutes?: number;
+  readonly defaults?: {
+    readonly run: WorkflowDefaultsRun;
+  };
+  readonly concurrency?: WorkflowConcurrency;
   readonly strategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
   readonly runsOn?: string | readonly string[];
   readonly steps: readonly WorkflowStepDraft[];
 }
+
+const WORKFLOW_PERMISSION_LEVELS = ['read', 'write', 'none'] as const;
+
+const WORKFLOW_PERMISSION_ALLOWED_LEVELS: Readonly<
+  Record<WorkflowPermissionKey, readonly WorkflowPermissionLevel[]>
+> = {
+  actions: WORKFLOW_PERMISSION_LEVELS,
+  'artifact-metadata': WORKFLOW_PERMISSION_LEVELS,
+  attestations: WORKFLOW_PERMISSION_LEVELS,
+  checks: WORKFLOW_PERMISSION_LEVELS,
+  contents: WORKFLOW_PERMISSION_LEVELS,
+  deployments: WORKFLOW_PERMISSION_LEVELS,
+  discussions: WORKFLOW_PERMISSION_LEVELS,
+  'id-token': ['write', 'none'],
+  issues: WORKFLOW_PERMISSION_LEVELS,
+  models: ['read', 'none'],
+  packages: WORKFLOW_PERMISSION_LEVELS,
+  pages: WORKFLOW_PERMISSION_LEVELS,
+  'pull-requests': WORKFLOW_PERMISSION_LEVELS,
+  'security-events': WORKFLOW_PERMISSION_LEVELS,
+  statuses: WORKFLOW_PERMISSION_LEVELS,
+};
 
 function deepFreeze<T>(value: T): T {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -85,6 +122,28 @@ function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
   };
 }
 
+function cloneRunStepMetadata(metadata: RunStepMetadata): RunStepMetadata {
+  return {
+    ...cloneStepMetadata(metadata),
+    ...(metadata.shell !== undefined ? { shell: metadata.shell } : {}),
+    ...(metadata.workingDirectory !== undefined
+      ? { workingDirectory: metadata.workingDirectory }
+      : {}),
+  };
+}
+
+function clonePermissions(permissions: WorkflowPermissions): WorkflowPermissions {
+  return { ...permissions };
+}
+
+function canonicalizePermissions(permissions: WorkflowPermissions): WorkflowPermissions {
+  return Object.fromEntries(
+    WORKFLOW_PERMISSION_KEYS.flatMap((key) =>
+      permissions[key] !== undefined ? [[key, permissions[key]]] : []
+    )
+  ) as WorkflowPermissions;
+}
+
 function cloneMatrix(
   matrix: Readonly<Record<string, readonly unknown[] | unknown>>
 ): Readonly<Record<string, readonly unknown[] | unknown>> {
@@ -94,6 +153,24 @@ function cloneMatrix(
       Array.isArray(values) ? [...values] : values,
     ])
   );
+}
+
+function cloneDefaultsRun(defaultsRun: WorkflowDefaultsRun): WorkflowDefaultsRun {
+  return {
+    ...(defaultsRun.shell !== undefined ? { shell: defaultsRun.shell } : {}),
+    ...(defaultsRun.workingDirectory !== undefined
+      ? { workingDirectory: defaultsRun.workingDirectory }
+      : {}),
+  };
+}
+
+function cloneConcurrency(concurrency: WorkflowConcurrency): WorkflowConcurrency {
+  return {
+    group: concurrency.group,
+    ...(concurrency.cancelInProgress !== undefined
+      ? { cancelInProgress: concurrency.cancelInProgress }
+      : {}),
+  };
 }
 
 function createValidationIssues(
@@ -112,6 +189,9 @@ function createValidationIssues(
   }
 
   const seenTriggerTypes = new Set<string>();
+
+  validatePermissions('workflow', workflow.getPermissions(), issues);
+  validateConcurrency('workflow', workflow.getConcurrency(), issues);
 
   for (const trigger of workflow.triggers) {
     if (seenTriggerTypes.has(trigger.type)) {
@@ -242,6 +322,32 @@ function createValidationIssues(
       }
     }
 
+    if (job.timeoutMinutes !== undefined) {
+      if (!Number.isInteger(job.timeoutMinutes) || job.timeoutMinutes <= 0) {
+        issues.push(`job "${jobId}" timeout-minutes must be a positive integer`);
+      }
+    }
+
+    if (job.defaults !== undefined) {
+      const { run } = job.defaults;
+
+      if (run.shell !== undefined && run.shell.trim().length === 0) {
+        issues.push(`job "${jobId}" defaults.run.shell must not be empty`);
+      }
+
+      if (run.workingDirectory !== undefined && run.workingDirectory.trim().length === 0) {
+        issues.push(`job "${jobId}" defaults.run.working-directory must not be empty`);
+      }
+
+      if (run.shell === undefined && run.workingDirectory === undefined) {
+        issues.push(`job "${jobId}" defaults.run must define shell or working-directory`);
+      }
+    }
+
+    validateConcurrency(`job "${jobId}"`, job.concurrency, issues);
+
+    validatePermissions(`job "${jobId}"`, job.permissions, issues);
+
     if (job.strategy !== undefined) {
       const matrixEntries = Object.entries(job.strategy.matrix);
 
@@ -304,6 +410,16 @@ function createValidationIssues(
         issues.push(`${location} if must not be empty`);
       }
 
+      if (step.kind === 'run') {
+        if (step.shell !== undefined && step.shell.trim().length === 0) {
+          issues.push(`${location} shell must not be empty`);
+        }
+
+        if (step.workingDirectory !== undefined && step.workingDirectory.trim().length === 0) {
+          issues.push(`${location} working-directory must not be empty`);
+        }
+      }
+
       for (const [label, record] of [
         ['env', step.env],
         ['with', step.with],
@@ -322,6 +438,55 @@ function createValidationIssues(
   return issues;
 }
 
+function validatePermissions(
+  owner: string,
+  permissions: WorkflowPermissions | undefined,
+  issues: string[]
+): void {
+  if (permissions === undefined) {
+    return;
+  }
+
+  for (const key of Object.keys(permissions)) {
+    if (!WORKFLOW_PERMISSION_KEYS.includes(key as WorkflowPermissionKey)) {
+      issues.push(`${owner} permissions contains unsupported key "${key}"`);
+      continue;
+    }
+
+    const permissionKey = key as WorkflowPermissionKey;
+    const value = permissions[permissionKey];
+
+    const allowedLevels = WORKFLOW_PERMISSION_ALLOWED_LEVELS[permissionKey];
+
+    if (value === undefined || !allowedLevels.includes(value)) {
+      issues.push(
+        `${owner} permissions entry "${permissionKey}" must be one of ${allowedLevels.join(', ')}`
+      );
+    }
+  }
+}
+
+function validateConcurrency(
+  owner: string,
+  concurrency: WorkflowConcurrency | undefined,
+  issues: string[]
+): void {
+  if (concurrency === undefined) {
+    return;
+  }
+
+  if (concurrency.group.trim().length === 0) {
+    issues.push(`${owner} concurrency group must not be empty`);
+  }
+
+  if (
+    concurrency.cancelInProgress !== undefined &&
+    typeof concurrency.cancelInProgress !== 'boolean'
+  ) {
+    issues.push(`${owner} concurrency cancel-in-progress must be a boolean`);
+  }
+}
+
 function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   const base = {
     ...(step.name !== undefined ? { name: step.name.trim() } : {}),
@@ -334,6 +499,10 @@ function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
     return {
       kind: 'run',
       run: step.run!.trim(),
+      ...(step.shell !== undefined ? { shell: step.shell.trim() } : {}),
+      ...(step.workingDirectory !== undefined
+        ? { workingDirectory: step.workingDirectory.trim() }
+        : {}),
       ...base,
     };
   }
@@ -380,10 +549,25 @@ function finalizeStrategy(strategy: {
   };
 }
 
+function finalizeDefaultsRun(defaultsRun: WorkflowDefaultsRun): WorkflowDefaultsRun {
+  return {
+    ...(defaultsRun.shell !== undefined ? { shell: defaultsRun.shell.trim() } : {}),
+    ...(defaultsRun.workingDirectory !== undefined
+      ? { workingDirectory: defaultsRun.workingDirectory.trim() }
+      : {}),
+  };
+}
+
 class JobBuilder {
   readonly id: JobId;
 
   private jobNeeds?: readonly JobId[];
+  private jobPermissions?: WorkflowPermissions;
+  private jobTimeoutMinutes?: number;
+  private jobDefaults?: {
+    readonly run: WorkflowDefaultsRun;
+  };
+  private jobConcurrency?: WorkflowConcurrency;
   private jobStrategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
@@ -399,6 +583,28 @@ class JobBuilder {
     return this;
   }
 
+  permissions(permissions: WorkflowPermissions): this {
+    this.jobPermissions = clonePermissions(permissions);
+    return this;
+  }
+
+  timeoutMinutes(timeoutMinutes: number): this {
+    this.jobTimeoutMinutes = timeoutMinutes;
+    return this;
+  }
+
+  defaultsRun(defaultsRun: WorkflowDefaultsRun): this {
+    this.jobDefaults = {
+      run: cloneDefaultsRun(defaultsRun),
+    };
+    return this;
+  }
+
+  concurrency(concurrency: WorkflowConcurrency): this {
+    this.jobConcurrency = cloneConcurrency(concurrency);
+    return this;
+  }
+
   strategyMatrix(matrix: WorkflowMatrix): this {
     this.jobStrategy = {
       matrix: cloneMatrix(matrix),
@@ -411,11 +617,11 @@ class JobBuilder {
     return this;
   }
 
-  run(command: string, metadata: StepMetadata = {}): this {
+  run(command: string, metadata: RunStepMetadata = {}): this {
     this.jobSteps.push({
       kind: 'run',
       run: command,
-      ...cloneStepMetadata(metadata),
+      ...cloneRunStepMetadata(metadata),
     });
     return this;
   }
@@ -433,6 +639,16 @@ class JobBuilder {
     return {
       id: this.id,
       ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
+      ...(this.jobPermissions !== undefined
+        ? { permissions: clonePermissions(this.jobPermissions) }
+        : {}),
+      ...(this.jobTimeoutMinutes !== undefined ? { timeoutMinutes: this.jobTimeoutMinutes } : {}),
+      ...(this.jobDefaults !== undefined
+        ? { defaults: { run: cloneDefaultsRun(this.jobDefaults.run) } }
+        : {}),
+      ...(this.jobConcurrency !== undefined
+        ? { concurrency: cloneConcurrency(this.jobConcurrency) }
+        : {}),
       ...(this.jobStrategy !== undefined
         ? { strategy: { matrix: cloneMatrix(this.jobStrategy.matrix) } }
         : {}),
@@ -440,7 +656,9 @@ class JobBuilder {
       steps: this.jobSteps.map((step) => ({
         kind: step.kind,
         ...(step.run !== undefined ? { run: step.run } : {}),
+        ...(step.shell !== undefined ? { shell: step.shell } : {}),
         ...(step.uses !== undefined ? { uses: step.uses } : {}),
+        ...(step.workingDirectory !== undefined ? { workingDirectory: step.workingDirectory } : {}),
         ...cloneStepMetadata(step),
       })),
     };
@@ -453,6 +671,8 @@ export class WorkflowBuilder {
   readonly triggers: WorkflowTrigger[] = [];
 
   private readonly jobs: WorkflowJobDraft[] = [];
+  private permissionsDraft?: WorkflowPermissions;
+  private concurrencyDraft?: WorkflowConcurrency;
 
   constructor(id: WorkflowId, name: string) {
     this.id = id;
@@ -490,6 +710,24 @@ export class WorkflowBuilder {
     return this;
   }
 
+  permissions(permissions: WorkflowPermissions): this {
+    this.permissionsDraft = clonePermissions(permissions);
+    return this;
+  }
+
+  getPermissions(): WorkflowPermissions | undefined {
+    return this.permissionsDraft;
+  }
+
+  concurrency(concurrency: WorkflowConcurrency): this {
+    this.concurrencyDraft = cloneConcurrency(concurrency);
+    return this;
+  }
+
+  getConcurrency(): WorkflowConcurrency | undefined {
+    return this.concurrencyDraft;
+  }
+
   addJob(id: JobId, configure: (job: JobBuilder) => void): this {
     const builder = new JobBuilder(id);
     configure(builder);
@@ -507,6 +745,14 @@ export class WorkflowBuilder {
     const jobs: WorkflowJob[] = this.jobs.map((job) => ({
       id: job.id,
       ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
+      ...(job.permissions !== undefined
+        ? { permissions: canonicalizePermissions(job.permissions) }
+        : {}),
+      ...(job.timeoutMinutes !== undefined ? { timeoutMinutes: job.timeoutMinutes } : {}),
+      ...(job.defaults !== undefined
+        ? { defaults: { run: finalizeDefaultsRun(job.defaults.run) } }
+        : {}),
+      ...(job.concurrency !== undefined ? { concurrency: cloneConcurrency(job.concurrency) } : {}),
       ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
       runsOn: finalizeRunsOn(job.runsOn!),
       steps: job.steps.map(finalizeStep),
@@ -516,6 +762,12 @@ export class WorkflowBuilder {
       id: this.id,
       name: this.name.trim(),
       on: this.triggers.map(cloneTrigger),
+      ...(this.permissionsDraft !== undefined
+        ? { permissions: canonicalizePermissions(this.permissionsDraft) }
+        : {}),
+      ...(this.concurrencyDraft !== undefined
+        ? { concurrency: cloneConcurrency(this.concurrencyDraft) }
+        : {}),
       jobs,
     });
   }

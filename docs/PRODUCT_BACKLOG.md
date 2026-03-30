@@ -75,11 +75,11 @@ The team reprioritized after Sprint 4 closeout. Sprint 5 committed `Item 10` thr
 
 - Team intake decision: After Sprint 4 closeout, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, repository ergonomics, and hardening work. Sprint 5 has now committed the first four of those items into the sprint backlog.
 - Product Owner final decision: Aoi Sakamoto confirms that the backlog order in this document is the authoritative priority order for future sprint selection unless a later sprint review, retrospective, or urgent defect intake explicitly reprioritizes it.
-- Product Owner ranked order for remaining unselected work: `Item 17` -> `Item 18` -> `Item 19`.
-- Product Owner rationale: after Sprint 6 commits the next thin SDK and renderer slices for permissions, execution metadata, and concurrency, shift priority to the repository's multi-workflow contract before widening CLI ergonomics or conformance hardening.
+- Product Owner ranked order for remaining unselected work: `Item 17` -> `Item 19` -> `Item 18`.
+- Product Owner rationale: after Sprint 6 commits the next thin SDK and renderer slices for permissions, execution metadata, and concurrency, keep the repository's multi-workflow contract next, but move cross-runtime conformance hardening ahead of additional CLI expansion because the current SDK contract now spans more surfaces than the existing runtime proof.
 - Scrum Master rationale: keep dependency order explicit so repository-local workflow contract expansion stays isolated ahead of batch CLI work, and preserve cross-runtime hardening as visible backlog work rather than folding it into feature delivery.
-- Developer rationale: preserve the repository rule that repository-contract work comes before CLI expansion, require explicit validation and deterministic mapping for each new surface, and treat adjacent unsupported fields as future backlog intake instead of silent scope creep.
-- Ordered delivery decision for remaining work: widen the repository's committed-workflow contract first (`Item 17`), then add the explicit batch CLI surface (`Item 18`), and finally strengthen cross-runtime proof (`Item 19`).
+- Developer rationale: preserve the repository rule that repository-contract work comes before CLI expansion, but harden the expanded SDK rendering contract across runtimes before adding more CLI orchestration on top of it.
+- Ordered delivery decision for remaining work: widen the repository's committed-workflow contract first (`Item 17`), then strengthen cross-runtime proof (`Item 19`), and only after that add the explicit batch CLI surface (`Item 18`).
 - Sprint 4 retrospective guidance remains in force: if future scope broadens workflow authoring beyond the current repository-local and explicit path, that expansion must stay explicit in backlog text and must not silently widen existing guardrails.
 
 ## Sprint Backlog Records

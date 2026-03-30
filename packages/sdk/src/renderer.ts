@@ -26,6 +26,7 @@ export interface WorkflowRenderStepPayload {
 }
 
 export interface WorkflowRenderJobPayload {
+  readonly needs?: readonly string[];
   readonly 'runs-on': string | readonly string[];
   readonly steps: readonly WorkflowRenderStepPayload[];
 }
@@ -137,9 +138,10 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   const jobs: Record<string, WorkflowRenderJobPayload> = {};
 
   for (const job of workflow.jobs) {
-    assertAllowedKeys(job, ['id', 'runsOn', 'steps'], `job "${job.id}"`);
+    assertAllowedKeys(job, ['id', 'needs', 'runsOn', 'steps'], `job "${job.id}"`);
 
     jobs[String(job.id)] = {
+      ...(job.needs ? { needs: [...job.needs] } : {}),
       'runs-on': Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
       steps: job.steps.map(createStepPayload),
     };

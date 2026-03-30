@@ -243,6 +243,62 @@ describe('workflow renderer', () => {
     });
   });
 
+  it('renders job needs in declared dependency order', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pipeline'),
+      name: 'Pipeline',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.needs(createJobId('build')).runsOn('ubuntu-latest').run('bun test');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .needs([createJobId('build'), createJobId('test')])
+          .runsOn('ubuntu-latest')
+          .run('bun run deploy');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: 'Pipeline',
+      on: {
+        push: null,
+      },
+      jobs: {
+        build: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+        test: {
+          needs: ['build'],
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+        deploy: {
+          needs: ['build', 'test'],
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run deploy',
+            },
+          ],
+        },
+      },
+    });
+  });
+
   it('fails explicitly before emission when unsupported workflow fields are present', () => {
     let emitterCalls = 0;
 
@@ -359,5 +415,34 @@ describe('workflow renderer', () => {
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(new WorkflowRenderError('unsupported trigger "schedule" field "timezone"'));
+  });
+
+  it('fails explicitly before emission when a job has unsupported fields', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('unsupported_job'),
+      name: 'Unsupported Job',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      jobs: [
+        {
+          id: createJobId('build'),
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun run build',
+            },
+          ],
+          timeoutMinutes: 15,
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('unsupported job "build" field "timeoutMinutes"'));
   });
 });

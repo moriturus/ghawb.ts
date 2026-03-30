@@ -19,6 +19,7 @@ interface WorkflowStepDraft extends StepMetadata {
 
 interface WorkflowJobDraft {
   readonly id: JobId;
+  readonly needs?: readonly JobId[];
   readonly runsOn?: string | readonly string[];
   readonly steps: readonly WorkflowStepDraft[];
 }
@@ -83,6 +84,7 @@ function createValidationIssues(
   jobs: readonly WorkflowJobDraft[]
 ): string[] {
   const issues: string[] = [];
+  const allJobIds = new Set(jobs.map((job) => String(job.id)));
 
   if (workflow.name.trim().length === 0) {
     issues.push('workflow name must not be empty');
@@ -195,6 +197,34 @@ function createValidationIssues(
       }
     }
 
+    if (job.needs !== undefined) {
+      if (job.needs.length === 0) {
+        issues.push(`job "${jobId}" needs must not be empty`);
+      }
+
+      const seenNeeds = new Set<string>();
+
+      for (const dependency of job.needs) {
+        const dependencyId = String(dependency);
+
+        if (seenNeeds.has(dependencyId)) {
+          issues.push(`job "${jobId}" needs must not contain duplicate job "${dependencyId}"`);
+          continue;
+        }
+
+        seenNeeds.add(dependencyId);
+
+        if (!allJobIds.has(dependencyId)) {
+          issues.push(`job "${jobId}" needs unknown job "${dependencyId}"`);
+          continue;
+        }
+
+        if (!seenJobIds.has(dependencyId)) {
+          issues.push(`job "${jobId}" needs job "${dependencyId}" to be declared earlier`);
+        }
+      }
+    }
+
     if (job.steps.length === 0) {
       issues.push(`job "${jobId}" must define at least one step`);
     }
@@ -264,14 +294,24 @@ function finalizeRunsOn(runsOn: string | readonly string[]): RunsOnTarget {
   return runsOn.map((target) => target.trim()) as [string, ...string[]];
 }
 
+function finalizeNeeds(needs: readonly JobId[]): readonly [JobId, ...JobId[]] {
+  return [...needs] as [JobId, ...JobId[]];
+}
+
 class JobBuilder {
   readonly id: JobId;
 
+  private jobNeeds?: readonly JobId[];
   private jobRunsOn?: string | readonly string[];
   private readonly jobSteps: WorkflowStepDraft[] = [];
 
   constructor(id: JobId) {
     this.id = id;
+  }
+
+  needs(dependencies: JobId | readonly [JobId, ...JobId[]]): this {
+    this.jobNeeds = (Array.isArray(dependencies) ? [...dependencies] : [dependencies]) as JobId[];
+    return this;
   }
 
   runsOn(target: string | readonly string[]): this {
@@ -300,6 +340,7 @@ class JobBuilder {
   toDraft(): WorkflowJobDraft {
     return {
       id: this.id,
+      ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
       ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
       steps: this.jobSteps.map((step) => ({
         kind: step.kind,
@@ -370,6 +411,7 @@ export class WorkflowBuilder {
 
     const jobs: WorkflowJob[] = this.jobs.map((job) => ({
       id: job.id,
+      ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
       runsOn: finalizeRunsOn(job.runsOn!),
       steps: job.steps.map(finalizeStep),
     }));

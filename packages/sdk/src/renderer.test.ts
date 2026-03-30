@@ -442,6 +442,52 @@ describe('workflow renderer', () => {
     expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
   });
 
+  it('renders workflow-level and job-level concurrency deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('concurrency'),
+      name: 'Concurrency',
+    })
+      .onPush()
+      .concurrency({
+        group: 'deploy',
+        cancelInProgress: true,
+      })
+      .addJob(createJobId('check'), (job) => {
+        job
+          .concurrency({
+            group: 'check-${{ github.ref }}',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: 'Concurrency',
+      on: {
+        push: null,
+      },
+      concurrency: {
+        group: 'deploy',
+        'cancel-in-progress': true,
+      },
+      jobs: {
+        check: {
+          concurrency: {
+            group: 'check-${{ github.ref }}',
+          },
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
   it('fails explicitly before emission when unsupported workflow fields are present', () => {
     let emitterCalls = 0;
 
@@ -465,12 +511,16 @@ describe('workflow renderer', () => {
           ],
         },
       ],
-      concurrency: {
-        group: 'deploy',
+      defaults: {
+        run: {
+          shell: 'bash',
+        },
       },
     } as WorkflowDefinition & {
-      concurrency: {
-        group: string;
+      defaults: {
+        run: {
+          shell: string;
+        };
       };
     };
 
@@ -479,7 +529,7 @@ describe('workflow renderer', () => {
         emitterCalls += 1;
         return emitPseudoYaml(payload);
       })
-    ).toThrowError(new WorkflowRenderError('unsupported workflow field "concurrency"'));
+    ).toThrowError(new WorkflowRenderError('unsupported workflow field "defaults"'));
     expect(emitterCalls).toBe(0);
   });
 
@@ -697,6 +747,77 @@ describe('workflow renderer', () => {
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(new WorkflowRenderError('unsupported defaults.run field "env"'));
+  });
+
+  it('fails explicitly before emission when concurrency uses unsupported shapes', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('unsupported_concurrency'),
+      name: 'Unsupported Concurrency',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      concurrency: {
+        group: 'deploy',
+        mode: 'replace',
+      },
+      jobs: [
+        {
+          id: createJobId('check'),
+          concurrency: {
+            group: 'check',
+            cancelInProgress: 'yes',
+          },
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('unsupported workflow concurrency field "mode"'));
+  });
+
+  it('fails explicitly before emission when concurrency uses invalid values', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('invalid_concurrency'),
+      name: 'Invalid Concurrency',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      concurrency: {
+        group: ' ',
+      },
+      jobs: [
+        {
+          id: createJobId('check'),
+          concurrency: {
+            group: 'check',
+            cancelInProgress: 'yes',
+          },
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('unsupported workflow concurrency value "group:  "'));
   });
 
   it('fails explicitly before emission when execution metadata leaves defaults.run empty', () => {

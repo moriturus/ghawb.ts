@@ -84,6 +84,11 @@ export interface WorkflowDefaultsRun {
   readonly workingDirectory?: string;
 }
 
+export interface WorkflowConcurrency {
+  readonly group: string;
+  readonly cancelInProgress?: boolean;
+}
+
 export interface WorkflowJob {
   readonly id: JobId;
   readonly needs?: readonly [JobId, ...JobId[]];
@@ -92,6 +97,7 @@ export interface WorkflowJob {
   readonly defaults?: {
     readonly run: WorkflowDefaultsRun;
   };
+  readonly concurrency?: WorkflowConcurrency;
   readonly strategy?: WorkflowStrategy;
   readonly runsOn: RunsOnTarget;
   readonly steps: readonly WorkflowStep[];
@@ -102,5 +108,6 @@ export interface WorkflowDefinition {
   readonly name: string;
   readonly on: readonly WorkflowTrigger[];
   readonly permissions?: WorkflowPermissions;
+  readonly concurrency?: WorkflowConcurrency;
   readonly jobs: readonly WorkflowJob[];
 }

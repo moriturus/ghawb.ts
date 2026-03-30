@@ -28,6 +28,7 @@ export type {
   TriggerFilter,
   TriggerType as WorkflowTriggerName,
   UsesStep,
+  WorkflowConcurrency,
   WorkflowDefinition,
   WorkflowDefaultsRun,
   WorkflowJob,

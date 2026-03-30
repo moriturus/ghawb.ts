@@ -306,6 +306,42 @@ describe('workflow builder', () => {
     ]);
   });
 
+  it('builds workflows with workflow-level and job-level concurrency controls', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('concurrency'),
+      name: 'Concurrency',
+    })
+      .onPush()
+      .concurrency({
+        group: 'deploy',
+        cancelInProgress: true,
+      })
+      .addJob(createJobId('check'), (job) => {
+        job
+          .concurrency({
+            group: 'check-${{ github.ref }}',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      })
+      .build();
+
+    expect(workflow).toMatchObject({
+      concurrency: {
+        group: 'deploy',
+        cancelInProgress: true,
+      },
+      jobs: [
+        {
+          id: 'check',
+          concurrency: {
+            group: 'check-${{ github.ref }}',
+          },
+        },
+      ],
+    });
+  });
+
   it('validates the full Sprint 1 slice at build time', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid'),
@@ -648,6 +684,36 @@ describe('workflow builder', () => {
         'job "check" defaults.run.working-directory must not be empty',
         'job "check" step 1 shell must not be empty',
         'job "check" step 1 working-directory must not be empty',
+      ])
+    );
+  });
+
+  it('rejects invalid concurrency values', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_concurrency'),
+      name: 'Invalid Concurrency',
+    })
+      .onPush()
+      .concurrency({
+        group: ' ',
+        cancelInProgress: 'yes' as unknown as boolean,
+      })
+      .addJob(createJobId('check'), (job) => {
+        job
+          .concurrency({
+            group: ' ',
+            cancelInProgress: 'no' as unknown as boolean,
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'workflow concurrency group must not be empty',
+        'workflow concurrency cancel-in-progress must be a boolean',
+        'job "check" concurrency group must not be empty',
+        'job "check" concurrency cancel-in-progress must be a boolean',
       ])
     );
   });

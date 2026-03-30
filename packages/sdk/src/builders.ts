@@ -8,6 +8,7 @@ import {
   type RunsOnTarget,
   type StepMetadata,
   type TriggerFilter,
+  type WorkflowConcurrency,
   type WorkflowDefinition,
   type WorkflowDefaultsRun,
   type WorkflowJob,
@@ -36,6 +37,7 @@ interface WorkflowJobDraft {
   readonly defaults?: {
     readonly run: WorkflowDefaultsRun;
   };
+  readonly concurrency?: WorkflowConcurrency;
   readonly strategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
@@ -162,6 +164,15 @@ function cloneDefaultsRun(defaultsRun: WorkflowDefaultsRun): WorkflowDefaultsRun
   };
 }
 
+function cloneConcurrency(concurrency: WorkflowConcurrency): WorkflowConcurrency {
+  return {
+    group: concurrency.group,
+    ...(concurrency.cancelInProgress !== undefined
+      ? { cancelInProgress: concurrency.cancelInProgress }
+      : {}),
+  };
+}
+
 function createValidationIssues(
   workflow: WorkflowBuilder,
   jobs: readonly WorkflowJobDraft[]
@@ -180,6 +191,7 @@ function createValidationIssues(
   const seenTriggerTypes = new Set<string>();
 
   validatePermissions('workflow', workflow.getPermissions(), issues);
+  validateConcurrency('workflow', workflow.getConcurrency(), issues);
 
   for (const trigger of workflow.triggers) {
     if (seenTriggerTypes.has(trigger.type)) {
@@ -332,6 +344,8 @@ function createValidationIssues(
       }
     }
 
+    validateConcurrency(`job "${jobId}"`, job.concurrency, issues);
+
     validatePermissions(`job "${jobId}"`, job.permissions, issues);
 
     if (job.strategy !== undefined) {
@@ -452,6 +466,27 @@ function validatePermissions(
   }
 }
 
+function validateConcurrency(
+  owner: string,
+  concurrency: WorkflowConcurrency | undefined,
+  issues: string[]
+): void {
+  if (concurrency === undefined) {
+    return;
+  }
+
+  if (concurrency.group.trim().length === 0) {
+    issues.push(`${owner} concurrency group must not be empty`);
+  }
+
+  if (
+    concurrency.cancelInProgress !== undefined &&
+    typeof concurrency.cancelInProgress !== 'boolean'
+  ) {
+    issues.push(`${owner} concurrency cancel-in-progress must be a boolean`);
+  }
+}
+
 function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   const base = {
     ...(step.name !== undefined ? { name: step.name.trim() } : {}),
@@ -532,6 +567,7 @@ class JobBuilder {
   private jobDefaults?: {
     readonly run: WorkflowDefaultsRun;
   };
+  private jobConcurrency?: WorkflowConcurrency;
   private jobStrategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
@@ -561,6 +597,11 @@ class JobBuilder {
     this.jobDefaults = {
       run: cloneDefaultsRun(defaultsRun),
     };
+    return this;
+  }
+
+  concurrency(concurrency: WorkflowConcurrency): this {
+    this.jobConcurrency = cloneConcurrency(concurrency);
     return this;
   }
 
@@ -605,6 +646,9 @@ class JobBuilder {
       ...(this.jobDefaults !== undefined
         ? { defaults: { run: cloneDefaultsRun(this.jobDefaults.run) } }
         : {}),
+      ...(this.jobConcurrency !== undefined
+        ? { concurrency: cloneConcurrency(this.jobConcurrency) }
+        : {}),
       ...(this.jobStrategy !== undefined
         ? { strategy: { matrix: cloneMatrix(this.jobStrategy.matrix) } }
         : {}),
@@ -628,6 +672,7 @@ export class WorkflowBuilder {
 
   private readonly jobs: WorkflowJobDraft[] = [];
   private permissionsDraft?: WorkflowPermissions;
+  private concurrencyDraft?: WorkflowConcurrency;
 
   constructor(id: WorkflowId, name: string) {
     this.id = id;
@@ -674,6 +719,15 @@ export class WorkflowBuilder {
     return this.permissionsDraft;
   }
 
+  concurrency(concurrency: WorkflowConcurrency): this {
+    this.concurrencyDraft = cloneConcurrency(concurrency);
+    return this;
+  }
+
+  getConcurrency(): WorkflowConcurrency | undefined {
+    return this.concurrencyDraft;
+  }
+
   addJob(id: JobId, configure: (job: JobBuilder) => void): this {
     const builder = new JobBuilder(id);
     configure(builder);
@@ -698,6 +752,7 @@ export class WorkflowBuilder {
       ...(job.defaults !== undefined
         ? { defaults: { run: finalizeDefaultsRun(job.defaults.run) } }
         : {}),
+      ...(job.concurrency !== undefined ? { concurrency: cloneConcurrency(job.concurrency) } : {}),
       ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
       runsOn: finalizeRunsOn(job.runsOn!),
       steps: job.steps.map(finalizeStep),
@@ -709,6 +764,9 @@ export class WorkflowBuilder {
       on: this.triggers.map(cloneTrigger),
       ...(this.permissionsDraft !== undefined
         ? { permissions: canonicalizePermissions(this.permissionsDraft) }
+        : {}),
+      ...(this.concurrencyDraft !== undefined
+        ? { concurrency: cloneConcurrency(this.concurrencyDraft) }
         : {}),
       jobs,
     });

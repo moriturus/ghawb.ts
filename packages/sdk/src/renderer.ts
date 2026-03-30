@@ -72,6 +72,10 @@ export interface WorkflowRenderJobPayload {
       readonly 'working-directory'?: string;
     };
   };
+  readonly concurrency?: {
+    readonly group: string;
+    readonly 'cancel-in-progress'?: boolean;
+  };
   readonly strategy?: {
     readonly matrix: Readonly<Record<string, readonly string[]>>;
   };
@@ -90,6 +94,10 @@ export interface WorkflowRenderPayload {
     >
   >;
   readonly permissions?: WorkflowRenderPermissionsPayload;
+  readonly concurrency?: {
+    readonly group: string;
+    readonly 'cancel-in-progress'?: boolean;
+  };
   readonly jobs: Readonly<Record<string, WorkflowRenderJobPayload>>;
 }
 
@@ -197,6 +205,41 @@ function createDefaultsRunPayload(defaultsRun: {
   };
 }
 
+function createConcurrencyPayload(
+  concurrency: {
+    readonly group: string;
+    readonly cancelInProgress?: boolean;
+  },
+  label: string
+): {
+  readonly group: string;
+  readonly 'cancel-in-progress'?: boolean;
+} {
+  assertAllowedKeys(concurrency, ['group', 'cancelInProgress'], `${label} concurrency`);
+
+  if (typeof concurrency.group !== 'string' || concurrency.group.trim().length === 0) {
+    throw new WorkflowRenderError(
+      `unsupported ${label} concurrency value "group: ${concurrency.group}"`
+    );
+  }
+
+  if (
+    concurrency.cancelInProgress !== undefined &&
+    typeof concurrency.cancelInProgress !== 'boolean'
+  ) {
+    throw new WorkflowRenderError(
+      `unsupported ${label} concurrency value "cancelInProgress: ${concurrency.cancelInProgress}"`
+    );
+  }
+
+  return {
+    group: concurrency.group,
+    ...(concurrency.cancelInProgress !== undefined
+      ? { 'cancel-in-progress': concurrency.cancelInProgress }
+      : {}),
+  };
+}
+
 function createPermissionsPayload(
   permissions: WorkflowPermissions,
   label: string
@@ -234,7 +277,11 @@ function createStrategyPayload(strategy: WorkflowStrategy): {
 }
 
 export function createWorkflowRenderPayload(workflow: WorkflowDefinition): WorkflowRenderPayload {
-  assertAllowedKeys(workflow, ['id', 'name', 'on', 'permissions', 'jobs'], 'workflow');
+  assertAllowedKeys(
+    workflow,
+    ['id', 'name', 'on', 'permissions', 'concurrency', 'jobs'],
+    'workflow'
+  );
 
   const on: Partial<
     Record<
@@ -254,13 +301,26 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   const workflowPermissions = workflow.permissions
     ? createPermissionsPayload(workflow.permissions, 'workflow')
     : undefined;
+  const workflowConcurrency = workflow.concurrency
+    ? createConcurrencyPayload(workflow.concurrency, 'workflow')
+    : undefined;
 
   const jobs: Record<string, WorkflowRenderJobPayload> = {};
 
   for (const job of workflow.jobs) {
     assertAllowedKeys(
       job,
-      ['id', 'needs', 'permissions', 'timeoutMinutes', 'defaults', 'strategy', 'runsOn', 'steps'],
+      [
+        'id',
+        'needs',
+        'permissions',
+        'timeoutMinutes',
+        'defaults',
+        'concurrency',
+        'strategy',
+        'runsOn',
+        'steps',
+      ],
       `job "${job.id}"`
     );
 
@@ -271,6 +331,9 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
         : {}),
       ...(job.timeoutMinutes !== undefined ? { 'timeout-minutes': job.timeoutMinutes } : {}),
       ...(job.defaults ? { defaults: { run: createDefaultsRunPayload(job.defaults.run) } } : {}),
+      ...(job.concurrency
+        ? { concurrency: createConcurrencyPayload(job.concurrency, `job "${job.id}"`) }
+        : {}),
       ...(job.strategy ? { strategy: createStrategyPayload(job.strategy) } : {}),
       'runs-on': Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
       steps: job.steps.map(createStepPayload),
@@ -281,6 +344,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     name: workflow.name,
     on,
     ...(workflowPermissions ? { permissions: workflowPermissions } : {}),
+    ...(workflowConcurrency ? { concurrency: workflowConcurrency } : {}),
     jobs,
   });
 }

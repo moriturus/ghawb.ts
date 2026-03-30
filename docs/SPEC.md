@@ -25,6 +25,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - `schedule` as a top-level trigger with one or more explicit cron entries and no additional supported fields such as `timezone`
   - top-level and job-level `permissions` maps covering the current GitHub Actions permission keys `actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, and `statuses`
   - job-level execution metadata covering `timeout-minutes`, `defaults.run.shell`, `defaults.run.working-directory`, and run-step `shell` plus `working-directory`
+  - workflow-level and job-level `concurrency` objects with required `group` and optional `cancel-in-progress`
   - job-level `needs` dependencies referencing one or more previously declared job identifiers
   - job-level `strategy.matrix` objects whose axis keys map to non-empty string arrays
   - jobs with `runs-on` in string or string-array form
@@ -38,6 +39,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - `schedule` rejects unsupported trigger fields such as branch or path filters, requires one or more non-blank cron entries, and treats malformed cron strings as explicit validation errors.
 - `permissions` currently support only explicit object maps at the workflow and job levels, reject unknown permission keys and shorthand forms such as `read-all` or `write-all`, and validate allowed access values per supported key before rendering.
 - execution metadata currently supports only job `timeout-minutes`, job `defaults.run.shell`, job `defaults.run.working-directory`, and run-step `shell` plus `working-directory`; blank values and unsupported adjacent shapes still fail explicitly rather than being dropped or coerced.
+- concurrency currently supports only workflow-level and job-level objects with non-blank `group` and optional boolean `cancel-in-progress`; unsupported adjacent concurrency fields still fail explicitly rather than being ignored.
 - job `needs` preserves declared dependency order, rejects unknown dependency identifiers, rejects duplicate dependency entries, and currently requires each dependency to reference a previously declared job identifier.
 - job `strategy.matrix` currently supports only direct axis-to-string-array mappings, rejects empty axes and malformed values explicitly, and treats broader matrix features such as `include` or `exclude` as unsupported in the current slice.
 - Built workflow objects are deeply frozen, including nested trigger filters, job arrays, step arrays, and step maps such as `env` and `with`.
@@ -120,7 +122,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - The internal AST is a GitHub Actions semantic model, not a generic YAML AST.
 - Deterministic output is required for a given emitter and configuration.
 - The current renderer boundary is `createWorkflowRenderPayload()` plus `renderWorkflow(workflow, emitter)`.
-- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, `permissions`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`, `schedule`); canonical permission key order (`actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, `statuses`); declared job order; job-local field order `needs`, `permissions`, `timeout-minutes`, `defaults`, `strategy`, `runs-on`, `steps`; declared `needs` order within each job; `defaults.run` field order `shell`, `working-directory`; declared matrix axis order within each job strategy; and declared step order, with run-step execution metadata rendered as `shell` then `working-directory` before `run`.
+- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, `permissions`, `concurrency`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`, `schedule`); canonical permission key order (`actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, `statuses`); top-level concurrency field order `group`, `cancel-in-progress`; declared job order; job-local field order `needs`, `permissions`, `timeout-minutes`, `defaults`, `concurrency`, `strategy`, `runs-on`, `steps`; declared `needs` order within each job; `defaults.run` field order `shell`, `working-directory`; job concurrency field order `group`, `cancel-in-progress`; declared matrix axis order within each job strategy; and declared step order, with run-step execution metadata rendered as `shell` then `working-directory` before `run`.
 
 ## Open Questions
 

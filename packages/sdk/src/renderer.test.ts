@@ -393,6 +393,55 @@ describe('workflow renderer', () => {
     expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
   });
 
+  it('renders execution environment metadata deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('execution_metadata'),
+      name: 'Execution Metadata',
+    })
+      .onPush()
+      .addJob(createJobId('check'), (job) => {
+        job
+          .timeoutMinutes(15)
+          .defaultsRun({
+            shell: 'bash',
+            workingDirectory: './packages/sdk',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test', {
+            shell: 'sh',
+            workingDirectory: './packages/sdk',
+          });
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: 'Execution Metadata',
+      on: {
+        push: null,
+      },
+      jobs: {
+        check: {
+          'timeout-minutes': 15,
+          defaults: {
+            run: {
+              shell: 'bash',
+              'working-directory': './packages/sdk',
+            },
+          },
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              shell: 'sh',
+              'working-directory': './packages/sdk',
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
   it('fails explicitly before emission when unsupported workflow fields are present', () => {
     let emitterCalls = 0;
 
@@ -600,14 +649,114 @@ describe('workflow renderer', () => {
               run: 'bun run build',
             },
           ],
-          timeoutMinutes: 15,
+          container: {
+            image: 'node:20',
+          },
         },
       ],
     } as unknown as WorkflowDefinition;
 
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
-    ).toThrowError(new WorkflowRenderError('unsupported job "build" field "timeoutMinutes"'));
+    ).toThrowError(new WorkflowRenderError('unsupported job "build" field "container"'));
+  });
+
+  it('fails explicitly before emission when execution metadata uses unsupported shapes', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('unsupported_execution_metadata'),
+      name: 'Unsupported Execution Metadata',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      jobs: [
+        {
+          id: createJobId('check'),
+          timeoutMinutes: 15,
+          defaults: {
+            run: {
+              shell: 'bash',
+              env: {
+                CI: 'true',
+              },
+            },
+          },
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'uses',
+              uses: 'actions/checkout@v4',
+              shell: 'bash',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('unsupported defaults.run field "env"'));
+  });
+
+  it('fails explicitly before emission when execution metadata leaves defaults.run empty', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('empty_defaults_run'),
+      name: 'Empty Defaults Run',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      jobs: [
+        {
+          id: createJobId('check'),
+          defaults: {
+            run: {},
+          },
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('defaults.run must define shell or working-directory'));
+  });
+
+  it('fails explicitly before emission when uses steps receive run-only execution metadata', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('uses_step_shell'),
+      name: 'Uses Step Shell',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      jobs: [
+        {
+          id: createJobId('check'),
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'uses',
+              uses: 'actions/checkout@v4',
+              shell: 'bash',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('unsupported step "uses" field "shell"'));
   });
 
   it('fails explicitly before emission when a job strategy has unsupported fields', () => {

@@ -262,6 +262,50 @@ describe('workflow builder', () => {
     });
   });
 
+  it('builds workflows with execution environment metadata on jobs and run steps', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('execution_metadata'),
+      name: 'Execution Metadata',
+    })
+      .onPush()
+      .addJob(createJobId('check'), (job) => {
+        job
+          .timeoutMinutes(15)
+          .defaultsRun({
+            shell: 'bash',
+            workingDirectory: './packages/sdk',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test', {
+            shell: 'sh',
+            workingDirectory: './packages/sdk',
+          });
+      })
+      .build();
+
+    expect(workflow.jobs).toEqual([
+      {
+        id: 'check',
+        timeoutMinutes: 15,
+        defaults: {
+          run: {
+            shell: 'bash',
+            workingDirectory: './packages/sdk',
+          },
+        },
+        runsOn: 'ubuntu-latest',
+        steps: [
+          {
+            kind: 'run',
+            run: 'bun test',
+            shell: 'sh',
+            workingDirectory: './packages/sdk',
+          },
+        ],
+      },
+    ]);
+  });
+
   it('validates the full Sprint 1 slice at build time', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid'),
@@ -573,6 +617,37 @@ describe('workflow builder', () => {
         'workflow permissions contains unsupported key "unknown"',
         'job "check" permissions entry "models" must be one of read, none',
         'job "check" permissions contains unsupported key "unknown"',
+      ])
+    );
+  });
+
+  it('rejects invalid execution environment metadata values', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_execution_metadata'),
+      name: 'Invalid Execution Metadata',
+    })
+      .onPush()
+      .addJob(createJobId('check'), (job) => {
+        job
+          .timeoutMinutes(0.5)
+          .defaultsRun({
+            shell: ' ',
+            workingDirectory: ' ',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test', {
+            shell: ' ',
+            workingDirectory: ' ',
+          });
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "check" timeout-minutes must be a positive integer',
+        'job "check" defaults.run.shell must not be empty',
+        'job "check" defaults.run.working-directory must not be empty',
+        'job "check" step 1 shell must not be empty',
+        'job "check" step 1 working-directory must not be empty',
       ])
     );
   });

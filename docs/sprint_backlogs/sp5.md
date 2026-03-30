@@ -63,9 +63,9 @@ Completed At: N/A
 - Definition of Done: Supported workflows can declare job dependencies through the SDK, invalid dependency references fail explicitly before emission, documentation reflects the new job capability, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Jobs can depend on one or more previously declared job identifiers, unknown or duplicate `needs` entries fail explicitly, and the rendered YAML preserves declared dependency order.
 - Story Points: 3
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [adrs/0001-record-architecture-principles.md](../adrs/0001-record-architecture-principles.md). Planning decision: Sprint 5 positions this as the first job-graph feature before any higher-cardinality job expansion.
+- Status: done
+- Completed At: 2026-03-30T13:56:44Z
+- Notes/Links: [SPEC.md](../SPEC.md), [adrs/0001-record-architecture-principles.md](../adrs/0001-record-architecture-principles.md), [PR #5](https://github.com/moriturus/ghawb.ts/pull/5). Planning decision: Sprint 5 positions this as the first job-graph feature before any higher-cardinality job expansion. Closeout evidence: commit [`eb61e7a`](https://github.com/moriturus/ghawb.ts/commit/eb61e7a68973eec5089174a525f45ac3b0cbf9fe), PR [`#5`](https://github.com/moriturus/ghawb.ts/pull/5) merged at `2026-03-30T13:56:44Z`, hosted check run [`check`](https://github.com/moriturus/ghawb.ts/actions/runs/23748467811/job/69183481373) succeeded, non-implementing review comment recorded on the PR, and Product Owner acceptance recorded in [issue comment](https://github.com/moriturus/ghawb.ts/pull/5#issuecomment-4155244370).
 
 ### Item 13: Support matrix strategy on jobs
 

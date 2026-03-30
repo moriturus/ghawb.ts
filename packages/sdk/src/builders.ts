@@ -4,10 +4,12 @@ import {
   WORKFLOW_PERMISSION_KEYS,
   type FilteredTriggerType,
   type MatrixAxisValues,
+  type RunStepMetadata,
   type RunsOnTarget,
   type StepMetadata,
   type TriggerFilter,
   type WorkflowDefinition,
+  type WorkflowDefaultsRun,
   type WorkflowJob,
   type WorkflowMatrix,
   type WorkflowPermissionKey,
@@ -21,13 +23,19 @@ import {
 interface WorkflowStepDraft extends StepMetadata {
   readonly kind: 'run' | 'uses';
   readonly run?: string;
+  readonly shell?: string;
   readonly uses?: string;
+  readonly workingDirectory?: string;
 }
 
 interface WorkflowJobDraft {
   readonly id: JobId;
   readonly needs?: readonly JobId[];
   readonly permissions?: WorkflowPermissions;
+  readonly timeoutMinutes?: number;
+  readonly defaults?: {
+    readonly run: WorkflowDefaultsRun;
+  };
   readonly strategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
@@ -112,6 +120,16 @@ function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
   };
 }
 
+function cloneRunStepMetadata(metadata: RunStepMetadata): RunStepMetadata {
+  return {
+    ...cloneStepMetadata(metadata),
+    ...(metadata.shell !== undefined ? { shell: metadata.shell } : {}),
+    ...(metadata.workingDirectory !== undefined
+      ? { workingDirectory: metadata.workingDirectory }
+      : {}),
+  };
+}
+
 function clonePermissions(permissions: WorkflowPermissions): WorkflowPermissions {
   return { ...permissions };
 }
@@ -133,6 +151,15 @@ function cloneMatrix(
       Array.isArray(values) ? [...values] : values,
     ])
   );
+}
+
+function cloneDefaultsRun(defaultsRun: WorkflowDefaultsRun): WorkflowDefaultsRun {
+  return {
+    ...(defaultsRun.shell !== undefined ? { shell: defaultsRun.shell } : {}),
+    ...(defaultsRun.workingDirectory !== undefined
+      ? { workingDirectory: defaultsRun.workingDirectory }
+      : {}),
+  };
 }
 
 function createValidationIssues(
@@ -283,6 +310,28 @@ function createValidationIssues(
       }
     }
 
+    if (job.timeoutMinutes !== undefined) {
+      if (!Number.isInteger(job.timeoutMinutes) || job.timeoutMinutes <= 0) {
+        issues.push(`job "${jobId}" timeout-minutes must be a positive integer`);
+      }
+    }
+
+    if (job.defaults !== undefined) {
+      const { run } = job.defaults;
+
+      if (run.shell !== undefined && run.shell.trim().length === 0) {
+        issues.push(`job "${jobId}" defaults.run.shell must not be empty`);
+      }
+
+      if (run.workingDirectory !== undefined && run.workingDirectory.trim().length === 0) {
+        issues.push(`job "${jobId}" defaults.run.working-directory must not be empty`);
+      }
+
+      if (run.shell === undefined && run.workingDirectory === undefined) {
+        issues.push(`job "${jobId}" defaults.run must define shell or working-directory`);
+      }
+    }
+
     validatePermissions(`job "${jobId}"`, job.permissions, issues);
 
     if (job.strategy !== undefined) {
@@ -347,6 +396,16 @@ function createValidationIssues(
         issues.push(`${location} if must not be empty`);
       }
 
+      if (step.kind === 'run') {
+        if (step.shell !== undefined && step.shell.trim().length === 0) {
+          issues.push(`${location} shell must not be empty`);
+        }
+
+        if (step.workingDirectory !== undefined && step.workingDirectory.trim().length === 0) {
+          issues.push(`${location} working-directory must not be empty`);
+        }
+      }
+
       for (const [label, record] of [
         ['env', step.env],
         ['with', step.with],
@@ -405,6 +464,10 @@ function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
     return {
       kind: 'run',
       run: step.run!.trim(),
+      ...(step.shell !== undefined ? { shell: step.shell.trim() } : {}),
+      ...(step.workingDirectory !== undefined
+        ? { workingDirectory: step.workingDirectory.trim() }
+        : {}),
       ...base,
     };
   }
@@ -451,11 +514,24 @@ function finalizeStrategy(strategy: {
   };
 }
 
+function finalizeDefaultsRun(defaultsRun: WorkflowDefaultsRun): WorkflowDefaultsRun {
+  return {
+    ...(defaultsRun.shell !== undefined ? { shell: defaultsRun.shell.trim() } : {}),
+    ...(defaultsRun.workingDirectory !== undefined
+      ? { workingDirectory: defaultsRun.workingDirectory.trim() }
+      : {}),
+  };
+}
+
 class JobBuilder {
   readonly id: JobId;
 
   private jobNeeds?: readonly JobId[];
   private jobPermissions?: WorkflowPermissions;
+  private jobTimeoutMinutes?: number;
+  private jobDefaults?: {
+    readonly run: WorkflowDefaultsRun;
+  };
   private jobStrategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
@@ -476,6 +552,18 @@ class JobBuilder {
     return this;
   }
 
+  timeoutMinutes(timeoutMinutes: number): this {
+    this.jobTimeoutMinutes = timeoutMinutes;
+    return this;
+  }
+
+  defaultsRun(defaultsRun: WorkflowDefaultsRun): this {
+    this.jobDefaults = {
+      run: cloneDefaultsRun(defaultsRun),
+    };
+    return this;
+  }
+
   strategyMatrix(matrix: WorkflowMatrix): this {
     this.jobStrategy = {
       matrix: cloneMatrix(matrix),
@@ -488,11 +576,11 @@ class JobBuilder {
     return this;
   }
 
-  run(command: string, metadata: StepMetadata = {}): this {
+  run(command: string, metadata: RunStepMetadata = {}): this {
     this.jobSteps.push({
       kind: 'run',
       run: command,
-      ...cloneStepMetadata(metadata),
+      ...cloneRunStepMetadata(metadata),
     });
     return this;
   }
@@ -513,6 +601,10 @@ class JobBuilder {
       ...(this.jobPermissions !== undefined
         ? { permissions: clonePermissions(this.jobPermissions) }
         : {}),
+      ...(this.jobTimeoutMinutes !== undefined ? { timeoutMinutes: this.jobTimeoutMinutes } : {}),
+      ...(this.jobDefaults !== undefined
+        ? { defaults: { run: cloneDefaultsRun(this.jobDefaults.run) } }
+        : {}),
       ...(this.jobStrategy !== undefined
         ? { strategy: { matrix: cloneMatrix(this.jobStrategy.matrix) } }
         : {}),
@@ -520,7 +612,9 @@ class JobBuilder {
       steps: this.jobSteps.map((step) => ({
         kind: step.kind,
         ...(step.run !== undefined ? { run: step.run } : {}),
+        ...(step.shell !== undefined ? { shell: step.shell } : {}),
         ...(step.uses !== undefined ? { uses: step.uses } : {}),
+        ...(step.workingDirectory !== undefined ? { workingDirectory: step.workingDirectory } : {}),
         ...cloneStepMetadata(step),
       })),
     };
@@ -599,6 +693,10 @@ export class WorkflowBuilder {
       ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
       ...(job.permissions !== undefined
         ? { permissions: canonicalizePermissions(job.permissions) }
+        : {}),
+      ...(job.timeoutMinutes !== undefined ? { timeoutMinutes: job.timeoutMinutes } : {}),
+      ...(job.defaults !== undefined
+        ? { defaults: { run: finalizeDefaultsRun(job.defaults.run) } }
         : {}),
       ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
       runsOn: finalizeRunsOn(job.runsOn!),

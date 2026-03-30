@@ -53,9 +53,11 @@ export interface WorkflowRenderStepPayload {
   readonly name?: string;
   readonly if?: string;
   readonly env?: Readonly<Record<string, string>>;
+  readonly shell?: string;
   readonly with?: Readonly<Record<string, string>>;
   readonly run?: string;
   readonly uses?: string;
+  readonly 'working-directory'?: string;
 }
 
 export type WorkflowRenderPermissionsPayload = WorkflowPermissions;
@@ -63,6 +65,13 @@ export type WorkflowRenderPermissionsPayload = WorkflowPermissions;
 export interface WorkflowRenderJobPayload {
   readonly needs?: readonly string[];
   readonly permissions?: WorkflowRenderPermissionsPayload;
+  readonly 'timeout-minutes'?: number;
+  readonly defaults?: {
+    readonly run: {
+      readonly shell?: string;
+      readonly 'working-directory'?: string;
+    };
+  };
   readonly strategy?: {
     readonly matrix: Readonly<Record<string, readonly string[]>>;
   };
@@ -132,21 +141,27 @@ function createTriggerPayload(
 }
 
 function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
-  assertAllowedKeys(
-    step,
-    ['kind', 'name', 'env', 'with', 'if', 'run', 'uses'],
-    `step "${step.kind}"`
-  );
-
   if (step.kind === 'run') {
+    assertAllowedKeys(
+      step,
+      ['kind', 'name', 'env', 'with', 'if', 'run', 'shell', 'workingDirectory'],
+      `step "${step.kind}"`
+    );
+
     return {
       ...(step.name !== undefined ? { name: step.name } : {}),
       ...(step.if !== undefined ? { if: step.if } : {}),
       ...(step.env ? { env: { ...step.env } } : {}),
+      ...(step.shell !== undefined ? { shell: step.shell } : {}),
       ...(step.with ? { with: { ...step.with } } : {}),
+      ...(step.workingDirectory !== undefined
+        ? { 'working-directory': step.workingDirectory }
+        : {}),
       run: step.run,
     };
   }
+
+  assertAllowedKeys(step, ['kind', 'name', 'env', 'with', 'if', 'uses'], `step "${step.kind}"`);
 
   return {
     ...(step.name !== undefined ? { name: step.name } : {}),
@@ -159,6 +174,27 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
 
 function createMatrixPayload(matrix: WorkflowMatrix): Readonly<Record<string, readonly string[]>> {
   return Object.fromEntries(Object.entries(matrix).map(([key, values]) => [key, [...values]]));
+}
+
+function createDefaultsRunPayload(defaultsRun: {
+  readonly shell?: string;
+  readonly workingDirectory?: string;
+}): {
+  readonly shell?: string;
+  readonly 'working-directory'?: string;
+} {
+  assertAllowedKeys(defaultsRun, ['shell', 'workingDirectory'], 'defaults.run');
+
+  if (defaultsRun.shell === undefined && defaultsRun.workingDirectory === undefined) {
+    throw new WorkflowRenderError('defaults.run must define shell or working-directory');
+  }
+
+  return {
+    ...(defaultsRun.shell !== undefined ? { shell: defaultsRun.shell } : {}),
+    ...(defaultsRun.workingDirectory !== undefined
+      ? { 'working-directory': defaultsRun.workingDirectory }
+      : {}),
+  };
 }
 
 function createPermissionsPayload(
@@ -224,7 +260,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   for (const job of workflow.jobs) {
     assertAllowedKeys(
       job,
-      ['id', 'needs', 'permissions', 'strategy', 'runsOn', 'steps'],
+      ['id', 'needs', 'permissions', 'timeoutMinutes', 'defaults', 'strategy', 'runsOn', 'steps'],
       `job "${job.id}"`
     );
 
@@ -233,6 +269,8 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       ...(job.permissions
         ? { permissions: createPermissionsPayload(job.permissions, `job "${job.id}"`) }
         : {}),
+      ...(job.timeoutMinutes !== undefined ? { 'timeout-minutes': job.timeoutMinutes } : {}),
+      ...(job.defaults ? { defaults: { run: createDefaultsRunPayload(job.defaults.run) } } : {}),
       ...(job.strategy ? { strategy: createStrategyPayload(job.strategy) } : {}),
       'runs-on': Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
       steps: job.steps.map(createStepPayload),

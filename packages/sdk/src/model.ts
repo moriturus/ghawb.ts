@@ -30,7 +30,12 @@ export interface StepMetadata {
   readonly if?: string;
 }
 
-export interface RunStep extends StepMetadata {
+export interface RunStepMetadata extends StepMetadata {
+  readonly shell?: string;
+  readonly workingDirectory?: string;
+}
+
+export interface RunStep extends RunStepMetadata {
   readonly kind: 'run';
   readonly run: string;
 }
@@ -74,10 +79,19 @@ export interface WorkflowStrategy {
   readonly matrix: WorkflowMatrix;
 }
 
+export interface WorkflowDefaultsRun {
+  readonly shell?: string;
+  readonly workingDirectory?: string;
+}
+
 export interface WorkflowJob {
   readonly id: JobId;
   readonly needs?: readonly [JobId, ...JobId[]];
   readonly permissions?: WorkflowPermissions;
+  readonly timeoutMinutes?: number;
+  readonly defaults?: {
+    readonly run: WorkflowDefaultsRun;
+  };
   readonly strategy?: WorkflowStrategy;
   readonly runsOn: RunsOnTarget;
   readonly steps: readonly WorkflowStep[];

@@ -50,9 +50,9 @@ Completed At: N/A
 - Definition of Done: The agreed execution-metadata slice is supported end-to-end through builder, validation, and rendering, unsupported adjacent fields still fail clearly, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: A supported workflow can define the agreed timeout and run-default fields without manual escape hatches, blank metadata values fail explicitly, emitted YAML preserves deterministic field ordering, and the supported Sprint 6 slice is limited to job `timeout-minutes`, job `defaults.run.shell`, job `defaults.run.working-directory`, and run-step `shell` plus `working-directory`.
 - Story Points: 5
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [TEAM.md](../TEAM.md). Planning decision: Yui surfaced repeated workflow-authoring friction around shell and working-directory repetition, and Aoi accepted a narrow metadata slice rather than a broad unbounded field dump.
+- Status: done
+- Completed At: 2026-03-30T17:33:28Z
+- Notes/Links: [SPEC.md](../SPEC.md), [TEAM.md](../TEAM.md), [PR #10](https://github.com/moriturus/ghawb.ts/pull/10). Planning decision: Yui surfaced repeated workflow-authoring friction around shell and working-directory repetition, and Aoi accepted a narrow metadata slice rather than a broad unbounded field dump. Closeout evidence: commit [`a5084b4`](https://github.com/moriturus/ghawb.ts/commit/a5084b4), PR review record by Haru Nishimura at [review #4032220548](https://github.com/moriturus/ghawb.ts/pull/10#pullrequestreview-4032220548), Product Owner acceptance by Aoi Sakamoto at [issue comment](https://github.com/moriturus/ghawb.ts/pull/10#issuecomment-4156842056), and verification via `bun test packages/sdk/src/workflow.test.ts packages/sdk/src/renderer.test.ts`, `bun run typecheck`, `bun run test:vitest`, and `bun run test:vitest:node`.
 
 ### Item 16: Support workflow and job concurrency controls
 

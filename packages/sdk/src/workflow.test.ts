@@ -127,6 +127,62 @@ describe('workflow builder', () => {
     ]);
   });
 
+  it('builds workflows with ordered job dependencies', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pipeline'),
+      name: 'Pipeline',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.needs(createJobId('build')).runsOn('ubuntu-latest').run('bun test');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .needs([createJobId('build'), createJobId('test')])
+          .runsOn('ubuntu-latest')
+          .run('bun run deploy');
+      })
+      .build();
+
+    expect(workflow.jobs).toEqual([
+      {
+        id: 'build',
+        runsOn: 'ubuntu-latest',
+        steps: [
+          {
+            kind: 'run',
+            run: 'bun run build',
+          },
+        ],
+      },
+      {
+        id: 'test',
+        needs: ['build'],
+        runsOn: 'ubuntu-latest',
+        steps: [
+          {
+            kind: 'run',
+            run: 'bun test',
+          },
+        ],
+      },
+      {
+        id: 'deploy',
+        needs: ['build', 'test'],
+        runsOn: 'ubuntu-latest',
+        steps: [
+          {
+            kind: 'run',
+            run: 'bun run deploy',
+          },
+        ],
+      },
+    ]);
+  });
+
   it('validates the full Sprint 1 slice at build time', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid'),
@@ -348,6 +404,39 @@ describe('workflow builder', () => {
     );
   });
 
+  it('rejects job dependencies on unknown, duplicate, or later-declared job ids', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_needs'),
+      name: 'Invalid Needs',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .needs([
+            createJobId('build'),
+            createJobId('build'),
+            createJobId('test'),
+            createJobId('missing'),
+          ])
+          .runsOn('ubuntu-latest')
+          .run('bun run deploy');
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.needs(createJobId('deploy')).runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "deploy" needs must not contain duplicate job "build"',
+        'job "deploy" needs job "test" to be declared earlier',
+        'job "deploy" needs unknown job "missing"',
+      ])
+    );
+  });
+
   it('deep-freezes workflow output including nested arrays and maps', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('immutable'),
@@ -357,15 +446,21 @@ describe('workflow builder', () => {
         branches: ['main'],
         paths: ['packages/**'],
       })
+      .addJob(createJobId('lint'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run lint');
+      })
       .addJob(createJobId('test'), (job) => {
-        job.runsOn(['ubuntu-latest', 'self-hosted']).run('bun test', {
-          env: {
-            CI: 'true',
-          },
-          with: {
-            coverage: 'true',
-          },
-        });
+        job
+          .needs(createJobId('lint'))
+          .runsOn(['ubuntu-latest', 'self-hosted'])
+          .run('bun test', {
+            env: {
+              CI: 'true',
+            },
+            with: {
+              coverage: 'true',
+            },
+          });
       })
       .build();
 
@@ -377,16 +472,18 @@ describe('workflow builder', () => {
     );
     expect(Object.isFrozen(workflow.jobs)).toBe(true);
     expect(Object.isFrozen(workflow.jobs[0]!)).toBe(true);
-    expect(Object.isFrozen(workflow.jobs[0]!.steps)).toBe(true);
-    expect(Object.isFrozen(workflow.jobs[0]!.steps[0]!)).toBe(true);
-    expect(Object.isFrozen(workflow.jobs[0]!.steps[0]!.env!)).toBe(true);
-    expect(Object.isFrozen(workflow.jobs[0]!.steps[0]!.with!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.needs!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.steps)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.steps[0]!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.steps[0]!.env!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.steps[0]!.with!)).toBe(true);
 
     expect(() => {
       (workflow.on as unknown as Array<{ type: string }>).push({ type: 'pull_request' });
     }).toThrow(TypeError);
     expect(() => {
-      (workflow.jobs[0]!.steps[0]!.env as Record<string, string>).CI = 'false';
+      (workflow.jobs[1]!.steps[0]!.env as Record<string, string>).CI = 'false';
     }).toThrow(TypeError);
   });
 });

@@ -46,6 +46,7 @@ export type RunsOnTarget = string | readonly [string, ...string[]];
 
 export interface WorkflowJob {
   readonly id: JobId;
+  readonly needs?: readonly [JobId, ...JobId[]];
   readonly runsOn: RunsOnTarget;
   readonly steps: readonly WorkflowStep[];
 }

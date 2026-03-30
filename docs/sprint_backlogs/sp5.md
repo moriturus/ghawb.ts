@@ -8,9 +8,9 @@ Capacity: 15 story points.
 
 Selected implementation units for Sprint 5: 13/15 story points.
 
-Status: in progress
+Status: done
 
-Completed At: N/A
+Completed At: 2026-03-30T16:50:56Z
 
 ## Planning Notes
 
@@ -75,6 +75,6 @@ Completed At: N/A
 - Definition of Done: The SDK supports a bounded initial matrix strategy surface with explicit validation and deterministic rendering, tests cover representative matrices, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: A job can define a supported strategy matrix, invalid empty or malformed matrix definitions fail explicitly, and repeated renders produce identical YAML structure for the same matrix input.
 - Story Points: 5
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [README.md](../../README.md). Planning decision: the Sprint 5 slice is intentionally limited to a single `strategy.matrix` object whose keys map to non-empty arrays, leaving broader matrix features such as `include` and `exclude` for future backlog intake.
+- Status: done
+- Completed At: 2026-03-30T16:50:56Z
+- Notes/Links: [SPEC.md](../SPEC.md), [README.md](../../README.md), [PR #7](https://github.com/moriturus/ghawb.ts/pull/7). Planning decision: the Sprint 5 slice is intentionally limited to a single `strategy.matrix` object whose keys map to non-empty arrays, leaving broader matrix features such as `include` and `exclude` for future backlog intake. Closeout evidence: commit [`6d9dd0a`](https://github.com/moriturus/ghawb.ts/commit/6d9dd0addae852515a260e00f182334e90e04987), PR [`#7`](https://github.com/moriturus/ghawb.ts/pull/7) merged at `2026-03-30T16:50:56Z`, hosted check run [`check`](https://github.com/moriturus/ghawb.ts/actions/runs/23756633217/job/69212970895) succeeded, non-implementing review comment recorded on the PR, and Product Owner acceptance recorded in [issue comment](https://github.com/moriturus/ghawb.ts/pull/7#issuecomment-4156546408).

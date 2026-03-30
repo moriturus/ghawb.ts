@@ -51,10 +51,22 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
     };
   }
 
+  if (trigger.type === 'schedule') {
+    return {
+      type: 'schedule',
+      cron: [...trigger.cron] as [string, ...string[]],
+    };
+  }
+
   return {
     type: trigger.type,
     ...cloneFilter(trigger),
   };
+}
+
+function isValidCronExpression(value: string): boolean {
+  const fields = value.trim().split(/\s+/);
+  return fields.length === 5 && fields.every((field) => field.length > 0);
 }
 
 function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
@@ -97,6 +109,37 @@ function createValidationIssues(
 
       if ('paths' in trigger) {
         issues.push('trigger "workflow_dispatch" does not support paths');
+      }
+
+      continue;
+    }
+
+    if (trigger.type === 'schedule') {
+      if ('branches' in trigger) {
+        issues.push('trigger "schedule" does not support branches');
+      }
+
+      if ('paths' in trigger) {
+        issues.push('trigger "schedule" does not support paths');
+      }
+
+      if (trigger.cron.length === 0) {
+        issues.push('trigger "schedule" must define at least one cron entry');
+        continue;
+      }
+
+      if (trigger.cron.some((value) => value.trim().length === 0)) {
+        issues.push('trigger "schedule" cron must not contain blank values');
+      }
+
+      for (const cron of trigger.cron) {
+        if (cron.trim().length === 0) {
+          continue;
+        }
+
+        if (!isValidCronExpression(cron)) {
+          issues.push(`trigger "schedule" cron entry "${cron}" must have exactly 5 fields`);
+        }
       }
 
       continue;
@@ -299,6 +342,14 @@ export class WorkflowBuilder {
   onWorkflowDispatch(): this {
     this.triggers.push({
       type: 'workflow_dispatch',
+    });
+    return this;
+  }
+
+  onSchedule(cron: string | readonly [string, ...string[]]): this {
+    this.triggers.push({
+      type: 'schedule',
+      cron: (Array.isArray(cron) ? [...cron] : [cron]) as [string, ...string[]],
     });
     return this;
   }

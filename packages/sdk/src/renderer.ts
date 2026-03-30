@@ -12,6 +12,10 @@ export interface WorkflowRenderTriggerPayload {
   readonly paths?: readonly string[];
 }
 
+export interface WorkflowRenderScheduleEntryPayload {
+  readonly cron: string;
+}
+
 export interface WorkflowRenderStepPayload {
   readonly name?: string;
   readonly if?: string;
@@ -28,7 +32,14 @@ export interface WorkflowRenderJobPayload {
 
 export interface WorkflowRenderPayload {
   readonly name: string;
-  readonly on: Readonly<Partial<Record<TriggerType, WorkflowRenderTriggerPayload | null>>>;
+  readonly on: Readonly<
+    Partial<
+      Record<
+        TriggerType,
+        WorkflowRenderTriggerPayload | readonly WorkflowRenderScheduleEntryPayload[] | null
+      >
+    >
+  >;
   readonly jobs: Readonly<Record<string, WorkflowRenderJobPayload>>;
 }
 
@@ -56,10 +67,17 @@ function assertAllowedKeys(value: object, allowedKeys: readonly string[], label:
   }
 }
 
-function createTriggerPayload(trigger: WorkflowTrigger): WorkflowRenderTriggerPayload | null {
+function createTriggerPayload(
+  trigger: WorkflowTrigger
+): WorkflowRenderTriggerPayload | readonly WorkflowRenderScheduleEntryPayload[] | null {
   if (trigger.type === 'workflow_dispatch') {
     assertAllowedKeys(trigger, ['type'], `trigger "${trigger.type}"`);
     return null;
+  }
+
+  if (trigger.type === 'schedule') {
+    assertAllowedKeys(trigger, ['type', 'cron'], `trigger "${trigger.type}"`);
+    return trigger.cron.map((cron) => ({ cron }));
   }
 
   assertAllowedKeys(trigger, ['type', 'branches', 'paths'], `trigger "${trigger.type}"`);
@@ -101,9 +119,14 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
 export function createWorkflowRenderPayload(workflow: WorkflowDefinition): WorkflowRenderPayload {
   assertAllowedKeys(workflow, ['id', 'name', 'on', 'jobs'], 'workflow');
 
-  const on: Partial<Record<TriggerType, WorkflowRenderTriggerPayload | null>> = {};
+  const on: Partial<
+    Record<
+      TriggerType,
+      WorkflowRenderTriggerPayload | readonly WorkflowRenderScheduleEntryPayload[] | null
+    >
+  > = {};
 
-  for (const triggerType of ['push', 'pull_request', 'workflow_dispatch'] as const) {
+  for (const triggerType of ['push', 'pull_request', 'workflow_dispatch', 'schedule'] as const) {
     const trigger = workflow.on.find((candidate) => candidate.type === triggerType);
 
     if (trigger) {

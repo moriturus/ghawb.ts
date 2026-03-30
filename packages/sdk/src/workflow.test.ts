@@ -108,6 +108,26 @@ describe('workflow builder', () => {
     ]);
   });
 
+  it('builds workflows with schedule triggers', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('nightly'),
+      name: 'Nightly',
+    })
+      .onSchedule(['0 0 * * *', '30 12 * * 1-5'])
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'schedule',
+        cron: ['0 0 * * *', '30 12 * * 1-5'],
+      },
+    ]);
+  });
+
+
   it('validates the full Sprint 1 slice at build time', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid'),
@@ -194,6 +214,54 @@ describe('workflow builder', () => {
     );
   });
 
+  it('rejects duplicate schedule trigger definitions', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('duplicate_schedule_triggers'),
+      name: 'Duplicate Schedule Triggers',
+    })
+      .onSchedule(['0 0 * * *'])
+      .onSchedule(['30 12 * * 1-5'])
+      .addJob(createJobId('lint'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run lint');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['duplicate trigger "schedule"'])
+    );
+  });
+
+  it('rejects duplicate schedule trigger definitions', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('duplicate_schedule_triggers'),
+      name: 'Duplicate Schedule Triggers',
+    })
+      .onSchedule('0 3 * * *')
+      .onSchedule('0 6 * * *')
+      .addJob(createJobId('lint'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run lint');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['duplicate trigger "schedule"'])
+    );
+  });
+
+  it('rejects duplicate schedule trigger definitions', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('duplicate_schedule_triggers'),
+      name: 'Duplicate Schedule Triggers',
+    })
+      .onSchedule('0 0 * * *')
+      .onSchedule('30 12 * * 1')
+      .addJob(createJobId('lint'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run lint');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['duplicate trigger "schedule"'])
+    );
+  });
+
   it('fails explicitly when workflow_dispatch is given unsupported filters', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid_dispatch'),
@@ -221,6 +289,145 @@ describe('workflow builder', () => {
       new WorkflowValidationError([
         'trigger "workflow_dispatch" does not support branches',
         'trigger "workflow_dispatch" does not support paths',
+      ])
+    );
+  });
+
+  it('fails explicitly when schedule is given blank or malformed cron entries', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_schedule'),
+      name: 'Invalid Schedule',
+    })
+      .onSchedule([' ', '* * * *', '0 0 * * * *'])
+      .addJob(createJobId('lint'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run lint');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "schedule" cron must not contain blank values',
+        'trigger "schedule" cron entry "* * * *" must have exactly 5 fields',
+        'trigger "schedule" cron entry "0 0 * * * *" must have exactly 5 fields',
+      ])
+    );
+  });
+
+  it('fails explicitly when schedule is given unsupported filters', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_schedule_filters'),
+      name: 'Invalid Schedule Filters',
+    }).addJob(createJobId('lint'), (job) => {
+      job.runsOn('ubuntu-latest').run('bun run lint');
+    });
+
+    (
+      builder.triggers as unknown as Array<
+        | {
+            type: 'schedule';
+            cron?: readonly string[];
+            branches?: readonly string[];
+            paths?: readonly string[];
+          }
+        | Record<string, never>
+      >
+    ).push({
+      type: 'schedule',
+      cron: ['0 0 * * *'],
+      branches: ['main'],
+      paths: ['packages/**'],
+    });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "schedule" does not support branches',
+        'trigger "schedule" does not support paths',
+      ])
+    );
+  });
+
+  it('fails explicitly when schedule has empty, blank, or malformed cron entries', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_schedule'),
+      name: 'Invalid Schedule',
+    }).addJob(createJobId('lint'), (job) => {
+      job.runsOn('ubuntu-latest').run('bun run lint');
+    });
+
+    (
+      builder.triggers as unknown as Array<
+        | {
+            type: 'schedule';
+            cron?: readonly string[];
+          }
+        | Record<string, never>
+      >
+    ).push(
+      {
+        type: 'schedule',
+        cron: [],
+      },
+      {
+        type: 'schedule',
+        cron: ['   ', '0 3 * * *'],
+      },
+      {
+        type: 'schedule',
+        cron: ['0 3 * *'],
+      }
+    );
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "schedule" must define at least one cron entry',
+        'duplicate trigger "schedule"',
+        'duplicate trigger "schedule"',
+      ])
+    );
+  });
+
+  it('rejects empty and malformed schedule entries', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_schedule'),
+      name: 'Invalid Schedule',
+    })
+      .onSchedule(['', '0 0 * *', '0 0 * * *'])
+      .addJob(createJobId('lint'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run lint');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "schedule" cron must not contain blank values',
+        'trigger "schedule" cron entry "0 0 * *" must have exactly 5 fields',
+      ])
+    );
+  });
+
+  it('rejects empty and malformed schedule trigger entries', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_schedule'),
+      name: 'Invalid Schedule',
+    }).addJob(createJobId('lint'), (job) => {
+      job.runsOn('ubuntu-latest').run('bun run lint');
+    });
+
+    (
+      builder.triggers as unknown as Array<
+        | {
+            type: 'schedule';
+            cron: readonly string[];
+          }
+        | Record<string, never>
+      >
+    ).push({
+      type: 'schedule',
+      cron: ['', '0 0 * *', '0 0 * * *'],
+    });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "schedule" cron must not contain blank values',
+        'trigger "schedule" cron entry "0 0 * *" must have exactly 5 fields',
       ])
     );
   });

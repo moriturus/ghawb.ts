@@ -299,6 +299,48 @@ describe('workflow renderer', () => {
     });
   });
 
+  it('renders strategy matrices deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('matrix'),
+      name: 'Matrix',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .strategyMatrix({
+            os: ['ubuntu-latest', 'windows-latest'],
+            node: ['18', '20'],
+          })
+          .runsOn('${{ matrix.os }}')
+          .run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: 'Matrix',
+      on: {
+        push: null,
+      },
+      jobs: {
+        test: {
+          strategy: {
+            matrix: {
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+            },
+          },
+          'runs-on': '${{ matrix.os }}',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
   it('fails explicitly before emission when unsupported workflow fields are present', () => {
     let emitterCalls = 0;
 
@@ -444,5 +486,39 @@ describe('workflow renderer', () => {
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(new WorkflowRenderError('unsupported job "build" field "timeoutMinutes"'));
+  });
+
+  it('fails explicitly before emission when a job strategy has unsupported fields', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('unsupported_strategy'),
+      name: 'Unsupported Strategy',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      jobs: [
+        {
+          id: createJobId('test'),
+          strategy: {
+            matrix: {
+              node: ['18', '20'],
+            },
+            failFast: false,
+          },
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('unsupported job strategy field "failFast"'));
   });
 });

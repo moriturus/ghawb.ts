@@ -183,6 +183,43 @@ describe('workflow builder', () => {
     ]);
   });
 
+  it('builds workflows with strategy matrices', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('matrix'),
+      name: 'Matrix',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .strategyMatrix({
+            os: ['ubuntu-latest', 'windows-latest'],
+            node: ['18', '20'],
+          })
+          .runsOn('${{ matrix.os }}')
+          .run('bun test');
+      })
+      .build();
+
+    expect(workflow.jobs).toEqual([
+      {
+        id: 'test',
+        strategy: {
+          matrix: {
+            os: ['ubuntu-latest', 'windows-latest'],
+            node: ['18', '20'],
+          },
+        },
+        runsOn: '${{ matrix.os }}',
+        steps: [
+          {
+            kind: 'run',
+            run: 'bun test',
+          },
+        ],
+      },
+    ]);
+  });
+
   it('validates the full Sprint 1 slice at build time', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid'),
@@ -437,6 +474,36 @@ describe('workflow builder', () => {
     );
   });
 
+  it('rejects empty or malformed strategy matrices', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_matrix'),
+      name: 'Invalid Matrix',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .strategyMatrix({
+            '': ['ubuntu-latest'],
+            include: ['unexpected'],
+            os: [],
+            node: ['18', ' '],
+            runtime: [{ version: '20' }] as unknown as readonly [string, ...string[]],
+          } as unknown as import('./index.ts').WorkflowMatrix)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "test" strategy.matrix must not contain blank axis names',
+        'job "test" strategy.matrix does not support axis "include"',
+        'job "test" strategy.matrix axis "os" must not be empty',
+        'job "test" strategy.matrix axis "node" must not contain blank values',
+        'job "test" strategy.matrix axis "runtime" must contain only strings',
+      ])
+    );
+  });
+
   it('deep-freezes workflow output including nested arrays and maps', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('immutable'),
@@ -452,6 +519,9 @@ describe('workflow builder', () => {
       .addJob(createJobId('test'), (job) => {
         job
           .needs(createJobId('lint'))
+          .strategyMatrix({
+            node: ['18', '20'],
+          })
           .runsOn(['ubuntu-latest', 'self-hosted'])
           .run('bun test', {
             env: {
@@ -474,6 +544,9 @@ describe('workflow builder', () => {
     expect(Object.isFrozen(workflow.jobs[0]!)).toBe(true);
     expect(Object.isFrozen(workflow.jobs[1]!)).toBe(true);
     expect(Object.isFrozen(workflow.jobs[1]!.needs!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.strategy!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.strategy!.matrix)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.strategy!.matrix.node)).toBe(true);
     expect(Object.isFrozen(workflow.jobs[1]!.steps)).toBe(true);
     expect(Object.isFrozen(workflow.jobs[1]!.steps[0]!)).toBe(true);
     expect(Object.isFrozen(workflow.jobs[1]!.steps[0]!.env!)).toBe(true);

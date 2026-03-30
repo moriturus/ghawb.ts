@@ -19,6 +19,7 @@ export {
   type WorkflowRenderTriggerPayload,
 } from './renderer.ts';
 export type {
+  MatrixAxisValues,
   RunStep,
   RunsOnTarget as RunsOn,
   StepMetadata,
@@ -27,6 +28,8 @@ export type {
   UsesStep,
   WorkflowDefinition,
   WorkflowJob,
+  WorkflowMatrix,
+  WorkflowStrategy,
   WorkflowStep,
   WorkflowTrigger,
 } from './model.ts';

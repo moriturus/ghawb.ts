@@ -1,4 +1,11 @@
-import type { TriggerType, WorkflowDefinition, WorkflowStep, WorkflowTrigger } from './model.ts';
+import type {
+  TriggerType,
+  WorkflowDefinition,
+  WorkflowMatrix,
+  WorkflowStep,
+  WorkflowStrategy,
+  WorkflowTrigger,
+} from './model.ts';
 
 export class WorkflowRenderError extends Error {
   constructor(message: string) {
@@ -27,6 +34,9 @@ export interface WorkflowRenderStepPayload {
 
 export interface WorkflowRenderJobPayload {
   readonly needs?: readonly string[];
+  readonly strategy?: {
+    readonly matrix: Readonly<Record<string, readonly string[]>>;
+  };
   readonly 'runs-on': string | readonly string[];
   readonly steps: readonly WorkflowRenderStepPayload[];
 }
@@ -117,6 +127,20 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
   };
 }
 
+function createMatrixPayload(matrix: WorkflowMatrix): Readonly<Record<string, readonly string[]>> {
+  return Object.fromEntries(Object.entries(matrix).map(([key, values]) => [key, [...values]]));
+}
+
+function createStrategyPayload(strategy: WorkflowStrategy): {
+  readonly matrix: Readonly<Record<string, readonly string[]>>;
+} {
+  assertAllowedKeys(strategy, ['matrix'], 'job strategy');
+
+  return {
+    matrix: createMatrixPayload(strategy.matrix),
+  };
+}
+
 export function createWorkflowRenderPayload(workflow: WorkflowDefinition): WorkflowRenderPayload {
   assertAllowedKeys(workflow, ['id', 'name', 'on', 'jobs'], 'workflow');
 
@@ -138,10 +162,11 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   const jobs: Record<string, WorkflowRenderJobPayload> = {};
 
   for (const job of workflow.jobs) {
-    assertAllowedKeys(job, ['id', 'needs', 'runsOn', 'steps'], `job "${job.id}"`);
+    assertAllowedKeys(job, ['id', 'needs', 'strategy', 'runsOn', 'steps'], `job "${job.id}"`);
 
     jobs[String(job.id)] = {
       ...(job.needs ? { needs: [...job.needs] } : {}),
+      ...(job.strategy ? { strategy: createStrategyPayload(job.strategy) } : {}),
       'runs-on': Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
       steps: job.steps.map(createStepPayload),
     };

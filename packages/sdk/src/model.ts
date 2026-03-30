@@ -43,10 +43,17 @@ export interface UsesStep extends StepMetadata {
 export type WorkflowStep = RunStep | UsesStep;
 
 export type RunsOnTarget = string | readonly [string, ...string[]];
+export type MatrixAxisValues = readonly [string, ...string[]];
+export type WorkflowMatrix = Readonly<Record<string, MatrixAxisValues>>;
+
+export interface WorkflowStrategy {
+  readonly matrix: WorkflowMatrix;
+}
 
 export interface WorkflowJob {
   readonly id: JobId;
   readonly needs?: readonly [JobId, ...JobId[]];
+  readonly strategy?: WorkflowStrategy;
   readonly runsOn: RunsOnTarget;
   readonly steps: readonly WorkflowStep[];
 }

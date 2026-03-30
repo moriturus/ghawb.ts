@@ -8,9 +8,9 @@ Capacity: 15 story points.
 
 Selected implementation units for Sprint 6: 12/15 story points.
 
-Status: in progress
+Status: done
 
-Completed At: N/A
+Completed At: 2026-03-30T17:38:37Z
 
 ## Planning Notes
 

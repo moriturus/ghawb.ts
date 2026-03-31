@@ -62,6 +62,6 @@ Completed At: N/A
 - Definition of Done: The CLI exposes an explicit multi-workflow render surface with deterministic behavior, actionable diagnostics, matching documentation, and code review by a non-implementing persona.
 - Acceptance Criteria: Users can render multiple declared workflow modules in one command, partial failures surface clearly with non-zero exit behavior, and the command does not rely on undocumented repository scanning.
 - Story Points: 4
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [packages/cli/src/index.ts](../../packages/cli/src/index.ts), [scripts/verify-workflows.ts](../../scripts/verify-workflows.ts). Planning decision: this item remains explicit-input or manifest-driven and must not absorb repository-discovery behavior outside the documented Sprint 7 contract.
+- Status: done
+- Completed At: 2026-03-31T09:36:38Z
+- Notes/Links: [SPEC.md](../SPEC.md), [packages/cli/src/index.ts](../../packages/cli/src/index.ts), [scripts/verify-workflows.ts](../../scripts/verify-workflows.ts), [PR #15](https://github.com/moriturus/ghawb.ts/pull/15). Planning decision: this item remains explicit-input or manifest-driven and must not absorb repository-discovery behavior outside the documented Sprint 7 contract. Closeout evidence: commit [`85e8d9d`](https://github.com/moriturus/ghawb.ts/commit/85e8d9d022983480fb62cde8477a2122cdda72d0), PR review record by Haru Nishimura at [review #4036044982](https://github.com/moriturus/ghawb.ts/pull/15#pullrequestreview-4036044982), Product Owner acceptance by Aoi Sakamoto at [issue comment](https://github.com/moriturus/ghawb.ts/pull/15#issuecomment-4161253276), and verification via `bun test packages/cli/src/cli.test.ts tests/node/generate-workflows.test.ts`, `bun run typecheck`, `bun run generate:workflows`, `bun run check`, and `bun run test:vitest:node`.

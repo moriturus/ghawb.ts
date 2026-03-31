@@ -13,6 +13,10 @@ export interface WorkflowLayoutResult {
   readonly issues: readonly string[];
 }
 
+export interface ValidateWorkflowLayoutOptions {
+  readonly requireGeneratedOutputs?: boolean;
+}
+
 const SUPPORTED_SOURCE_EXTENSION = '.ts';
 const SUPPORTED_OUTPUT_EXTENSION = '.yml';
 
@@ -53,11 +57,19 @@ async function runCommand(
   });
 }
 
-export async function validateWorkflowLayout(cwd: string): Promise<WorkflowLayoutResult> {
+export async function validateWorkflowLayout(
+  cwd: string,
+  options: ValidateWorkflowLayoutOptions = {}
+): Promise<WorkflowLayoutResult> {
+  const requireGeneratedOutputs = options.requireGeneratedOutputs ?? true;
   const sourceDirectory = resolve(cwd, 'workflows');
   const outputDirectory = resolve(cwd, '.github', 'workflows');
-  const sourceEntries = await readdir(sourceDirectory, { withFileTypes: true });
-  const outputEntries = await readdir(outputDirectory, { withFileTypes: true });
+  const sourceEntries = (await readdir(sourceDirectory, { withFileTypes: true })).sort(
+    (left, right) => left.name.localeCompare(right.name)
+  );
+  const outputEntries = (await readdir(outputDirectory, { withFileTypes: true })).sort(
+    (left, right) => left.name.localeCompare(right.name)
+  );
   const issues: string[] = [];
 
   const sourceFiles = sourceEntries.filter((entry) => entry.isFile());
@@ -102,17 +114,21 @@ export async function validateWorkflowLayout(cwd: string): Promise<WorkflowLayou
     issues.push('no supported workflow source files were found under workflows/');
   }
 
-  for (const mapping of mappings) {
-    const outputBasename = parse(mapping.outputPath).base;
-    const outputEntry = outputFiles.find((entry) => entry.name === outputBasename);
+  if (requireGeneratedOutputs) {
+    for (const mapping of mappings) {
+      const outputBasename = parse(mapping.outputPath).base;
+      const outputEntry = outputFiles.find((entry) => entry.name === outputBasename);
 
-    if (!outputEntry) {
-      issues.push(`missing generated workflow output: ${relativeFromCwd(cwd, mapping.outputPath)}`);
+      if (!outputEntry) {
+        issues.push(
+          `missing generated workflow output: ${relativeFromCwd(cwd, mapping.outputPath)}`
+        );
+      }
     }
   }
 
   for (const entry of outputFiles) {
-    if (!entry.name.endsWith('.yml') && !entry.name.endsWith('.yaml')) {
+    if (!entry.name.endsWith(SUPPORTED_OUTPUT_EXTENSION)) {
       issues.push(
         `unsupported generated workflow file: ${relativeFromCwd(cwd, join(outputDirectory, entry.name))}`
       );

@@ -38,9 +38,9 @@ Completed At: N/A
 - Definition of Done: The repository can manage multiple committed workflow source modules through the supported local path, guardrails catch drift and unsupported placement for each module, docs describe the expanded contract, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Multiple `workflows/*.ts` modules can render to matching `.github/workflows/*.yml` outputs, guardrails validate each supported mapping deterministically, and the repository does not introduce implicit workflow discovery outside the documented path.
 - Story Points: 5
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [sprint_reviews/sp4.md](../sprint_reviews/sp4.md), [sprint_retrospectives/sp4.md](../sprint_retrospectives/sp4.md), [scripts/verify-workflows.ts](../../scripts/verify-workflows.ts). Planning decision: this item stays narrowly scoped to explicit multi-module repository support under `workflows/` and must not silently widen into undocumented discovery behavior.
+- Status: done
+- Completed At: 2026-03-31T09:24:36Z
+- Notes/Links: [SPEC.md](../SPEC.md), [sprint_reviews/sp4.md](../sprint_reviews/sp4.md), [sprint_retrospectives/sp4.md](../sprint_retrospectives/sp4.md), [scripts/verify-workflows.ts](../../scripts/verify-workflows.ts), [PR #13](https://github.com/moriturus/ghawb.ts/pull/13). Planning decision: this item stays narrowly scoped to explicit multi-module repository support under `workflows/` and must not silently widen into undocumented discovery behavior. Closeout evidence: commit [`e30a2d7`](https://github.com/moriturus/ghawb.ts/commit/e30a2d70377d1badfcd0857718115dbde32caae1), PR review record by Haru Nishimura at [review #4035968522](https://github.com/moriturus/ghawb.ts/pull/13#pullrequestreview-4035968522), Product Owner acceptance by Aoi Sakamoto at [issue comment](https://github.com/moriturus/ghawb.ts/pull/13#issuecomment-4161178919), and verification via `bun run verify:workflows`, `bun run check`, and `bun run test:vitest:node`.
 
 ### Item 19: Expand the cross-runtime conformance suite for SDK rendering
 

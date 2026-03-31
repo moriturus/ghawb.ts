@@ -8,9 +8,9 @@ Capacity: 15 story points.
 
 Selected implementation units for Sprint 7: 12/15 story points.
 
-Status: ready
+Status: done
 
-Completed At: N/A
+Completed At: 2026-03-31T09:39:09Z
 
 ## Planning Notes
 

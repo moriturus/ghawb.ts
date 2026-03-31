@@ -44,7 +44,8 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - job `strategy.matrix` currently supports only direct axis-to-string-array mappings, rejects empty axes and malformed values explicitly, and treats broader matrix features such as `include` or `exclude` as unsupported in the current slice.
 - Built workflow objects are deeply frozen, including nested trigger filters, job arrays, step arrays, and step maps such as `env` and `with`.
 - Bun and Node unit/integration coverage run on Vitest, with Bun-run Vitest as the primary repository test authority.
-- Deno remains intentionally scoped to smoke and compatibility coverage.
+- Bun-run Vitest remains the primary repository test authority, Node-run Vitest remains the compatibility confirmation path, and a shared cross-runtime render conformance suite exercises representative supported workflow fixtures across Bun, Node, and Deno.
+- Deno remains intentionally scoped to compatibility-oriented coverage outside the shared render conformance fixtures rather than the full repository test surface.
 - The SDK exposes a deterministic renderer that:
   - converts supported workflow definitions into a JSON-like intermediate payload
   - injects an emitter function instead of binding the core to a YAML library
@@ -127,4 +128,3 @@ The project is intended to make workflow construction type-safe, robust, and ide
 ## Open Questions
 
 - TBD: how far typestate constraints should go before usability costs outweigh safety gains
-- TBD: whether runtime-specific smoke tests should expand into a shared cross-runtime conformance suite beyond the Sprint 1 baseline

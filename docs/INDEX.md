@@ -24,12 +24,14 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp3.md](./sprint_reviews/sp3.md): Sprint 3 review summary, CLI and self-hosting demo scope, findings, and Product Owner decision.
 - [sprint_reviews/sp4.md](./sprint_reviews/sp4.md): Sprint 4 review summary, CI recovery and workflow guardrail demo scope, findings, and Product Owner decision.
 - [sprint_reviews/sp6.md](./sprint_reviews/sp6.md): Sprint 6 review summary, SDK increment demo scope, findings, and Product Owner decision.
+- [sprint_reviews/sp7.md](./sprint_reviews/sp7.md): Sprint 7 review summary, repository-contract expansion, cross-runtime conformance, batch CLI demo scope, findings, and Product Owner decision.
 - [sprint_retrospectives/sp1.md](./sprint_retrospectives/sp1.md): Sprint 1 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp2.md](./sprint_retrospectives/sp2.md): Sprint 2 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp3.md](./sprint_retrospectives/sp3.md): Sprint 3 retrospective summary, role reflections, and routed improvement actions.
 - [sprint_retrospectives/sp4.md](./sprint_retrospectives/sp4.md): Sprint 4 retrospective summary, role reflections, and routed improvement actions.
 - [sprint_retrospectives/sp5.md](./sprint_retrospectives/sp5.md): Sprint 5 retrospective summary, role reflections, and routed improvement actions.
 - [sprint_retrospectives/sp6.md](./sprint_retrospectives/sp6.md): Sprint 6 retrospective summary, role reflections, and routed improvement actions.
+- [sprint_retrospectives/sp7.md](./sprint_retrospectives/sp7.md): Sprint 7 retrospective summary, role reflections, and routed improvement actions.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 
 ## Notes

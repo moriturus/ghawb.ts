@@ -44,19 +44,21 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - job `strategy.matrix` currently supports only direct axis-to-string-array mappings, rejects empty axes and malformed values explicitly, and treats broader matrix features such as `include` or `exclude` as unsupported in the current slice.
 - Built workflow objects are deeply frozen, including nested trigger filters, job arrays, step arrays, and step maps such as `env` and `with`.
 - Bun and Node unit/integration coverage run on Vitest, with Bun-run Vitest as the primary repository test authority.
-- Deno remains intentionally scoped to smoke and compatibility coverage.
+- Bun-run Vitest remains the primary repository test authority, Node-run Vitest remains the compatibility confirmation path, and a shared cross-runtime render conformance suite exercises representative supported workflow fixtures across Bun, Node, and Deno.
+- Deno remains intentionally scoped to compatibility-oriented coverage outside the shared render conformance fixtures rather than the full repository test surface.
 - The SDK exposes a deterministic renderer that:
   - converts supported workflow definitions into a JSON-like intermediate payload
   - injects an emitter function instead of binding the core to a YAML library
   - fails explicitly before emission when unsupported fields are present at runtime
 - The CLI currently:
   - exposes `ghawb render --input <workflow.ts> --output <workflow.yml>`
+  - exposes `ghawb render-batch --input <workflow.ts> --output <workflow.yml> ...` for explicit multi-workflow rendering without repository scanning
   - loads a directly specified TypeScript module whose default export is a built workflow definition
   - renders YAML through one concrete adapter backed by the `yaml` Node module
-  - writes deterministic workflow output files and exits non-zero on failure
-- The repository self-hosts its CI workflow definition from `workflows/ci.ts` into `.github/workflows/ci.yml` through the root `generate:workflows` script.
-- The supported committed-workflow authoring path is explicit and repository-local: workflow source modules live under `workflows/`, generated outputs live under `.github/workflows/`, and the project does not treat implicit workflow discovery or out-of-repository workflow source files as the supported path.
-- The dedicated workflow guardrail command is `bun run verify:workflows`, which validates the supported repository-local workflow-source convention and detects generated-workflow drift for committed workflow outputs.
+  - writes deterministic workflow output files and exits non-zero on failure, with batch mode surfacing partial failures after attempting every declared mapping
+- The repository self-hosts committed workflow definitions from explicit `workflows/*.ts` modules into matching `.github/workflows/*.yml` outputs through the root `generate:workflows` script.
+- The supported committed-workflow authoring path is explicit and repository-local: workflow source modules live directly under `workflows/`, generated outputs live under `.github/workflows/` with matching basenames, and the project does not treat out-of-repository workflow source files or undocumented workflow discovery outside that path as the supported contract.
+- The dedicated workflow guardrail command is `bun run verify:workflows`, which validates the supported repository-local workflow-source convention and detects generated-workflow drift for every committed workflow output.
 - The contributor-facing local verification path is `bun run verify:pre-push`, which checks for a clean worktree, runs `bun run verify:workflows`, runs the root Bun checks, and confirms the Node compatibility suite before push.
 
 ## Design Constraints
@@ -127,4 +129,3 @@ The project is intended to make workflow construction type-safe, robust, and ide
 ## Open Questions
 
 - TBD: how far typestate constraints should go before usability costs outweigh safety gains
-- TBD: whether runtime-specific smoke tests should expand into a shared cross-runtime conformance suite beyond the Sprint 1 baseline

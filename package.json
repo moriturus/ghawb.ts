@@ -6,7 +6,7 @@
   ],
   "type": "module",
   "scripts": {
-    "generate:workflows": "bun run packages/cli/src/bin.ts render --input ./workflows/ci.ts --output ./.github/workflows/ci.yml",
+    "generate:workflows": "bun run scripts/generate-workflows.ts",
     "verify:workflows": "bun run scripts/verify-workflows.ts",
     "verify:pre-push": "bun run scripts/verify-pre-push.ts",
     "test": "bun run test:vitest && bun run test:deno",

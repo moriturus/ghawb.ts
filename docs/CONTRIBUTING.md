@@ -15,7 +15,7 @@ Run verification from the repository root on a branch whose worktree is clean an
 
 1. validates the supported repository-local workflow-source placement under `workflows/`
 2. rejects unsupported source placement under `.github/workflows/`
-3. renders committed workflow source modules and fails on generated-workflow drift
+3. renders every committed workflow source module and fails on generated-workflow drift
 
 `bun run verify:pre-push` wraps that guardrail command and follows the rest of the repository's local pre-push path:
 
@@ -29,12 +29,13 @@ This command fails if the worktree is not clean, including untracked files. It i
 
 - Keep committed workflow source modules under [`workflows/`](../workflows).
 - Do not rely on out-of-repository workflow source files for committed project workflows.
-- Keep workflow entrypoints explicit by passing the intended module to `ghawb render` or the root `generate:workflows` command.
-- Commit generated `.github/workflows/*.yml` updates together with the source change that produced them.
+- Keep workflow entrypoints explicit by passing the intended module to `ghawb render`, using `ghawb render-batch` with declared `--input` / `--output` pairs, or using the root `generate:workflows` command.
+- Use `bun run generate:workflows` to render every committed workflow module, and commit generated `.github/workflows/*.yml` updates together with the source change that produced them.
 
 ## Related Commands
 
-- `bun run generate:workflows`: render the committed CI workflow from [`workflows/ci.ts`](../workflows/ci.ts)
+- `bun run generate:workflows`: render every committed workflow module under [`workflows/`](../workflows)
 - `bun run verify:workflows`: validate workflow-source placement and generated-workflow drift
 - `bun run verify:pre-push`: run the local pre-push verification path that matches the current hosted CI sequence
 - `bun run check`: run format, lint, type-check, Bun Vitest, and Deno smoke checks
+- `ghawb render-batch --input <workflow.ts> --output <workflow.yml> ...`: render multiple declared workflow modules without repository scanning

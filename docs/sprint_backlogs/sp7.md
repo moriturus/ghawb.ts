@@ -8,9 +8,9 @@ Capacity: 15 story points.
 
 Selected implementation units for Sprint 7: 12/15 story points.
 
-Status: ready
+Status: done
 
-Completed At: N/A
+Completed At: 2026-03-31T09:39:09Z
 
 ## Planning Notes
 
@@ -38,9 +38,9 @@ Completed At: N/A
 - Definition of Done: The repository can manage multiple committed workflow source modules through the supported local path, guardrails catch drift and unsupported placement for each module, docs describe the expanded contract, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Multiple `workflows/*.ts` modules can render to matching `.github/workflows/*.yml` outputs, guardrails validate each supported mapping deterministically, and the repository does not introduce implicit workflow discovery outside the documented path.
 - Story Points: 5
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [sprint_reviews/sp4.md](../sprint_reviews/sp4.md), [sprint_retrospectives/sp4.md](../sprint_retrospectives/sp4.md), [scripts/verify-workflows.ts](../../scripts/verify-workflows.ts). Planning decision: this item stays narrowly scoped to explicit multi-module repository support under `workflows/` and must not silently widen into undocumented discovery behavior.
+- Status: done
+- Completed At: 2026-03-31T09:24:36Z
+- Notes/Links: [SPEC.md](../SPEC.md), [sprint_reviews/sp4.md](../sprint_reviews/sp4.md), [sprint_retrospectives/sp4.md](../sprint_retrospectives/sp4.md), [scripts/verify-workflows.ts](../../scripts/verify-workflows.ts), [PR #13](https://github.com/moriturus/ghawb.ts/pull/13). Planning decision: this item stays narrowly scoped to explicit multi-module repository support under `workflows/` and must not silently widen into undocumented discovery behavior. Closeout evidence: commit [`e30a2d7`](https://github.com/moriturus/ghawb.ts/commit/e30a2d70377d1badfcd0857718115dbde32caae1), PR review record by Haru Nishimura at [review #4035968522](https://github.com/moriturus/ghawb.ts/pull/13#pullrequestreview-4035968522), Product Owner acceptance by Aoi Sakamoto at [issue comment](https://github.com/moriturus/ghawb.ts/pull/13#issuecomment-4161178919), and verification via `bun run verify:workflows`, `bun run check`, and `bun run test:vitest:node`.
 
 ### Item 19: Expand the cross-runtime conformance suite for SDK rendering
 
@@ -50,9 +50,9 @@ Completed At: N/A
 - Definition of Done: The repository has a documented and executable cross-runtime conformance suite for the supported SDK rendering surface, failures are attributable to clear fixtures, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: The same representative supported workflows are exercised across the intended runtimes, conformance failures report which fixture or runtime diverged, and the test contract is documented clearly enough to guide future feature additions.
 - Story Points: 3
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [tests/node/smoke.test.ts](../../tests/node/smoke.test.ts), [tests/deno/smoke.test.ts](../../tests/deno/smoke.test.ts). Planning decision: this conformance slice uses representative supported fixtures across Bun, Node, and Deno rather than reopening scope to exhaustive every-surface parity.
+- Status: done
+- Completed At: 2026-03-31T09:31:10Z
+- Notes/Links: [SPEC.md](../SPEC.md), [tests/node/smoke.test.ts](../../tests/node/smoke.test.ts), [tests/deno/smoke.test.ts](../../tests/deno/smoke.test.ts), [PR #14](https://github.com/moriturus/ghawb.ts/pull/14). Planning decision: this conformance slice uses representative supported fixtures across Bun, Node, and Deno rather than reopening scope to exhaustive every-surface parity. Closeout evidence: commit [`257d9a4`](https://github.com/moriturus/ghawb.ts/commit/257d9a4d564157ad9c0671e041d6f360f7e2100b), PR review record by Haru Nishimura at [review #4036015397](https://github.com/moriturus/ghawb.ts/pull/14#pullrequestreview-4036015397), Product Owner acceptance by Aoi Sakamoto at [issue comment](https://github.com/moriturus/ghawb.ts/pull/14#issuecomment-4161221622), and verification via `bun test tests/node/render-conformance.test.ts`, `deno test tests/deno/render-conformance.test.ts`, `bun run typecheck`, `bun run check`, and `bun run test:vitest:node`.
 
 ### Item 18: Add a batch CLI render surface for repository workflow generation
 
@@ -62,6 +62,6 @@ Completed At: N/A
 - Definition of Done: The CLI exposes an explicit multi-workflow render surface with deterministic behavior, actionable diagnostics, matching documentation, and code review by a non-implementing persona.
 - Acceptance Criteria: Users can render multiple declared workflow modules in one command, partial failures surface clearly with non-zero exit behavior, and the command does not rely on undocumented repository scanning.
 - Story Points: 4
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [packages/cli/src/index.ts](../../packages/cli/src/index.ts), [scripts/verify-workflows.ts](../../scripts/verify-workflows.ts). Planning decision: this item remains explicit-input or manifest-driven and must not absorb repository-discovery behavior outside the documented Sprint 7 contract.
+- Status: done
+- Completed At: 2026-03-31T09:36:38Z
+- Notes/Links: [SPEC.md](../SPEC.md), [packages/cli/src/index.ts](../../packages/cli/src/index.ts), [scripts/verify-workflows.ts](../../scripts/verify-workflows.ts), [PR #15](https://github.com/moriturus/ghawb.ts/pull/15). Planning decision: this item remains explicit-input or manifest-driven and must not absorb repository-discovery behavior outside the documented Sprint 7 contract. Closeout evidence: commit [`85e8d9d`](https://github.com/moriturus/ghawb.ts/commit/85e8d9d022983480fb62cde8477a2122cdda72d0), PR review record by Haru Nishimura at [review #4036044982](https://github.com/moriturus/ghawb.ts/pull/15#pullrequestreview-4036044982), Product Owner acceptance by Aoi Sakamoto at [issue comment](https://github.com/moriturus/ghawb.ts/pull/15#issuecomment-4161253276), and verification via `bun test packages/cli/src/cli.test.ts tests/node/generate-workflows.test.ts`, `bun run typecheck`, `bun run generate:workflows`, `bun run check`, and `bun run test:vitest:node`.

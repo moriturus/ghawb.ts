@@ -50,9 +50,9 @@ Completed At: N/A
 - Definition of Done: The repository has a documented and executable cross-runtime conformance suite for the supported SDK rendering surface, failures are attributable to clear fixtures, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: The same representative supported workflows are exercised across the intended runtimes, conformance failures report which fixture or runtime diverged, and the test contract is documented clearly enough to guide future feature additions.
 - Story Points: 3
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md), [tests/node/smoke.test.ts](../../tests/node/smoke.test.ts), [tests/deno/smoke.test.ts](../../tests/deno/smoke.test.ts). Planning decision: this conformance slice uses representative supported fixtures across Bun, Node, and Deno rather than reopening scope to exhaustive every-surface parity.
+- Status: done
+- Completed At: 2026-03-31T09:31:10Z
+- Notes/Links: [SPEC.md](../SPEC.md), [tests/node/smoke.test.ts](../../tests/node/smoke.test.ts), [tests/deno/smoke.test.ts](../../tests/deno/smoke.test.ts), [PR #14](https://github.com/moriturus/ghawb.ts/pull/14). Planning decision: this conformance slice uses representative supported fixtures across Bun, Node, and Deno rather than reopening scope to exhaustive every-surface parity. Closeout evidence: commit [`257d9a4`](https://github.com/moriturus/ghawb.ts/commit/257d9a4d564157ad9c0671e041d6f360f7e2100b), PR review record by Haru Nishimura at [review #4036015397](https://github.com/moriturus/ghawb.ts/pull/14#pullrequestreview-4036015397), Product Owner acceptance by Aoi Sakamoto at [issue comment](https://github.com/moriturus/ghawb.ts/pull/14#issuecomment-4161221622), and verification via `bun test tests/node/render-conformance.test.ts`, `deno test tests/deno/render-conformance.test.ts`, `bun run typecheck`, `bun run check`, and `bun run test:vitest:node`.
 
 ### Item 18: Add a batch CLI render surface for repository workflow generation
 

@@ -55,6 +55,7 @@ Before opening or updating a pull request, use a branch that contains only the i
 - Keep workflow module imports explicit, and prefer repository-owned workspace packages such as `@ghawb/sdk`.
 - Treat `.github/workflows/*.yml` as generated output from repository-local TypeScript source, not as the primary authoring surface.
 - Render every committed workflow module with `bun run generate:workflows` after changing any workflow source module, and commit the updated generated workflow files in the same change.
+- For explicit multi-workflow generation outside the repository helper, use `ghawb render-batch` with repeated `--input` / `--output` pairs rather than relying on implicit scanning.
 
 ## Documentation
 

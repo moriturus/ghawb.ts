@@ -29,7 +29,7 @@ This command fails if the worktree is not clean, including untracked files. It i
 
 - Keep committed workflow source modules under [`workflows/`](../workflows).
 - Do not rely on out-of-repository workflow source files for committed project workflows.
-- Keep workflow entrypoints explicit by passing the intended module to `ghawb render` or the root `generate:workflows` command.
+- Keep workflow entrypoints explicit by passing the intended module to `ghawb render`, using `ghawb render-batch` with declared `--input` / `--output` pairs, or using the root `generate:workflows` command.
 - Use `bun run generate:workflows` to render every committed workflow module, and commit generated `.github/workflows/*.yml` updates together with the source change that produced them.
 
 ## Related Commands
@@ -38,3 +38,4 @@ This command fails if the worktree is not clean, including untracked files. It i
 - `bun run verify:workflows`: validate workflow-source placement and generated-workflow drift
 - `bun run verify:pre-push`: run the local pre-push verification path that matches the current hosted CI sequence
 - `bun run check`: run format, lint, type-check, Bun Vitest, and Deno smoke checks
+- `ghawb render-batch --input <workflow.ts> --output <workflow.yml> ...`: render multiple declared workflow modules without repository scanning

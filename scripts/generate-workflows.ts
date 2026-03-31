@@ -49,23 +49,22 @@ export async function generateWorkflows(cwd: string): Promise<readonly WorkflowM
     throw new Error(`Workflow generation failed:\n- ${issues.join('\n- ')}`);
   }
 
-  for (const mapping of mappings) {
-    const renderResult = await runCommand(cwd, 'bun', [
-      'run',
-      'packages/cli/src/bin.ts',
-      'render',
-      '--input',
-      mapping.sourcePath,
-      '--output',
-      mapping.outputPath,
-    ]);
+  const batchArgs = mappings.flatMap((mapping) => [
+    '--input',
+    mapping.sourcePath,
+    '--output',
+    mapping.outputPath,
+  ]);
+  const renderResult = await runCommand(cwd, 'bun', [
+    'run',
+    'packages/cli/src/bin.ts',
+    'render-batch',
+    ...batchArgs,
+  ]);
 
-    if (renderResult.exitCode !== 0) {
-      const detail = renderResult.stderr || renderResult.stdout || 'unknown render failure';
-      throw new Error(
-        `Workflow generation failed while rendering ${relativeFromCwd(cwd, mapping.sourcePath)}:\n${detail.trim()}`
-      );
-    }
+  if (renderResult.exitCode !== 0) {
+    const detail = renderResult.stderr || renderResult.stdout || 'unknown render failure';
+    throw new Error(`Workflow generation failed:\n${detail.trim()}`);
   }
 
   return mappings;

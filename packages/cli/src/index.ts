@@ -19,6 +19,11 @@ export interface CliRunDependencies extends CliIo {
   readonly writeOutputFile: (outputPath: string, contents: string) => Promise<void>;
 }
 
+interface RenderTarget {
+  readonly inputPath: string;
+  readonly outputPath: string;
+}
+
 export class CliUsageError extends Error {
   constructor(message: string) {
     super(message);
@@ -47,7 +52,7 @@ function isWorkflowDefinition(value: unknown): value is WorkflowDefinition {
   );
 }
 
-function parseRenderArguments(args: readonly string[]): { inputPath: string; outputPath: string } {
+function parseRenderArguments(args: readonly string[]): RenderTarget {
   let inputPath: string | undefined;
   let outputPath: string | undefined;
 
@@ -83,6 +88,62 @@ function parseRenderArguments(args: readonly string[]): { inputPath: string; out
   };
 }
 
+function parseRenderBatchArguments(args: readonly string[]): readonly RenderTarget[] {
+  const targets: RenderTarget[] = [];
+  let pendingInputPath: string | undefined;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === '--input') {
+      if (pendingInputPath) {
+        throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
+      }
+
+      pendingInputPath = args[index + 1];
+      index += 1;
+
+      if (!pendingInputPath) {
+        throw new CliUsageError('missing required value after --input');
+      }
+
+      continue;
+    }
+
+    if (arg === '--output') {
+      const outputPath = args[index + 1];
+      index += 1;
+
+      if (!pendingInputPath) {
+        throw new CliUsageError('batch render requires --input before --output');
+      }
+
+      if (!outputPath) {
+        throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
+      }
+
+      targets.push({
+        inputPath: pendingInputPath,
+        outputPath,
+      });
+      pendingInputPath = undefined;
+      continue;
+    }
+
+    throw new CliUsageError(`unknown argument "${arg}"`);
+  }
+
+  if (pendingInputPath) {
+    throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
+  }
+
+  if (targets.length === 0) {
+    throw new CliUsageError('missing required batch render targets');
+  }
+
+  return targets;
+}
+
 async function defaultImportModule(modulePath: string): Promise<unknown> {
   return import(pathToFileURL(modulePath).href);
 }
@@ -93,7 +154,29 @@ async function defaultWriteOutputFile(outputPath: string, contents: string): Pro
 }
 
 function usage(): string {
-  return 'Usage: ghawb render --input <workflow.ts> --output <workflow.yml>';
+  return [
+    'Usage: ghawb render --input <workflow.ts> --output <workflow.yml>',
+    '       ghawb render-batch --input <workflow.ts> --output <workflow.yml> [--input <workflow.ts> --output <workflow.yml> ...]',
+  ].join('\n');
+}
+
+async function renderTarget(
+  target: RenderTarget,
+  importModule: CliRunDependencies['importModule'],
+  writeOutputFile: CliRunDependencies['writeOutputFile']
+): Promise<string> {
+  const resolvedInputPath = resolve(target.inputPath);
+  const resolvedOutputPath = resolve(target.outputPath);
+  const loadedModule = await importModule(resolvedInputPath);
+  const workflow = (loadedModule as { default?: unknown }).default;
+
+  if (!isWorkflowDefinition(workflow)) {
+    throw new Error('default export must be a built workflow definition');
+  }
+
+  const renderedYaml = renderWorkflow(workflow, emitWorkflowYaml);
+  await writeOutputFile(resolvedOutputPath, renderedYaml);
+  return resolvedOutputPath;
 }
 
 export async function runCli(
@@ -107,24 +190,39 @@ export async function runCli(
   try {
     const [command, ...rest] = args;
 
-    if (command !== 'render') {
-      throw new CliUsageError(command ? `unknown command "${command}"` : 'missing command');
+    if (command === 'render') {
+      const outputPath = await renderTarget(
+        parseRenderArguments(rest),
+        importModule,
+        writeOutputFile
+      );
+      io.stdout(`Rendered ${outputPath}`);
+      return 0;
     }
 
-    const { inputPath, outputPath } = parseRenderArguments(rest);
-    const resolvedInputPath = resolve(inputPath);
-    const resolvedOutputPath = resolve(outputPath);
-    const loadedModule = await importModule(resolvedInputPath);
-    const workflow = (loadedModule as { default?: unknown }).default;
+    if (command === 'render-batch') {
+      const targets = parseRenderBatchArguments(rest);
+      const failures: string[] = [];
 
-    if (!isWorkflowDefinition(workflow)) {
-      throw new Error('default export must be a built workflow definition');
+      for (const target of targets) {
+        try {
+          const outputPath = await renderTarget(target, importModule, writeOutputFile);
+          io.stdout(`Rendered ${outputPath}`);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          failures.push(`${target.inputPath} -> ${target.outputPath}: ${message}`);
+        }
+      }
+
+      if (failures.length > 0) {
+        io.stderr(`Batch render failed:\n- ${failures.join('\n- ')}`);
+        return 1;
+      }
+
+      return 0;
     }
 
-    const renderedYaml = renderWorkflow(workflow, emitWorkflowYaml);
-    await writeOutputFile(resolvedOutputPath, renderedYaml);
-    io.stdout(`Rendered ${resolvedOutputPath}`);
-    return 0;
+    throw new CliUsageError(command ? `unknown command "${command}"` : 'missing command');
   } catch (error) {
     if (error instanceof CliUsageError) {
       io.stderr(`${error.message}\n${usage()}`);

@@ -22,7 +22,7 @@ Sprint 3 is implemented. The repository now contains the SDK workspace, branded 
 - `packages/shared`: branded identifiers and shared validation errors
 - `packages/sdk`: workflow model, builders, validation, and deterministic rendering
 - `packages/cli`: CLI entrypoint, argument parsing, and YAML adapter
-- `workflows`: repository-authored workflow definitions rendered into `.github/workflows`
+- `workflows`: repository-authored workflow definitions rendered into matching `.github/workflows/*.yml` files
 
 ## Quality Commands
 
@@ -45,7 +45,7 @@ Before opening or updating a pull request, use a branch that contains only the i
 3. If workflow sources changed, review any intended `.github/workflows/*.yml` diff before pushing.
 4. Push only after the branch still reflects the intended change set.
 
-`bun run verify:workflows` is the dedicated workflow guardrail command. It validates the supported repository-local workflow-source convention and detects generated-workflow drift for committed workflows.
+`bun run verify:workflows` is the dedicated workflow guardrail command. It validates the supported repository-local workflow-source convention and detects generated-workflow drift for every committed workflow mapping.
 
 `bun run verify:pre-push` wraps `bun run verify:workflows` with the rest of the current local verification path: clean-worktree enforcement, Bun-root checks, and Node compatibility coverage.
 
@@ -54,7 +54,7 @@ Before opening or updating a pull request, use a branch that contains only the i
 - Author committed workflow source modules inside the repository under [`workflows/`](./workflows).
 - Keep workflow module imports explicit, and prefer repository-owned workspace packages such as `@ghawb/sdk`.
 - Treat `.github/workflows/*.yml` as generated output from repository-local TypeScript source, not as the primary authoring surface.
-- Use `bun run generate:workflows` after changing a workflow source module and commit the updated generated workflow file in the same change.
+- Render every committed workflow module with `bun run generate:workflows` after changing any workflow source module, and commit the updated generated workflow files in the same change.
 
 ## Documentation
 

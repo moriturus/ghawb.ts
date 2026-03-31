@@ -3,14 +3,21 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 describe('self-hosted workflow output', () => {
-  it('keeps the committed CI workflow aligned with the generated source', async () => {
-    const workflowPath = join(process.cwd(), '.github', 'workflows', 'ci.yml');
-    const contents = await readFile(workflowPath, 'utf8');
+  it('keeps committed workflow outputs aligned with generated sources', async () => {
+    const ciWorkflowPath = join(process.cwd(), '.github', 'workflows', 'ci.yml');
+    const manualWorkflowPath = join(process.cwd(), '.github', 'workflows', 'manual-verify.yml');
+    const [ciContents, manualContents] = await Promise.all([
+      readFile(ciWorkflowPath, 'utf8'),
+      readFile(manualWorkflowPath, 'utf8'),
+    ]);
 
-    expect(contents).toContain('name: CI');
-    expect(contents).toContain('run: bun run verify:workflows');
-    expect(contents).toContain('run: bun run check');
-    expect(contents).toContain('run: bun run test:vitest:node');
+    expect(ciContents).toContain('name: CI');
+    expect(ciContents).toContain('run: bun run verify:workflows');
+    expect(ciContents).toContain('run: bun run check');
+    expect(ciContents).toContain('run: bun run test:vitest:node');
+    expect(manualContents).toContain('name: Manual Verify');
+    expect(manualContents).toContain('workflow_dispatch: null');
+    expect(manualContents).toContain('run: bun run verify:pre-push');
   });
 
   it('keeps the root workspace dependency needed to render repository-local workflows in clean installs', async () => {
@@ -39,8 +46,12 @@ describe('self-hosted workflow output', () => {
     expect(readme).toContain(
       'Author committed workflow source modules inside the repository under'
     );
+    expect(readme).toContain(
+      'Render every committed workflow module with `bun run generate:workflows`'
+    );
     expect(contributing).toContain('bun run verify:pre-push');
     expect(contributing).toContain('bun run verify:workflows');
     expect(contributing).toContain('Keep committed workflow source modules under');
+    expect(contributing).toContain('render every committed workflow module');
   });
 });

@@ -54,9 +54,9 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - loads a directly specified TypeScript module whose default export is a built workflow definition
   - renders YAML through one concrete adapter backed by the `yaml` Node module
   - writes deterministic workflow output files and exits non-zero on failure
-- The repository self-hosts its CI workflow definition from `workflows/ci.ts` into `.github/workflows/ci.yml` through the root `generate:workflows` script.
-- The supported committed-workflow authoring path is explicit and repository-local: workflow source modules live under `workflows/`, generated outputs live under `.github/workflows/`, and the project does not treat implicit workflow discovery or out-of-repository workflow source files as the supported path.
-- The dedicated workflow guardrail command is `bun run verify:workflows`, which validates the supported repository-local workflow-source convention and detects generated-workflow drift for committed workflow outputs.
+- The repository self-hosts committed workflow definitions from explicit `workflows/*.ts` modules into matching `.github/workflows/*.yml` outputs through the root `generate:workflows` script.
+- The supported committed-workflow authoring path is explicit and repository-local: workflow source modules live directly under `workflows/`, generated outputs live under `.github/workflows/` with matching basenames, and the project does not treat out-of-repository workflow source files or undocumented workflow discovery outside that path as the supported contract.
+- The dedicated workflow guardrail command is `bun run verify:workflows`, which validates the supported repository-local workflow-source convention and detects generated-workflow drift for every committed workflow output.
 - The contributor-facing local verification path is `bun run verify:pre-push`, which checks for a clean worktree, runs `bun run verify:workflows`, runs the root Bun checks, and confirms the Node compatibility suite before push.
 
 ## Design Constraints

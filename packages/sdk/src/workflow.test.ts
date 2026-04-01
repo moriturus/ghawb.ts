@@ -1172,6 +1172,308 @@ describe('workflow builder', () => {
     }).toThrow(TypeError);
   });
 
+  it('preserves push trigger branchesIgnore in the built model', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('push_branches_ignore'),
+      name: 'Push Branches Ignore',
+    })
+      .onPush({
+        branchesIgnore: ['dependabot/**', 'renovate/**'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'push',
+        branchesIgnore: ['dependabot/**', 'renovate/**'],
+      },
+    ]);
+  });
+
+  it('preserves push trigger pathsIgnore in the built model', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('push_paths_ignore'),
+      name: 'Push Paths Ignore',
+    })
+      .onPush({
+        pathsIgnore: ['docs/**', '*.md'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'push',
+        pathsIgnore: ['docs/**', '*.md'],
+      },
+    ]);
+  });
+
+  it('preserves push trigger tags in the built model', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('push_tags'),
+      name: 'Push Tags',
+    })
+      .onPush({
+        tags: ['v*', 'release-*'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'push',
+        tags: ['v*', 'release-*'],
+      },
+    ]);
+  });
+
+  it('preserves push trigger tagsIgnore in the built model', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('push_tags_ignore'),
+      name: 'Push Tags Ignore',
+    })
+      .onPush({
+        tagsIgnore: ['v*-beta', 'v*-rc*'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'push',
+        tagsIgnore: ['v*-beta', 'v*-rc*'],
+      },
+    ]);
+  });
+
+  it('rejects combining branches and branches-ignore on the same trigger', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('branches_mutual_exclusion'),
+      name: 'Branches Mutual Exclusion',
+    })
+      .onPush({
+        branches: ['main'],
+        branchesIgnore: ['dependabot/**'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['trigger "push" must not combine branches and branches-ignore'])
+    );
+  });
+
+  it('rejects combining paths and paths-ignore on the same trigger', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('paths_mutual_exclusion'),
+      name: 'Paths Mutual Exclusion',
+    })
+      .onPush({
+        paths: ['src/**'],
+        pathsIgnore: ['docs/**'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['trigger "push" must not combine paths and paths-ignore'])
+    );
+  });
+
+  it('rejects combining tags and tags-ignore on the same trigger', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('tags_mutual_exclusion'),
+      name: 'Tags Mutual Exclusion',
+    })
+      .onPush({
+        tags: ['v*'],
+        tagsIgnore: ['v*-beta'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['trigger "push" must not combine tags and tags-ignore'])
+    );
+  });
+
+  it('rejects tags on pull_request trigger', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('pr_tags'),
+      name: 'PR Tags',
+    })
+      .onPullRequest({
+        tags: ['v*'],
+      } as import('./index.ts').PullRequestTriggerFilter)
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['trigger "pull_request" does not support tags'])
+    );
+  });
+
+  it('rejects tagsIgnore on pull_request trigger', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('pr_tags_ignore'),
+      name: 'PR Tags Ignore',
+    })
+      .onPullRequest({
+        tagsIgnore: ['v*-beta'],
+      } as import('./index.ts').PullRequestTriggerFilter)
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['trigger "pull_request" does not support tags-ignore'])
+    );
+  });
+
+  it('rejects empty negation and tag filter arrays', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('empty_negation_arrays'),
+      name: 'Empty Negation Arrays',
+    })
+      .onPush({
+        branchesIgnore: [] as unknown as readonly [string, ...string[]],
+        pathsIgnore: [] as unknown as readonly [string, ...string[]],
+        tags: [] as unknown as readonly [string, ...string[]],
+        tagsIgnore: [] as unknown as readonly [string, ...string[]],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "push" branches-ignore must not be empty',
+        'trigger "push" paths-ignore must not be empty',
+        'trigger "push" tags must not be empty',
+        'trigger "push" tags-ignore must not be empty',
+        'trigger "push" must not combine tags and tags-ignore',
+      ])
+    );
+  });
+
+  it('rejects blank values in negation and tag filter arrays', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('blank_negation_values'),
+      name: 'Blank Negation Values',
+    })
+      .onPush({
+        branchesIgnore: ['dependabot/**', ' '],
+        pathsIgnore: [' ', 'docs/**'],
+        tags: ['v*', '  '],
+        tagsIgnore: [' '],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "push" branches-ignore must not contain blank values',
+        'trigger "push" paths-ignore must not contain blank values',
+        'trigger "push" tags must not contain blank values',
+        'trigger "push" tags-ignore must not contain blank values',
+        'trigger "push" must not combine tags and tags-ignore',
+      ])
+    );
+  });
+
+  it('composes negation filters with existing positive filters and other features', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('negation_compose'),
+      name: 'Negation Compose',
+    })
+      .onPush({
+        branchesIgnore: ['dependabot/**'],
+        pathsIgnore: ['docs/**'],
+        tags: ['v*'],
+      })
+      .onPullRequest({
+        branchesIgnore: ['renovate/**'],
+        pathsIgnore: ['*.md'],
+      })
+      .permissions({
+        contents: 'read',
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow).toMatchObject({
+      on: [
+        {
+          type: 'push',
+          branchesIgnore: ['dependabot/**'],
+          pathsIgnore: ['docs/**'],
+          tags: ['v*'],
+        },
+        {
+          type: 'pull_request',
+          branchesIgnore: ['renovate/**'],
+          pathsIgnore: ['*.md'],
+        },
+      ],
+      permissions: { contents: 'read' },
+    });
+  });
+
+  it('deep-freezes built negation and tag filter arrays', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('frozen_negation_tags'),
+      name: 'Frozen Negation Tags',
+    })
+      .onPush({
+        branchesIgnore: ['dependabot/**'],
+        pathsIgnore: ['docs/**'],
+        tags: ['v*'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const pushTrigger = workflow.on[0]! as {
+      type: 'push';
+      branchesIgnore: readonly string[];
+      pathsIgnore: readonly string[];
+      tags: readonly string[];
+    };
+
+    expect(Object.isFrozen(pushTrigger)).toBe(true);
+    expect(Object.isFrozen(pushTrigger.branchesIgnore)).toBe(true);
+    expect(Object.isFrozen(pushTrigger.pathsIgnore)).toBe(true);
+    expect(Object.isFrozen(pushTrigger.tags)).toBe(true);
+
+    expect(() => {
+      (pushTrigger.branchesIgnore as string[]).push('test/**');
+    }).toThrow(TypeError);
+    expect(() => {
+      (pushTrigger.pathsIgnore as string[]).push('test/**');
+    }).toThrow(TypeError);
+    expect(() => {
+      (pushTrigger.tags as string[]).push('v2*');
+    }).toThrow(TypeError);
+  });
+
   it('composes env with permissions and concurrency', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('env_compose'),

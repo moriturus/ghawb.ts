@@ -1177,6 +1177,143 @@ describe('workflow renderer', () => {
     expect(Object.keys(payload.on)).toEqual(['push', 'pull_request']);
   });
 
+  it('renders push trigger with branches-ignore deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('push_branches_ignore'),
+      name: 'Push Branches Ignore',
+    })
+      .onPush({
+        branchesIgnore: ['dependabot/**', 'renovate/**'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'Push Branches Ignore',
+      on: {
+        push: {
+          'branches-ignore': ['dependabot/**', 'renovate/**'],
+        },
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it('renders push trigger with tags deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('push_tags'),
+      name: 'Push Tags',
+    })
+      .onPush({
+        tags: ['v*', 'release-*'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'Push Tags',
+      on: {
+        push: {
+          tags: ['v*', 'release-*'],
+        },
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it('renders trigger payload fields in canonical order with all filter types', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('push_all_negation'),
+      name: 'Push All Negation',
+    })
+      .onPush({
+        branchesIgnore: ['dependabot/**'],
+        pathsIgnore: ['docs/**'],
+        tagsIgnore: ['v*-beta'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const triggerKeys = Object.keys(payload.on.push!);
+
+    expect(triggerKeys).toEqual(['branches-ignore', 'paths-ignore', 'tags-ignore']);
+  });
+
+  it('renders pull_request with branches-ignore and paths-ignore', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_negation_filters'),
+      name: 'PR Negation Filters',
+    })
+      .onPullRequest({
+        branchesIgnore: ['dependabot/**'],
+        pathsIgnore: ['docs/**', '*.md'],
+        types: ['opened', 'synchronize'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'PR Negation Filters',
+      on: {
+        pull_request: {
+          'branches-ignore': ['dependabot/**'],
+          'paths-ignore': ['docs/**', '*.md'],
+          types: ['opened', 'synchronize'],
+        },
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+
+    const triggerKeys = Object.keys(payload.on.pull_request!);
+    expect(triggerKeys).toEqual(['branches-ignore', 'paths-ignore', 'types']);
+  });
+
   it('renders trigger payload fields in canonical order: branches, paths, types', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('pr_field_order'),

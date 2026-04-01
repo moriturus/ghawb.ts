@@ -27,7 +27,11 @@ export type PullRequestActivityType = (typeof PULL_REQUEST_ACTIVITY_TYPES)[numbe
 
 export interface TriggerFilter {
   readonly branches?: readonly string[];
+  readonly branchesIgnore?: readonly string[];
   readonly paths?: readonly string[];
+  readonly pathsIgnore?: readonly string[];
+  readonly tags?: readonly string[];
+  readonly tagsIgnore?: readonly string[];
 }
 
 export interface PullRequestTriggerFilter extends TriggerFilter {

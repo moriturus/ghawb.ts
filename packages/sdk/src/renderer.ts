@@ -42,7 +42,11 @@ export class WorkflowRenderError extends Error {
 
 export interface WorkflowRenderTriggerPayload {
   readonly branches?: readonly string[];
+  readonly 'branches-ignore'?: readonly string[];
   readonly paths?: readonly string[];
+  readonly 'paths-ignore'?: readonly string[];
+  readonly tags?: readonly string[];
+  readonly 'tags-ignore'?: readonly string[];
   readonly types?: readonly string[];
 }
 
@@ -141,11 +145,19 @@ function createTriggerPayload(
     return trigger.cron.map((cron) => ({ cron }));
   }
 
-  assertAllowedKeys(trigger, ['type', 'branches', 'paths', 'types'], `trigger "${trigger.type}"`);
+  assertAllowedKeys(
+    trigger,
+    ['type', 'branches', 'branchesIgnore', 'paths', 'pathsIgnore', 'tags', 'tagsIgnore', 'types'],
+    `trigger "${trigger.type}"`
+  );
 
   const payload: WorkflowRenderTriggerPayload = {
     ...(trigger.branches ? { branches: [...trigger.branches] } : {}),
+    ...(trigger.branchesIgnore ? { 'branches-ignore': [...trigger.branchesIgnore] } : {}),
     ...(trigger.paths ? { paths: [...trigger.paths] } : {}),
+    ...(trigger.pathsIgnore ? { 'paths-ignore': [...trigger.pathsIgnore] } : {}),
+    ...(trigger.tags ? { tags: [...trigger.tags] } : {}),
+    ...(trigger.tagsIgnore ? { 'tags-ignore': [...trigger.tagsIgnore] } : {}),
     ...(trigger.types ? { types: [...trigger.types] } : {}),
   };
 

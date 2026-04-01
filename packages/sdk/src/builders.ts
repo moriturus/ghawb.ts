@@ -89,7 +89,11 @@ function deepFreeze<T>(value: T): T {
 function cloneFilter(filter: TriggerFilter): TriggerFilter {
   return {
     ...(filter.branches ? { branches: [...filter.branches] } : {}),
+    ...(filter.branchesIgnore ? { branchesIgnore: [...filter.branchesIgnore] } : {}),
     ...(filter.paths ? { paths: [...filter.paths] } : {}),
+    ...(filter.pathsIgnore ? { pathsIgnore: [...filter.pathsIgnore] } : {}),
+    ...(filter.tags ? { tags: [...filter.tags] } : {}),
+    ...(filter.tagsIgnore ? { tagsIgnore: [...filter.tagsIgnore] } : {}),
   };
 }
 
@@ -272,7 +276,11 @@ function createValidationIssues(
 
     for (const [label, values] of [
       ['branches', trigger.branches],
+      ['branches-ignore', trigger.branchesIgnore],
       ['paths', trigger.paths],
+      ['paths-ignore', trigger.pathsIgnore],
+      ['tags', trigger.tags],
+      ['tags-ignore', trigger.tagsIgnore],
     ] as const) {
       if (values === undefined) {
         continue;
@@ -285,6 +293,28 @@ function createValidationIssues(
 
       if (values.some((value) => value.trim().length === 0)) {
         issues.push(`trigger "${trigger.type}" ${label} must not contain blank values`);
+      }
+    }
+
+    if (trigger.branches !== undefined && trigger.branchesIgnore !== undefined) {
+      issues.push(`trigger "${trigger.type}" must not combine branches and branches-ignore`);
+    }
+
+    if (trigger.paths !== undefined && trigger.pathsIgnore !== undefined) {
+      issues.push(`trigger "${trigger.type}" must not combine paths and paths-ignore`);
+    }
+
+    if (trigger.tags !== undefined && trigger.tagsIgnore !== undefined) {
+      issues.push(`trigger "${trigger.type}" must not combine tags and tags-ignore`);
+    }
+
+    if (trigger.type === 'pull_request') {
+      if (trigger.tags !== undefined) {
+        issues.push('trigger "pull_request" does not support tags');
+      }
+
+      if (trigger.tagsIgnore !== undefined) {
+        issues.push('trigger "pull_request" does not support tags-ignore');
       }
     }
 

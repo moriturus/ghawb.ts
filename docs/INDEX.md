@@ -32,6 +32,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp8.md](./sprint_reviews/sp8.md): Sprint 8 review summary, env maps, trigger completeness, step IDs, job outputs demo scope, findings, and Product Owner decision.
 - [sprint_reviews/sp9.md](./sprint_reviews/sp9.md): Sprint 9 review summary, strategy completion, step/job modifiers, dispatch inputs demo scope, findings, and Product Owner decision.
 - [sprint_reviews/sp10.md](./sprint_reviews/sp10.md): Sprint 10 review summary, workflow defaults, identifier validation, coverage gate, reusable workflow demo scope, findings, and Product Owner decision.
+- [sprint_reviews/sp11.md](./sprint_reviews/sp11.md): Sprint 11 review summary, container/services, validation diagnostics, ceremony hardening, self-hosting expansion, distribution readiness, and Product Owner decision.
 - [sprint_retrospectives/sp1.md](./sprint_retrospectives/sp1.md): Sprint 1 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp2.md](./sprint_retrospectives/sp2.md): Sprint 2 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp3.md](./sprint_retrospectives/sp3.md): Sprint 3 retrospective summary, role reflections, and routed improvement actions.

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createJobId, createWorkflowId, WorkflowValidationError } from '@ghawb/shared';
 
-import { defineWorkflow } from './index.ts';
+import { defineWorkflow, createWorkflowRenderPayload } from './index.ts';
 
 describe('workflow builder', () => {
   it('builds a representative Sprint 1 workflow model', () => {
@@ -1850,5 +1850,568 @@ describe('workflow builder', () => {
         (workflow.jobs[0]!.outputs as Record<string, string>).result = 'hacked';
       }).toThrow(TypeError);
     });
+
+    it('builds workflows with strategy fail-fast, max-parallel, include, and exclude', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy_complete'),
+        name: 'Strategy Complete',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+            })
+            .strategyFailFast(false)
+            .strategyMaxParallel(2)
+            .strategyInclude([{ os: 'macos-latest', node: '22', experimental: 'true' }])
+            .strategyExclude([{ os: 'windows-latest', node: '18' }])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      expect(workflow.jobs).toEqual([
+        {
+          id: 'test',
+          strategy: {
+            failFast: false,
+            maxParallel: 2,
+            matrix: {
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+            },
+            include: [{ os: 'macos-latest', node: '22', experimental: 'true' }],
+            exclude: [{ os: 'windows-latest', node: '18' }],
+          },
+          runsOn: '${{ matrix.os }}',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('rejects invalid strategy fail-fast, max-parallel, include, and exclude values', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('invalid_strategy'),
+        name: 'Invalid Strategy',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest'],
+              node: ['18'],
+            })
+            .strategyFailFast('yes' as unknown as boolean)
+            .strategyMaxParallel(0)
+            .strategyInclude([{ count: 42 as unknown as string }])
+            .strategyExclude([{ runtime: 'bun' }])
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "test" strategy.fail-fast must be a boolean',
+          'job "test" strategy.max-parallel must be a positive integer',
+          'job "test" strategy.matrix include entry 1 key "count" must be a string value',
+          'job "test" strategy.matrix exclude entry 1 references undeclared axis "runtime"',
+        ])
+      );
+    });
+
+    it('omits empty include and exclude arrays from built strategy', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('empty_include_exclude'),
+        name: 'Empty Include Exclude',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest'],
+            })
+            .strategyInclude([])
+            .strategyExclude([])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const strategy = workflow.jobs[0]!.strategy!;
+      expect(strategy.matrix).toEqual({ os: ['ubuntu-latest'] });
+      expect('include' in strategy).toBe(false);
+      expect('exclude' in strategy).toBe(false);
+    });
+
+    it('freezes strategy fail-fast, max-parallel, include, and exclude deeply', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('frozen_strategy'),
+        name: 'Frozen Strategy',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+            })
+            .strategyFailFast(false)
+            .strategyMaxParallel(2)
+            .strategyInclude([{ os: 'macos-latest', node: '22', experimental: 'true' }])
+            .strategyExclude([{ os: 'windows-latest', node: '18' }])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const strategy = workflow.jobs[0]!.strategy!;
+      expect(Object.isFrozen(strategy)).toBe(true);
+      expect(Object.isFrozen(strategy.include)).toBe(true);
+      expect(Object.isFrozen(strategy.exclude)).toBe(true);
+      expect(Object.isFrozen(strategy.include![0])).toBe(true);
+      expect(Object.isFrozen(strategy.exclude![0])).toBe(true);
+    });
+  });
+
+  it('builds steps with continue-on-error and timeout-minutes', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('step_continue_timeout'),
+      name: 'Step Continue Timeout',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .run('bun run lint', {
+            continueOnError: true,
+            timeoutMinutes: 30,
+          })
+          .uses('actions/checkout@v4', {
+            continueOnError: false,
+            timeoutMinutes: 10,
+          });
+      })
+      .build();
+
+    const steps = workflow.jobs[0]!.steps;
+    expect(steps[0]!.continueOnError).toBe(true);
+    expect(steps[0]!.timeoutMinutes).toBe(30);
+    expect(steps[1]!.continueOnError).toBe(false);
+    expect(steps[1]!.timeoutMinutes).toBe(10);
+  });
+
+  it('rejects invalid step continue-on-error and timeout-minutes', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('bad_step_meta'),
+      name: 'Bad Step Meta',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo hi', {
+          continueOnError: 'yes' as unknown as boolean,
+          timeoutMinutes: 0,
+        });
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "test" step 1 continue-on-error must be a boolean',
+        'job "test" step 1 timeout-minutes must be a positive integer',
+      ])
+    );
+  });
+
+  it('builds workflow_dispatch with inputs', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('dispatch_inputs'),
+      name: 'Dispatch Inputs',
+    })
+      .onWorkflowDispatch({
+        env: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'choice',
+          options: ['staging', 'production'],
+        },
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo deploy');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'workflow_dispatch',
+        inputs: {
+          env: {
+            description: 'Target environment',
+            required: true,
+            default: 'staging',
+            type: 'choice',
+            options: ['staging', 'production'],
+          },
+        },
+      },
+    ]);
+  });
+
+  it('builds workflow_dispatch with minimal input (no optional fields)', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('dispatch_minimal'),
+      name: 'Dispatch Minimal',
+    })
+      .onWorkflowDispatch({
+        name: {},
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'workflow_dispatch',
+        inputs: {
+          name: {},
+        },
+      },
+    ]);
+  });
+
+  it('builds workflow_dispatch with input using all types', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('dispatch_all_types'),
+      name: 'Dispatch All Types',
+    })
+      .onWorkflowDispatch({
+        str: { type: 'string' },
+        bool: { type: 'boolean' },
+        num: { type: 'number' },
+        env: { type: 'environment' },
+        ch: { type: 'choice', options: ['a', 'b'] },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'workflow_dispatch',
+        inputs: {
+          str: { type: 'string' },
+          bool: { type: 'boolean' },
+          num: { type: 'number' },
+          env: { type: 'environment' },
+          ch: { type: 'choice', options: ['a', 'b'] },
+        },
+      },
+    ]);
+  });
+
+  it('rejects blank workflow_dispatch input names', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_blank_name'),
+      name: 'Dispatch Blank Name',
+    })
+      .onWorkflowDispatch({
+        '': { description: 'bad' },
+      } as unknown as Record<string, { description?: string }>)
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" inputs must not contain blank names',
+      ])
+    );
+  });
+
+  it('rejects non-boolean required in workflow_dispatch input', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_bad_required'),
+      name: 'Dispatch Bad Required',
+    })
+      .onWorkflowDispatch({
+        name: { required: 'yes' as unknown as boolean },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "name" required must be a boolean',
+      ])
+    );
+  });
+
+  it('rejects invalid workflow_dispatch input type', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_bad_type'),
+      name: 'Dispatch Bad Type',
+    })
+      .onWorkflowDispatch({
+        name: { type: 'invalid' as unknown as 'string' },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "name" type "invalid" is not a valid input type',
+      ])
+    );
+  });
+
+  it('rejects choice type without options in workflow_dispatch input', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_choice_no_opts'),
+      name: 'Dispatch Choice No Opts',
+    })
+      .onWorkflowDispatch({
+        name: { type: 'choice' },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "name" type "choice" requires non-empty options',
+      ])
+    );
+  });
+
+  it('rejects options on non-choice workflow_dispatch input type', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_opts_non_choice'),
+      name: 'Dispatch Opts Non Choice',
+    })
+      .onWorkflowDispatch({
+        name: {
+          type: 'string',
+          options: ['a', 'b'],
+        } as unknown as { type: 'string' },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "name" options is only valid when type is "choice"',
+      ])
+    );
+  });
+
+  it('rejects options without type in workflow_dispatch input', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_opts_no_type'),
+      name: 'Dispatch Opts No Type',
+    })
+      .onWorkflowDispatch({
+        name: {
+          options: ['a', 'b'],
+        } as unknown as { options?: readonly [string, ...string[]] },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "name" options is only valid when type is "choice"',
+      ])
+    );
+  });
+
+  it('deep-freezes workflow_dispatch inputs', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('dispatch_frozen_inputs'),
+      name: 'Dispatch Frozen Inputs',
+    })
+      .onWorkflowDispatch({
+        env: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'choice',
+          options: ['staging', 'production'],
+        },
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo deploy');
+      })
+      .build();
+
+    const trigger = workflow.on[0]! as {
+      type: 'workflow_dispatch';
+      inputs: Record<
+        string,
+        {
+          description?: string;
+          required?: boolean;
+          default?: string;
+          type?: string;
+          options?: readonly string[];
+        }
+      >;
+    };
+
+    expect(Object.isFrozen(trigger)).toBe(true);
+    expect(Object.isFrozen(trigger.inputs)).toBe(true);
+    expect(Object.isFrozen(trigger.inputs.env)).toBe(true);
+    expect(Object.isFrozen(trigger.inputs.env!.options)).toBe(true);
+  });
+
+  it('builds job with if condition', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_if'),
+      name: 'Job If',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .runsOn('ubuntu-latest')
+          .run('echo deploy');
+      })
+      .build();
+
+    expect(workflow.jobs[0]!.if).toBe("github.ref == 'refs/heads/main'");
+  });
+
+  it('builds job with continue-on-error', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_continue'),
+      name: 'Job Continue',
+    })
+      .onPush()
+      .addJob(createJobId('lint'), (job) => {
+        job.continueOnError(true).runsOn('ubuntu-latest').run('bun run lint');
+      })
+      .build();
+
+    expect(workflow.jobs[0]!.continueOnError).toBe(true);
+  });
+
+  it('builds job with if and continue-on-error together', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_if_and_continue'),
+      name: 'Job If And Continue',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .needs(createJobId('build'))
+          .continueOnError(true)
+          .runsOn('ubuntu-latest')
+          .run('echo deploy');
+      })
+      .build();
+
+    const deployJob = workflow.jobs[1]!;
+    expect(deployJob.if).toBe("github.ref == 'refs/heads/main'");
+    expect(deployJob.continueOnError).toBe(true);
+    expect(deployJob.needs).toEqual([createJobId('build')]);
+  });
+
+  it('rejects blank job if expression', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('job_blank_if'),
+      name: 'Job Blank If',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job.ifCondition('  ').runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['job "test" if must be a non-blank string'])
+    );
+  });
+
+  it('rejects non-boolean job continue-on-error', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('job_bad_continue'),
+      name: 'Job Bad Continue',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .continueOnError('yes' as unknown as boolean)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['job "test" continue-on-error must be a boolean'])
+    );
+  });
+
+  it('renders job if before needs and continue-on-error after needs', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_field_order'),
+      name: 'Job Field Order',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .needs(createJobId('build'))
+          .continueOnError(true)
+          .runsOn('ubuntu-latest')
+          .run('echo deploy');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const deployPayload = payload.jobs.deploy!;
+    const keys = Object.keys(deployPayload);
+    const ifIndex = keys.indexOf('if');
+    const needsIndex = keys.indexOf('needs');
+    const continueOnErrorIndex = keys.indexOf('continue-on-error');
+
+    expect(ifIndex).toBeLessThan(needsIndex);
+    expect(needsIndex).toBeLessThan(continueOnErrorIndex);
+  });
+
+  it('deep-freezes job if and continue-on-error', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_freeze_if_continue'),
+      name: 'Job Freeze If Continue',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .continueOnError(true)
+          .runsOn('ubuntu-latest')
+          .run('echo deploy');
+      })
+      .build();
+
+    const job = workflow.jobs[0]!;
+    expect(Object.isFrozen(job)).toBe(true);
+    expect(job.if).toBe("github.ref == 'refs/heads/main'");
+    expect(job.continueOnError).toBe(true);
   });
 });

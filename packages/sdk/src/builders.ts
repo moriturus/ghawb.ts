@@ -3,8 +3,11 @@ import { WorkflowValidationError, type JobId, type WorkflowId } from '@ghawb/sha
 import {
   WORKFLOW_PERMISSION_KEYS,
   PULL_REQUEST_ACTIVITY_TYPES,
+  WORKFLOW_DISPATCH_INPUT_TYPES,
   type FilteredTriggerType,
   type MatrixAxisValues,
+  type MatrixExcludeEntry,
+  type MatrixIncludeEntry,
   type PullRequestActivityType,
   type PullRequestTriggerFilter,
   type RunStepMetadata,
@@ -14,6 +17,9 @@ import {
   type WorkflowConcurrency,
   type WorkflowDefinition,
   type WorkflowDefaultsRun,
+  type WorkflowDispatchInput,
+  type WorkflowDispatchInputs,
+  type WorkflowDispatchInputType,
   type WorkflowEnv,
   type WorkflowJob,
   type WorkflowJobOutputs,
@@ -36,7 +42,9 @@ interface WorkflowStepDraft extends StepMetadata {
 
 interface WorkflowJobDraft {
   readonly id: JobId;
+  readonly if?: string;
   readonly needs?: readonly JobId[];
+  readonly continueOnError?: boolean;
   readonly permissions?: WorkflowPermissions;
   readonly timeoutMinutes?: number;
   readonly defaults?: {
@@ -45,7 +53,11 @@ interface WorkflowJobDraft {
   readonly concurrency?: WorkflowConcurrency;
   readonly env?: WorkflowEnv;
   readonly strategy?: {
+    readonly failFast?: boolean;
+    readonly maxParallel?: number;
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
+    readonly include?: readonly Readonly<Record<string, unknown>>[];
+    readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   readonly runsOn?: string | readonly string[];
   readonly outputs?: WorkflowJobOutputs;
@@ -110,6 +122,7 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
   if (trigger.type === 'workflow_dispatch') {
     return {
       type: 'workflow_dispatch',
+      ...(trigger.inputs ? { inputs: cloneDispatchInputs(trigger.inputs) } : {}),
     };
   }
 
@@ -127,6 +140,22 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
   };
 }
 
+function cloneDispatchInputs(inputs: WorkflowDispatchInputs): WorkflowDispatchInputs {
+  return Object.fromEntries(
+    Object.entries(inputs).map(([name, input]) => [name, cloneDispatchInput(input)])
+  );
+}
+
+function cloneDispatchInput(input: WorkflowDispatchInput): WorkflowDispatchInput {
+  return {
+    ...(input.description !== undefined ? { description: input.description } : {}),
+    ...(input.required !== undefined ? { required: input.required } : {}),
+    ...(input.default !== undefined ? { default: input.default } : {}),
+    ...(input.type !== undefined ? { type: input.type } : {}),
+    ...(input.options ? { options: [...input.options] as [string, ...string[]] } : {}),
+  };
+}
+
 function isValidCronExpression(value: string): boolean {
   const fields = value.trim().split(/\s+/);
   return fields.length === 5 && fields.every((field) => field.length > 0);
@@ -139,6 +168,10 @@ function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
     ...(metadata.env ? { env: { ...metadata.env } } : {}),
     ...(metadata.with ? { with: { ...metadata.with } } : {}),
     ...(metadata.if !== undefined ? { if: metadata.if } : {}),
+    ...(metadata.continueOnError !== undefined
+      ? { continueOnError: metadata.continueOnError }
+      : {}),
+    ...(metadata.timeoutMinutes !== undefined ? { timeoutMinutes: metadata.timeoutMinutes } : {}),
   };
 }
 
@@ -237,6 +270,45 @@ function createValidationIssues(
 
       if ('types' in trigger) {
         issues.push('trigger "workflow_dispatch" does not support types');
+      }
+
+      if (trigger.inputs !== undefined) {
+        for (const [inputName, input] of Object.entries(trigger.inputs)) {
+          if (inputName.trim().length === 0) {
+            issues.push('trigger "workflow_dispatch" inputs must not contain blank names');
+            continue;
+          }
+
+          if (input.required !== undefined && typeof input.required !== 'boolean') {
+            issues.push(
+              `trigger "workflow_dispatch" input "${inputName}" required must be a boolean`
+            );
+          }
+
+          if (input.type !== undefined) {
+            if (!WORKFLOW_DISPATCH_INPUT_TYPES.includes(input.type as WorkflowDispatchInputType)) {
+              issues.push(
+                `trigger "workflow_dispatch" input "${inputName}" type "${input.type}" is not a valid input type`
+              );
+            }
+
+            if (input.type === 'choice') {
+              if (input.options === undefined || input.options.length === 0) {
+                issues.push(
+                  `trigger "workflow_dispatch" input "${inputName}" type "choice" requires non-empty options`
+                );
+              }
+            } else if (input.options !== undefined) {
+              issues.push(
+                `trigger "workflow_dispatch" input "${inputName}" options is only valid when type is "choice"`
+              );
+            }
+          } else if (input.options !== undefined) {
+            issues.push(
+              `trigger "workflow_dispatch" input "${inputName}" options is only valid when type is "choice"`
+            );
+          }
+        }
       }
 
       continue;
@@ -399,6 +471,18 @@ function createValidationIssues(
       }
     }
 
+    if (job.if !== undefined) {
+      if (typeof job.if !== 'string' || job.if.trim().length === 0) {
+        issues.push(`job "${jobId}" if must be a non-blank string`);
+      }
+    }
+
+    if (job.continueOnError !== undefined) {
+      if (typeof job.continueOnError !== 'boolean') {
+        issues.push(`job "${jobId}" continue-on-error must be a boolean`);
+      }
+    }
+
     if (job.timeoutMinutes !== undefined) {
       if (!Number.isInteger(job.timeoutMinutes) || job.timeoutMinutes <= 0) {
         issues.push(`job "${jobId}" timeout-minutes must be a positive integer`);
@@ -428,11 +512,23 @@ function createValidationIssues(
     validatePermissions(`job "${jobId}"`, job.permissions, issues);
 
     if (job.strategy !== undefined) {
+      if (job.strategy.failFast !== undefined && typeof job.strategy.failFast !== 'boolean') {
+        issues.push(`job "${jobId}" strategy.fail-fast must be a boolean`);
+      }
+
+      if (job.strategy.maxParallel !== undefined) {
+        if (!Number.isInteger(job.strategy.maxParallel) || job.strategy.maxParallel <= 0) {
+          issues.push(`job "${jobId}" strategy.max-parallel must be a positive integer`);
+        }
+      }
+
       const matrixEntries = Object.entries(job.strategy.matrix);
 
       if (matrixEntries.length === 0) {
         issues.push(`job "${jobId}" strategy.matrix must define at least one axis`);
       }
+
+      const declaredAxisKeys = new Set<string>();
 
       for (const [axis, values] of matrixEntries) {
         if (axis.trim().length === 0) {
@@ -443,6 +539,8 @@ function createValidationIssues(
         if (axis === 'include' || axis === 'exclude') {
           issues.push(`job "${jobId}" strategy.matrix does not support axis "${axis}"`);
         }
+
+        declaredAxisKeys.add(axis);
 
         if (!Array.isArray(values)) {
           issues.push(`job "${jobId}" strategy.matrix axis "${axis}" must be an array`);
@@ -464,6 +562,62 @@ function createValidationIssues(
             issues.push(
               `job "${jobId}" strategy.matrix axis "${axis}" must not contain blank values`
             );
+          }
+        }
+      }
+
+      if (job.strategy.include !== undefined) {
+        for (const [entryIndex, entry] of job.strategy.include.entries()) {
+          if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+            issues.push(
+              `job "${jobId}" strategy.matrix include entry ${entryIndex + 1} must be a record object`
+            );
+            continue;
+          }
+
+          for (const [key, value] of Object.entries(entry)) {
+            if (key.trim().length === 0) {
+              issues.push(
+                `job "${jobId}" strategy.matrix include entry ${entryIndex + 1} must not contain blank keys`
+              );
+            }
+
+            if (typeof value !== 'string') {
+              issues.push(
+                `job "${jobId}" strategy.matrix include entry ${entryIndex + 1} key "${key}" must be a string value`
+              );
+            }
+          }
+        }
+      }
+
+      if (job.strategy.exclude !== undefined) {
+        for (const [entryIndex, entry] of job.strategy.exclude.entries()) {
+          if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+            issues.push(
+              `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} must be a record object`
+            );
+            continue;
+          }
+
+          for (const [key, value] of Object.entries(entry)) {
+            if (key.trim().length === 0) {
+              issues.push(
+                `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} must not contain blank keys`
+              );
+            }
+
+            if (!declaredAxisKeys.has(key)) {
+              issues.push(
+                `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} references undeclared axis "${key}"`
+              );
+            }
+
+            if (typeof value !== 'string') {
+              issues.push(
+                `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} key "${key}" must be a string value`
+              );
+            }
           }
         }
       }
@@ -508,6 +662,16 @@ function createValidationIssues(
 
         if (step.workingDirectory !== undefined && step.workingDirectory.trim().length === 0) {
           issues.push(`${location} working-directory must not be empty`);
+        }
+      }
+
+      if (step.continueOnError !== undefined && typeof step.continueOnError !== 'boolean') {
+        issues.push(`${location} continue-on-error must be a boolean`);
+      }
+
+      if (step.timeoutMinutes !== undefined) {
+        if (!Number.isInteger(step.timeoutMinutes) || step.timeoutMinutes <= 0) {
+          issues.push(`${location} timeout-minutes must be a positive integer`);
         }
       }
 
@@ -620,6 +784,8 @@ function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
     ...(step.env ? { env: { ...step.env } } : {}),
     ...(step.with ? { with: { ...step.with } } : {}),
     ...(step.if !== undefined ? { if: step.if.trim() } : {}),
+    ...(step.continueOnError !== undefined ? { continueOnError: step.continueOnError } : {}),
+    ...(step.timeoutMinutes !== undefined ? { timeoutMinutes: step.timeoutMinutes } : {}),
   };
 
   if (step.kind === 'run') {
@@ -668,11 +834,35 @@ function finalizeMatrix(
   );
 }
 
+function finalizeIncludeEntry(entry: Readonly<Record<string, unknown>>): MatrixIncludeEntry {
+  return Object.fromEntries(
+    Object.entries(entry).map(([key, value]) => [key, String(value).trim()])
+  );
+}
+
+function finalizeExcludeEntry(entry: Readonly<Record<string, unknown>>): MatrixExcludeEntry {
+  return Object.fromEntries(
+    Object.entries(entry).map(([key, value]) => [key, String(value).trim()])
+  );
+}
+
 function finalizeStrategy(strategy: {
+  readonly failFast?: boolean;
+  readonly maxParallel?: number;
   readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
+  readonly include?: readonly Readonly<Record<string, unknown>>[];
+  readonly exclude?: readonly Readonly<Record<string, unknown>>[];
 }): WorkflowStrategy {
   return {
+    ...(strategy.failFast !== undefined ? { failFast: strategy.failFast } : {}),
+    ...(strategy.maxParallel !== undefined ? { maxParallel: strategy.maxParallel } : {}),
     matrix: finalizeMatrix(strategy.matrix),
+    ...(strategy.include !== undefined && strategy.include.length > 0
+      ? { include: strategy.include.map(finalizeIncludeEntry) }
+      : {}),
+    ...(strategy.exclude !== undefined && strategy.exclude.length > 0
+      ? { exclude: strategy.exclude.map(finalizeExcludeEntry) }
+      : {}),
   };
 }
 
@@ -688,7 +878,9 @@ function finalizeDefaultsRun(defaultsRun: WorkflowDefaultsRun): WorkflowDefaults
 class JobBuilder {
   readonly id: JobId;
 
+  private jobIf?: string;
   private jobNeeds?: readonly JobId[];
+  private jobContinueOnError?: boolean;
   private jobPermissions?: WorkflowPermissions;
   private jobTimeoutMinutes?: number;
   private jobDefaults?: {
@@ -697,7 +889,11 @@ class JobBuilder {
   private jobConcurrency?: WorkflowConcurrency;
   private jobEnv?: WorkflowEnv;
   private jobStrategy?: {
+    readonly failFast?: boolean;
+    readonly maxParallel?: number;
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
+    readonly include?: readonly Readonly<Record<string, unknown>>[];
+    readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   private jobRunsOn?: string | readonly string[];
   private jobOutputs?: WorkflowJobOutputs;
@@ -707,8 +903,18 @@ class JobBuilder {
     this.id = id;
   }
 
+  ifCondition(expression: string): this {
+    this.jobIf = expression;
+    return this;
+  }
+
   needs(dependencies: JobId | readonly [JobId, ...JobId[]]): this {
     this.jobNeeds = (Array.isArray(dependencies) ? [...dependencies] : [dependencies]) as JobId[];
+    return this;
+  }
+
+  continueOnError(continueOnError: boolean): this {
+    this.jobContinueOnError = continueOnError;
     return this;
   }
 
@@ -741,7 +947,40 @@ class JobBuilder {
 
   strategyMatrix(matrix: WorkflowMatrix): this {
     this.jobStrategy = {
+      ...this.jobStrategy,
       matrix: cloneMatrix(matrix),
+    };
+    return this;
+  }
+
+  strategyFailFast(failFast: boolean): this {
+    this.jobStrategy = {
+      ...(this.jobStrategy ?? { matrix: {} }),
+      failFast,
+    };
+    return this;
+  }
+
+  strategyMaxParallel(maxParallel: number): this {
+    this.jobStrategy = {
+      ...(this.jobStrategy ?? { matrix: {} }),
+      maxParallel,
+    };
+    return this;
+  }
+
+  strategyInclude(include: readonly MatrixIncludeEntry[]): this {
+    this.jobStrategy = {
+      ...(this.jobStrategy ?? { matrix: {} }),
+      include: include.map((entry) => ({ ...entry })),
+    };
+    return this;
+  }
+
+  strategyExclude(exclude: readonly MatrixExcludeEntry[]): this {
+    this.jobStrategy = {
+      ...(this.jobStrategy ?? { matrix: {} }),
+      exclude: exclude.map((entry) => ({ ...entry })),
     };
     return this;
   }
@@ -777,7 +1016,11 @@ class JobBuilder {
   toDraft(): WorkflowJobDraft {
     return {
       id: this.id,
+      ...(this.jobIf !== undefined ? { if: this.jobIf } : {}),
       ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
+      ...(this.jobContinueOnError !== undefined
+        ? { continueOnError: this.jobContinueOnError }
+        : {}),
       ...(this.jobPermissions !== undefined
         ? { permissions: clonePermissions(this.jobPermissions) }
         : {}),
@@ -790,7 +1033,23 @@ class JobBuilder {
         : {}),
       ...(this.jobEnv !== undefined ? { env: cloneEnv(this.jobEnv) } : {}),
       ...(this.jobStrategy !== undefined
-        ? { strategy: { matrix: cloneMatrix(this.jobStrategy.matrix) } }
+        ? {
+            strategy: {
+              ...(this.jobStrategy.failFast !== undefined
+                ? { failFast: this.jobStrategy.failFast }
+                : {}),
+              ...(this.jobStrategy.maxParallel !== undefined
+                ? { maxParallel: this.jobStrategy.maxParallel }
+                : {}),
+              matrix: cloneMatrix(this.jobStrategy.matrix),
+              ...(this.jobStrategy.include !== undefined
+                ? { include: this.jobStrategy.include.map((entry) => ({ ...entry })) }
+                : {}),
+              ...(this.jobStrategy.exclude !== undefined
+                ? { exclude: this.jobStrategy.exclude.map((entry) => ({ ...entry })) }
+                : {}),
+            },
+          }
         : {}),
       ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
       ...(this.jobOutputs !== undefined ? { outputs: { ...this.jobOutputs } } : {}),
@@ -841,9 +1100,10 @@ export class WorkflowBuilder {
     return this;
   }
 
-  onWorkflowDispatch(): this {
+  onWorkflowDispatch(inputs?: WorkflowDispatchInputs): this {
     this.triggers.push({
       type: 'workflow_dispatch',
+      ...(inputs ? { inputs: cloneDispatchInputs(inputs) } : {}),
     });
     return this;
   }
@@ -899,7 +1159,9 @@ export class WorkflowBuilder {
 
     const jobs: WorkflowJob[] = this.jobs.map((job) => ({
       id: job.id,
+      ...(job.if !== undefined ? { if: job.if } : {}),
       ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
+      ...(job.continueOnError !== undefined ? { continueOnError: job.continueOnError } : {}),
       ...(job.permissions !== undefined
         ? { permissions: canonicalizePermissions(job.permissions) }
         : {}),

@@ -461,6 +461,211 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'strategy_full_surface',
+    defineWorkflow({
+      id: createWorkflowId('strategy_full_surface'),
+      name: 'Strategy Full Surface',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .strategyFailFast(false)
+          .strategyMaxParallel(2)
+          .strategyMatrix({
+            os: ['ubuntu-latest', 'windows-latest'],
+            node: ['18', '20'],
+          })
+          .strategyInclude([{ os: 'macos-latest', node: '22', experimental: 'true' }])
+          .strategyExclude([{ os: 'windows-latest', node: '18' }])
+          .runsOn('${{ matrix.os }}')
+          .run('bun test');
+      })
+      .build(),
+    {
+      name: 'Strategy Full Surface',
+      on: {
+        push: null,
+      },
+      jobs: {
+        test: {
+          strategy: {
+            'fail-fast': false,
+            'max-parallel': 2,
+            matrix: {
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+              include: [{ os: 'macos-latest', node: '22', experimental: 'true' }],
+              exclude: [{ os: 'windows-latest', node: '18' }],
+            },
+          },
+          'runs-on': '${{ matrix.os }}',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
+    'step_continue_on_error_and_timeout',
+    defineWorkflow({
+      id: createWorkflowId('step_continue_on_error_and_timeout'),
+      name: 'Step Continue On Error And Timeout',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .run('bun run lint', {
+            name: 'Lint',
+            continueOnError: true,
+            timeoutMinutes: 10,
+          })
+          .uses('actions/checkout@v4', {
+            continueOnError: false,
+            timeoutMinutes: 5,
+          });
+      })
+      .build(),
+    {
+      name: 'Step Continue On Error And Timeout',
+      on: {
+        push: null,
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              name: 'Lint',
+              'continue-on-error': true,
+              'timeout-minutes': 10,
+              run: 'bun run lint',
+            },
+            {
+              'continue-on-error': false,
+              'timeout-minutes': 5,
+              uses: 'actions/checkout@v4',
+            },
+          ],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
+    'dispatch_with_inputs',
+    defineWorkflow({
+      id: createWorkflowId('dispatch_with_inputs'),
+      name: 'Dispatch With Inputs',
+    })
+      .onWorkflowDispatch({
+        environment: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'choice',
+          options: ['staging', 'production'],
+        },
+        log_level: {
+          description: 'Log verbosity',
+          type: 'string',
+        },
+        dry_run: {
+          type: 'boolean',
+          required: false,
+        },
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run deploy');
+      })
+      .build(),
+    {
+      name: 'Dispatch With Inputs',
+      on: {
+        workflow_dispatch: {
+          inputs: {
+            environment: {
+              description: 'Target environment',
+              required: true,
+              default: 'staging',
+              type: 'choice',
+              options: ['staging', 'production'],
+            },
+            log_level: {
+              description: 'Log verbosity',
+              type: 'string',
+            },
+            dry_run: {
+              required: false,
+              type: 'boolean',
+            },
+          },
+        },
+      },
+      jobs: {
+        deploy: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run deploy',
+            },
+          ],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
+    'job_if_and_continue_on_error',
+    defineWorkflow({
+      id: createWorkflowId('job_if_and_continue_on_error'),
+      name: 'Job If And Continue On Error',
+    })
+      .onPush({ branches: ['main'] })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .needs(createJobId('build'))
+          .continueOnError(true)
+          .runsOn('ubuntu-latest')
+          .run('echo deploy');
+      })
+      .build(),
+    {
+      name: 'Job If And Continue On Error',
+      on: {
+        push: {
+          branches: ['main'],
+        },
+      },
+      jobs: {
+        build: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+        deploy: {
+          if: "github.ref == 'refs/heads/main'",
+          needs: ['build'],
+          'continue-on-error': true,
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'echo deploy',
+            },
+          ],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -572,5 +777,79 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: ['job "build" outputs key "result" references undeclared step id "missing"'],
+  },
+  {
+    name: 'strategy_exclude_undeclared_axis',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('strategy_exclude_bad'),
+        name: 'Strategy Exclude Bad',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest'],
+            })
+            .strategyExclude([{ os: 'ubuntu-latest', runtime: 'node' }])
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        })
+        .build(),
+    expectedIssues: [
+      'job "test" strategy.matrix exclude entry 1 references undeclared axis "runtime"',
+    ],
+  },
+  {
+    name: 'dispatch_choice_without_options',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('dispatch_choice_without_options'),
+        name: 'Dispatch Choice Without Options',
+      })
+        .onWorkflowDispatch({
+          environment: {
+            description: 'Target environment',
+            type: 'choice',
+          },
+        })
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('bun run deploy');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "workflow_dispatch" input "environment" type "choice" requires non-empty options',
+    ],
+  },
+  {
+    name: 'job_blank_if_expression',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('job_blank_if'),
+        name: 'Job Blank If',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job.ifCondition('  ').runsOn('ubuntu-latest').run('bun test');
+        })
+        .build(),
+    expectedIssues: ['job "test" if must be a non-blank string'],
+  },
+  {
+    name: 'job_non_boolean_continue_on_error',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('job_bad_continue'),
+        name: 'Job Bad Continue',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .continueOnError('yes' as unknown as boolean)
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        })
+        .build(),
+    expectedIssues: ['job "test" continue-on-error must be a boolean'],
   },
 ];

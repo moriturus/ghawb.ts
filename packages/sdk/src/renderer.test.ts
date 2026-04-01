@@ -610,11 +610,7 @@ describe('workflow renderer', () => {
       on: [
         {
           type: 'workflow_dispatch',
-          inputs: {
-            environment: {
-              required: true,
-            },
-          },
+          branches: ['main'],
         },
       ],
       jobs: [
@@ -634,11 +630,7 @@ describe('workflow renderer', () => {
         | WorkflowDefinition['on'][number]
         | {
             type: 'workflow_dispatch';
-            inputs: {
-              environment: {
-                required: boolean;
-              };
-            };
+            branches: string[];
           }
       >;
     };
@@ -646,7 +638,7 @@ describe('workflow renderer', () => {
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(
-      new WorkflowRenderError('unsupported trigger "workflow_dispatch" field "inputs"')
+      new WorkflowRenderError('unsupported trigger "workflow_dispatch" field "branches"')
     );
   });
 
@@ -896,7 +888,7 @@ describe('workflow renderer', () => {
             matrix: {
               node: ['18', '20'],
             },
-            failFast: false,
+            customField: true,
           },
           runsOn: 'ubuntu-latest',
           steps: [
@@ -911,7 +903,7 @@ describe('workflow renderer', () => {
 
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
-    ).toThrowError(new WorkflowRenderError('unsupported job strategy field "failFast"'));
+    ).toThrowError(new WorkflowRenderError('unsupported job strategy field "customField"'));
   });
 
   it('renders workflow-level env after permissions and before concurrency', () => {
@@ -1434,5 +1426,193 @@ describe('workflow renderer', () => {
       expect(jobKeys.indexOf('runs-on')).toBeLessThan(jobKeys.indexOf('outputs'));
       expect(jobKeys.indexOf('outputs')).toBeLessThan(jobKeys.indexOf('steps'));
     });
+  });
+
+  describe('strategy completion — fail-fast, max-parallel, matrix include/exclude', () => {
+    it('renders strategy with fail-fast, max-parallel, include, and exclude', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy-full'),
+        name: 'Strategy Full',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+            })
+            .strategyFailFast(false)
+            .strategyMaxParallel(2)
+            .strategyInclude([{ os: 'macos-latest', node: '22', experimental: 'true' }])
+            .strategyExclude([{ os: 'windows-latest', node: '18' }])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const strategy = payload.jobs.test!.strategy!;
+
+      expect(strategy['fail-fast']).toBe(false);
+      expect(strategy['max-parallel']).toBe(2);
+      expect(strategy.matrix.os).toEqual(['ubuntu-latest', 'windows-latest']);
+      expect(strategy.matrix.node).toEqual(['18', '20']);
+      expect(strategy.matrix.include).toEqual([
+        { os: 'macos-latest', node: '22', experimental: 'true' },
+      ]);
+      expect(strategy.matrix.exclude).toEqual([{ os: 'windows-latest', node: '18' }]);
+
+      const json = renderWorkflow(workflow, emitPseudoYaml);
+      const failFastIdx = json.indexOf('"fail-fast"');
+      const maxParallelIdx = json.indexOf('"max-parallel"');
+      const matrixIdx = json.indexOf('"matrix"');
+      expect(failFastIdx).toBeLessThan(maxParallelIdx);
+      expect(maxParallelIdx).toBeLessThan(matrixIdx);
+    });
+
+    it('omits empty include and exclude from strategy payload', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy-empty-inc-exc'),
+        name: 'Strategy Empty IncExc',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({ os: ['ubuntu-latest'] })
+            .strategyInclude([])
+            .strategyExclude([])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const matrix = payload.jobs.test!.strategy!.matrix;
+
+      expect(matrix.os).toEqual(['ubuntu-latest']);
+      expect('include' in matrix).toBe(false);
+      expect('exclude' in matrix).toBe(false);
+    });
+
+    it('renders strategy with fail-fast only', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy-ff-only'),
+        name: 'Strategy FailFast Only',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({ os: ['ubuntu-latest'] })
+            .strategyFailFast(true)
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const strategy = payload.jobs.test!.strategy!;
+
+      expect(strategy['fail-fast']).toBe(true);
+      expect('max-parallel' in strategy).toBe(false);
+    });
+
+    it('renders strategy with max-parallel only', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy-mp-only'),
+        name: 'Strategy MaxParallel Only',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({ os: ['ubuntu-latest'] })
+            .strategyMaxParallel(3)
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const strategy = payload.jobs.test!.strategy!;
+
+      expect(strategy['max-parallel']).toBe(3);
+      expect('fail-fast' in strategy).toBe(false);
+    });
+
+    it('renders strategy with include containing arbitrary keys not in matrix axes', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy-arb-keys'),
+        name: 'Strategy Arbitrary Keys',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({ os: ['ubuntu-latest'] })
+            .strategyInclude([{ os: 'macos-latest', custom_key: 'value' }])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const include = payload.jobs.test!.strategy!.matrix.include as readonly Record<
+        string,
+        string
+      >[];
+
+      expect(include).toHaveLength(1);
+      expect(include[0]!.os).toBe('macos-latest');
+      expect(include[0]!.custom_key).toBe('value');
+    });
+  });
+
+  it('renders step continue-on-error and timeout-minutes in canonical position', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('render_step_continue_timeout'),
+      name: 'Render Step Continue Timeout',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run lint', {
+          continueOnError: true,
+          timeoutMinutes: 15,
+          workingDirectory: './src',
+        });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const stepPayload = payload.jobs.build!.steps[0]!;
+    const stepKeys = Object.keys(stepPayload);
+
+    expect(stepPayload['continue-on-error']).toBe(true);
+    expect(stepPayload['timeout-minutes']).toBe(15);
+    expect(stepPayload['working-directory']).toBe('./src');
+
+    expect(stepKeys.indexOf('working-directory')).toBeLessThan(
+      stepKeys.indexOf('continue-on-error')
+    );
+    expect(stepKeys.indexOf('continue-on-error')).toBeLessThan(stepKeys.indexOf('timeout-minutes'));
+    expect(stepKeys.indexOf('timeout-minutes')).toBeLessThan(stepKeys.indexOf('run'));
+  });
+
+  it('renders uses step with continue-on-error and timeout-minutes', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('render_uses_continue_timeout'),
+      name: 'Render Uses Continue Timeout',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').uses('actions/checkout@v4', {
+          continueOnError: false,
+          timeoutMinutes: 5,
+        });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const stepPayload = payload.jobs.build!.steps[0]!;
+
+    expect(stepPayload['continue-on-error']).toBe(false);
+    expect(stepPayload['timeout-minutes']).toBe(5);
   });
 });

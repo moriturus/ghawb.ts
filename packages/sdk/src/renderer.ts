@@ -2,6 +2,7 @@ import {
   WORKFLOW_PERMISSION_KEYS,
   type TriggerType,
   type WorkflowDefinition,
+  type WorkflowDispatchInput,
   type WorkflowMatrix,
   type WorkflowPermissionKey,
   type WorkflowPermissionLevel,
@@ -54,6 +55,18 @@ export interface WorkflowRenderScheduleEntryPayload {
   readonly cron: string;
 }
 
+export interface WorkflowRenderDispatchInputPayload {
+  readonly description?: string;
+  readonly required?: boolean;
+  readonly default?: string;
+  readonly type?: string;
+  readonly options?: readonly string[];
+}
+
+export interface WorkflowRenderDispatchPayload {
+  readonly inputs: Readonly<Record<string, WorkflowRenderDispatchInputPayload>>;
+}
+
 export interface WorkflowRenderStepPayload {
   readonly name?: string;
   readonly id?: string;
@@ -64,12 +77,16 @@ export interface WorkflowRenderStepPayload {
   readonly run?: string;
   readonly uses?: string;
   readonly 'working-directory'?: string;
+  readonly 'continue-on-error'?: boolean;
+  readonly 'timeout-minutes'?: number;
 }
 
 export type WorkflowRenderPermissionsPayload = WorkflowPermissions;
 
 export interface WorkflowRenderJobPayload {
+  readonly if?: string;
   readonly needs?: readonly string[];
+  readonly 'continue-on-error'?: boolean;
   readonly permissions?: WorkflowRenderPermissionsPayload;
   readonly 'timeout-minutes'?: number;
   readonly defaults?: {
@@ -84,7 +101,11 @@ export interface WorkflowRenderJobPayload {
   };
   readonly env?: Readonly<Record<string, string>>;
   readonly strategy?: {
-    readonly matrix: Readonly<Record<string, readonly string[]>>;
+    readonly 'fail-fast'?: boolean;
+    readonly 'max-parallel'?: number;
+    readonly matrix: Readonly<
+      Record<string, readonly string[] | readonly Readonly<Record<string, string>>[]>
+    >;
   };
   readonly 'runs-on': string | readonly string[];
   readonly outputs?: Readonly<Record<string, string>>;
@@ -97,7 +118,10 @@ export interface WorkflowRenderPayload {
     Partial<
       Record<
         TriggerType,
-        WorkflowRenderTriggerPayload | readonly WorkflowRenderScheduleEntryPayload[] | null
+        | WorkflowRenderTriggerPayload
+        | readonly WorkflowRenderScheduleEntryPayload[]
+        | WorkflowRenderDispatchPayload
+        | null
       >
     >
   >;
@@ -134,11 +158,37 @@ function assertAllowedKeys(value: object, allowedKeys: readonly string[], label:
   }
 }
 
+function createDispatchInputPayload(
+  input: WorkflowDispatchInput
+): WorkflowRenderDispatchInputPayload {
+  const payload: WorkflowRenderDispatchInputPayload = {
+    ...(input.description !== undefined ? { description: input.description } : {}),
+    ...(input.required !== undefined ? { required: input.required } : {}),
+    ...(input.default !== undefined ? { default: input.default } : {}),
+    ...(input.type !== undefined ? { type: input.type } : {}),
+    ...(input.options ? { options: [...input.options] } : {}),
+  };
+  return payload;
+}
+
 function createTriggerPayload(
   trigger: WorkflowTrigger
-): WorkflowRenderTriggerPayload | readonly WorkflowRenderScheduleEntryPayload[] | null {
+):
+  | WorkflowRenderTriggerPayload
+  | readonly WorkflowRenderScheduleEntryPayload[]
+  | WorkflowRenderDispatchPayload
+  | null {
   if (trigger.type === 'workflow_dispatch') {
-    assertAllowedKeys(trigger, ['type'], `trigger "${trigger.type}"`);
+    assertAllowedKeys(trigger, ['type', 'inputs'], `trigger "${trigger.type}"`);
+
+    if (trigger.inputs && Object.keys(trigger.inputs).length > 0) {
+      const inputs: Record<string, WorkflowRenderDispatchInputPayload> = {};
+      for (const [name, input] of Object.entries(trigger.inputs)) {
+        inputs[name] = createDispatchInputPayload(input);
+      }
+      return { inputs };
+    }
+
     return null;
   }
 
@@ -170,7 +220,19 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
   if (step.kind === 'run') {
     assertAllowedKeys(
       step,
-      ['kind', 'id', 'name', 'env', 'with', 'if', 'run', 'shell', 'workingDirectory'],
+      [
+        'kind',
+        'id',
+        'name',
+        'env',
+        'with',
+        'if',
+        'run',
+        'shell',
+        'workingDirectory',
+        'continueOnError',
+        'timeoutMinutes',
+      ],
       `step "${step.kind}"`
     );
 
@@ -184,13 +246,15 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
       ...(step.workingDirectory !== undefined
         ? { 'working-directory': step.workingDirectory }
         : {}),
+      ...(step.continueOnError !== undefined ? { 'continue-on-error': step.continueOnError } : {}),
+      ...(step.timeoutMinutes !== undefined ? { 'timeout-minutes': step.timeoutMinutes } : {}),
       run: step.run,
     };
   }
 
   assertAllowedKeys(
     step,
-    ['kind', 'id', 'name', 'env', 'with', 'if', 'uses'],
+    ['kind', 'id', 'name', 'env', 'with', 'if', 'uses', 'continueOnError', 'timeoutMinutes'],
     `step "${step.kind}"`
   );
 
@@ -200,6 +264,8 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
     ...(step.if !== undefined ? { if: step.if } : {}),
     ...(step.env ? { env: { ...step.env } } : {}),
     ...(step.with ? { with: { ...step.with } } : {}),
+    ...(step.continueOnError !== undefined ? { 'continue-on-error': step.continueOnError } : {}),
+    ...(step.timeoutMinutes !== undefined ? { 'timeout-minutes': step.timeoutMinutes } : {}),
     uses: step.uses,
   };
 }
@@ -291,12 +357,35 @@ function createPermissionsPayload(
 }
 
 function createStrategyPayload(strategy: WorkflowStrategy): {
-  readonly matrix: Readonly<Record<string, readonly string[]>>;
+  readonly 'fail-fast'?: boolean;
+  readonly 'max-parallel'?: number;
+  readonly matrix: Readonly<
+    Record<string, readonly string[] | readonly Readonly<Record<string, string>>[]>
+  >;
 } {
-  assertAllowedKeys(strategy, ['matrix'], 'job strategy');
+  assertAllowedKeys(
+    strategy,
+    ['failFast', 'maxParallel', 'matrix', 'include', 'exclude'],
+    'job strategy'
+  );
+
+  const matrixPayload: Record<
+    string,
+    readonly string[] | readonly Readonly<Record<string, string>>[]
+  > = createMatrixPayload(strategy.matrix);
+
+  if (strategy.include !== undefined && strategy.include.length > 0) {
+    matrixPayload.include = strategy.include.map((entry) => ({ ...entry }));
+  }
+
+  if (strategy.exclude !== undefined && strategy.exclude.length > 0) {
+    matrixPayload.exclude = strategy.exclude.map((entry) => ({ ...entry }));
+  }
 
   return {
-    matrix: createMatrixPayload(strategy.matrix),
+    ...(strategy.failFast !== undefined ? { 'fail-fast': strategy.failFast } : {}),
+    ...(strategy.maxParallel !== undefined ? { 'max-parallel': strategy.maxParallel } : {}),
+    matrix: matrixPayload,
   };
 }
 
@@ -310,7 +399,10 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   const on: Partial<
     Record<
       TriggerType,
-      WorkflowRenderTriggerPayload | readonly WorkflowRenderScheduleEntryPayload[] | null
+      | WorkflowRenderTriggerPayload
+      | readonly WorkflowRenderScheduleEntryPayload[]
+      | WorkflowRenderDispatchPayload
+      | null
     >
   > = {};
 
@@ -338,7 +430,9 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       job,
       [
         'id',
+        'if',
         'needs',
+        'continueOnError',
         'permissions',
         'timeoutMinutes',
         'defaults',
@@ -353,7 +447,9 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     );
 
     jobs[String(job.id)] = {
+      ...(job.if !== undefined ? { if: job.if } : {}),
       ...(job.needs ? { needs: [...job.needs] } : {}),
+      ...(job.continueOnError !== undefined ? { 'continue-on-error': job.continueOnError } : {}),
       ...(job.permissions
         ? { permissions: createPermissionsPayload(job.permissions, `job "${job.id}"`) }
         : {}),

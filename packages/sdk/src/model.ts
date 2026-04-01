@@ -43,8 +43,29 @@ export interface FilteredWorkflowTrigger extends TriggerFilter {
   readonly types?: readonly PullRequestActivityType[];
 }
 
+export const WORKFLOW_DISPATCH_INPUT_TYPES = [
+  'string',
+  'boolean',
+  'choice',
+  'number',
+  'environment',
+] as const;
+
+export type WorkflowDispatchInputType = (typeof WORKFLOW_DISPATCH_INPUT_TYPES)[number];
+
+export interface WorkflowDispatchInput {
+  readonly description?: string;
+  readonly required?: boolean;
+  readonly default?: string;
+  readonly type?: WorkflowDispatchInputType;
+  readonly options?: readonly [string, ...string[]];
+}
+
+export type WorkflowDispatchInputs = Readonly<Record<string, WorkflowDispatchInput>>;
+
 export interface WorkflowDispatchTrigger {
   readonly type: 'workflow_dispatch';
+  readonly inputs?: WorkflowDispatchInputs;
 }
 
 export interface ScheduleTrigger {
@@ -60,6 +81,8 @@ export interface StepMetadata {
   readonly env?: Readonly<Record<string, string>>;
   readonly with?: Readonly<Record<string, string>>;
   readonly if?: string;
+  readonly continueOnError?: boolean;
+  readonly timeoutMinutes?: number;
 }
 
 export interface RunStepMetadata extends StepMetadata {
@@ -106,9 +129,15 @@ export type WorkflowPermissions = Readonly<
 export type RunsOnTarget = string | readonly [string, ...string[]];
 export type MatrixAxisValues = readonly [string, ...string[]];
 export type WorkflowMatrix = Readonly<Record<string, MatrixAxisValues>>;
+export type MatrixIncludeEntry = Readonly<Record<string, string>>;
+export type MatrixExcludeEntry = Readonly<Record<string, string>>;
 
 export interface WorkflowStrategy {
+  readonly failFast?: boolean;
+  readonly maxParallel?: number;
   readonly matrix: WorkflowMatrix;
+  readonly include?: readonly MatrixIncludeEntry[];
+  readonly exclude?: readonly MatrixExcludeEntry[];
 }
 
 export interface WorkflowDefaultsRun {
@@ -126,7 +155,9 @@ export type WorkflowJobOutputs = Readonly<Record<string, string>>;
 
 export interface WorkflowJob {
   readonly id: JobId;
+  readonly if?: string;
   readonly needs?: readonly [JobId, ...JobId[]];
+  readonly continueOnError?: boolean;
   readonly permissions?: WorkflowPermissions;
   readonly timeoutMinutes?: number;
   readonly defaults?: {

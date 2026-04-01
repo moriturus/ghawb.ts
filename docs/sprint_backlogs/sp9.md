@@ -41,9 +41,9 @@ Status: ready
 - Definition of Done: Strategy builders support `failFast`, `maxParallel`, `include`, and `exclude`, validation rejects malformed entries explicitly, rendering is deterministic and canonical, conformance fixtures cover the expanded strategy surface across runtimes, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Users can define strategy with `failFast`, `maxParallel`, and matrix `include`/`exclude` modifiers, validation rejects non-boolean `failFast`, non-positive-integer `maxParallel`, and malformed include/exclude entries, `include` entries accept arbitrary string keys including keys not declared as matrix axes, `exclude` entries referencing undeclared axis keys fail at build time, empty `include`/`exclude` arrays are omitted from rendering, the strategy composes with existing axis-based matrix declarations, and cross-runtime conformance fixtures are added in the same slice.
 - Story Points: 5
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). ADR 0001 requires explicit validation; matrix `include`/`exclude` must not silently accept malformed entries. Test delegation should be split into parallel sub-agents per Sprint 8 retrospective guidance.
+- Status: done
+- Completed At: 2026-04-01T07:45:00Z
+- Notes/Links: [SPEC.md](../SPEC.md). ADR 0001 requires explicit validation; matrix `include`/`exclude` must not silently accept malformed entries. Test delegation should be split into parallel sub-agents per Sprint 8 retrospective guidance. PR #22 merged into sprint-9 branch.
 
 ### Item 25: Step continue-on-error and timeout-minutes
 

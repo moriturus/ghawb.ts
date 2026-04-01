@@ -33,7 +33,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-Sprint 9 committed `Item 24` through `Item 27` into the sprint backlog (with `Item 26` re-estimated from 4 to 5 SP during refinement). After Sprint 9, an external GPT-based review evaluated the project on three axes (commercial quality 6.6/10, OSS quality 8.0/10, maintainer mergability: high) and identified feature coverage breadth as the primary weakness. The team conducted a backlog intake to address the review findings, adding four new items (Items 32–35) alongside the four existing items (Items 28–31). Sprint 10 committed `Item 28`, `Item 31`, `Item 34`, and `Item 32` (12 SP, resequenced: coverage gate before workflow_call). Four items remain unselected below in priority order.
+Sprint 9 committed `Item 24` through `Item 27` into the sprint backlog (with `Item 26` re-estimated from 4 to 5 SP during refinement). After Sprint 9, an external GPT-based review evaluated the project on three axes (commercial quality 6.6/10, OSS quality 8.0/10, maintainer mergability: high) and identified feature coverage breadth as the primary weakness. The team conducted a backlog intake to address the review findings, adding four new items (Items 32–35) alongside the four existing items (Items 28–31). Sprint 10 committed `Item 28`, `Item 31`, `Item 34`, and `Item 32` (12 SP, resequenced: coverage gate before workflow_call) into the sprint backlog. Four items remain unselected below in priority order.
 
 ### Item 33: Job container and services
 

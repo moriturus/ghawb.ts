@@ -60,12 +60,14 @@ Use this order unless the user explicitly asks for something narrower.
   - relevant links to spec, backlog, and review artifacts
 - Record sprint-specific completion facts in `docs/sprint_backlogs/sp<N>.md` and product-priority decisions in `docs/PRODUCT_BACKLOG.md` when the repository uses that split structure.
 - If adding a new document under `docs/`, update the documentation index if the repository requires it.
+- If the skill writes or updates repository files as part of the review, stage and commit those changes in the same turn unless the user explicitly asks for a no-commit result.
 
 ## Default Documentation Behavior
 
 - When this skill is invoked for a completed sprint review and the repository contains `docs/sprint_reviews/`, create or update the corresponding `docs/sprint_reviews/sp<N>.md` note by default.
 - Only skip writing the review note when the user explicitly asks for a verbal summary, brainstorming, or a no-file response.
 - Treat the written sprint review as part of the normal completion path for this skill, not as an optional extra follow-up.
+- When documentation is written, treat the closing commit as part of the normal completion path for this skill, not as optional follow-up work.
 
 ## Response Shape
 

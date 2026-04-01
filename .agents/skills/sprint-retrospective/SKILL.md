@@ -72,6 +72,7 @@ Use this order unless the user explicitly asks for a narrower retrospective.
   - Product Owner owned follow-ups
 - When the repository uses split backlog records, keep sprint-specific notes in `docs/sprint_backlogs/sp<N>.md` and product-priority follow-ups in `docs/PRODUCT_BACKLOG.md`.
 - Update documentation indexes when the repository requires it.
+- If the skill writes or updates repository files as part of the retrospective, stage and commit those changes in the same turn unless the user explicitly asks for a no-commit result.
 
 ## Response Shape
 
@@ -92,3 +93,4 @@ Keep the language direct and specific. Avoid generic retrospective phrases that 
 - Turn repeated complaints into actionable follow-up items instead of repeating them verbatim.
 - Keep team-improvement items process-owned and product-improvement items backlog-owned.
 - Verify any claimed backlog or documentation updates against the repository before reporting them as complete.
+- Treat retrospective documentation as incomplete until the resulting repository changes are committed when the workflow is operating in its default documentation-writing mode.

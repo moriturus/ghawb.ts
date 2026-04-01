@@ -7,6 +7,8 @@ description: Start sprint planning from a repository backlog and team process do
 
 Run the opening half of sprint planning as a short, evidence-based workflow. Prefer repository backlog rules and team-process documents over ad hoc planning habits.
 
+Before backlog selection work begins, create or confirm the dedicated sprint branch for the sprint when the repository uses sprint branches. Treat this as the first operational step of sprint planning, not as something deferred until implementation starts.
+
 ## Build Context
 
 Read only the repository context needed to plan the sprint.
@@ -23,6 +25,7 @@ Use this order unless the user explicitly asks for a narrower planning task.
 ### 1. Restate the planning scope
 
 - State which sprint is being planned.
+- Create or confirm the sprint branch first when the repository expects one, and state the branch name plus base branch explicitly.
 - State the available capacity and any non-default constraints.
 - Summarize the current top product-backlog candidates and ordering rules in a few lines.
 
@@ -67,3 +70,4 @@ Omit sections the user did not ask for. Keep the language direct and specific.
 - Distinguish clearly between proposal-stage decisions and persisted backlog updates.
 - When repository docs define team personas, use them for evaluation language without inventing fictional implementation work.
 - Treat this skill as the opening phase: propose scope and expose open decisions, but do not absorb the full refinement phase by default.
+- Do not defer sprint-branch creation until `do-sprint` when the repository workflow expects the branch to exist from sprint-planning start.

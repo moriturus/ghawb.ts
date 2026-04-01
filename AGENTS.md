@@ -42,7 +42,7 @@ This file defines repository-specific instructions for contributors and coding a
 ## Sprint Execution
 
 - When executing sprint backlog items, prioritize using sub-agents or multi-agent collaboration in alignment with the personas defined in `docs/TEAM.md`.
-- Create a dedicated sprint branch at sprint start from the agreed sprint base.
+- Create a dedicated sprint branch at sprint start from the agreed sprint base, and do so at the beginning of sprint planning rather than waiting for implementation execution.
 - Create each backlog item's feature branch from the latest sprint branch state rather than directly from `main`.
 - Target backlog-item pull requests at the sprint branch rather than at `main`.
 - After the final committed sprint item is integrated into the sprint branch, create one sprint-level pull request from the sprint branch into `main`.
@@ -57,3 +57,4 @@ This file defines repository-specific instructions for contributors and coding a
 - Verify that new or changed documents remain internally consistent.
 - Check links between `README.md`, `docs/INDEX.md`, `docs/SPEC.md`, backlog entries, and ADRs when editing docs.
 - Surface assumptions explicitly instead of presenting unresolved details as settled.
+- When sprint review or sprint retrospective updates repository files, stage and commit those documentation changes before treating the ceremony as complete unless the user explicitly asks not to commit.

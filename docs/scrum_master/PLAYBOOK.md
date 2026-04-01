@@ -19,6 +19,8 @@ Use this playbook at three points in every sprint.
 
 Run this protocol before implementation work expands.
 
+The sprint branch must be created or explicitly confirmed at the beginning of sprint planning and remain the branch anchor for the rest of the sprint workflow.
+
 ### 0. Confirm role, delegation, and sequencing boundaries
 
 Restate the team's standing working agreements before sprint execution begins.
@@ -26,7 +28,7 @@ Restate the team's standing working agreements before sprint execution begins.
 - Confirm that Product Owner and Scrum Master personas will not act as implementers.
 - Confirm that sprint backlog work will proceed from the top item downward.
 - Confirm that the team will not implement multiple sprint backlog items in parallel.
-- Confirm the sprint branch name and base branch before any item work starts.
+- Create or confirm the sprint branch name and base branch before any planning output or item work proceeds.
 - Confirm that each feature branch will be created from the latest sprint branch state.
 - Confirm that item pull requests will target the sprint branch and that the sprint will close through one final sprint-branch-to-`main` pull request.
 - Confirm which Developer persona is expected to carry the primary implementation responsibility for the current top item.
@@ -158,6 +160,17 @@ Do not start sprint review until one of these is true:
 
 - the consistency check passes
 - the open mismatch is explicitly documented as a known gap in the review material
+
+### 4. Review and retrospective document closeout
+
+When sprint review or retrospective produces repository-document changes, do not treat the ceremony as complete until those documentation changes are staged and committed, unless the user explicitly requests a discussion-only or no-commit outcome.
+
+Check:
+
+- the review or retrospective note exists or was intentionally skipped
+- any required `docs/INDEX.md` update is present
+- any sprint summary or backlog status synchronization required by the ceremony is present
+- the resulting documentation changes are committed with a Conventional Commit message
 
 ## Escalation Rules
 

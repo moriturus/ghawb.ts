@@ -16,6 +16,12 @@ This board tracks Scrum Master owned team-improvement follow-up items.
 4. Tighten sprint-planning acceptance criteria for external proof before execution starts.
    Scope: resolve whether hosted proof must come from push runs, pull-request runs, deployments, or other external artifacts during planning so closeout does not depend on Product Owner exceptions.
    Status: Concretized as product backlog Item 30 (sprint ceremony process hardening).
+5. Make it explicit that sprint execution does not stop at a response-turn boundary when committed sprint items remain.
+   Scope: when using scripted sprint-execution workflows such as `do-sprint`, require the coordinator to continue to the next ready item unless a documented stop condition is hit, instead of treating a status report or turn boundary as implicit completion.
+   Status: Open.
+6. Add sprint-summary and sprint-document synchronization to the closeout checklist.
+   Scope: before calling sprint closeout complete, confirm that the sprint backlog summary status, sprint review note, retrospective note, and documentation index are all updated or intentionally deferred with a recorded reason.
+   Status: Open.
 
 ## Closed Items
 

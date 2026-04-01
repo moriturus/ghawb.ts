@@ -14,6 +14,9 @@ describe('self-hosted workflow output', () => {
     expect(ciContents).toContain('name: CI');
     expect(ciContents).toContain('run: bun run verify:workflows');
     expect(ciContents).toContain('run: bun run check');
+    expect(ciContents).toContain('run: bun run coverage');
+    expect(ciContents).toContain('uses: actions/upload-artifact@v4');
+    expect(ciContents).toContain('path: coverage/lcov.info');
     expect(ciContents).toContain('run: bun run test:vitest:node');
     expect(manualContents).toContain('name: Manual Verify');
     expect(manualContents).toContain('workflow_dispatch: null');
@@ -41,6 +44,7 @@ describe('self-hosted workflow output', () => {
 
     expect(packageJson.scripts?.['verify:workflows']).toBe('bun run scripts/verify-workflows.ts');
     expect(packageJson.scripts?.['verify:pre-push']).toBe('bun run scripts/verify-pre-push.ts');
+    expect(packageJson.scripts?.coverage).toBe('vitest run --coverage');
     expect(readme).toContain('bun run verify:pre-push');
     expect(readme).toContain('bun run verify:workflows');
     expect(readme).toContain(
@@ -51,6 +55,8 @@ describe('self-hosted workflow output', () => {
     );
     expect(contributing).toContain('bun run verify:pre-push');
     expect(contributing).toContain('bun run verify:workflows');
+    expect(contributing).toContain('bun run coverage');
+    expect(contributing).toContain('coverage/lcov.info');
     expect(contributing).toContain('Keep committed workflow source modules under');
     expect(contributing).toContain('render every committed workflow module');
   });

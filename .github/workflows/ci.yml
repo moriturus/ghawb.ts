@@ -28,5 +28,12 @@ jobs:
         run: bun run verify:workflows
       - name: Run Bun Checks
         run: bun run check
+      - name: Run SDK Coverage
+        run: bun run coverage
+      - name: Upload Coverage Report
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+        uses: actions/upload-artifact@v4
       - name: Run Node Compatibility Tests
         run: bun run test:vitest:node

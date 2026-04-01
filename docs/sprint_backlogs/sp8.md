@@ -8,7 +8,7 @@ Capacity: 15 story points.
 
 Selected implementation units for Sprint 8: 13/15 story points.
 
-Status: ready
+Status: done
 
 ## Planning Notes
 

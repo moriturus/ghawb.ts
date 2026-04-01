@@ -155,7 +155,9 @@ export type WorkflowJobOutputs = Readonly<Record<string, string>>;
 
 export interface WorkflowJob {
   readonly id: JobId;
+  readonly if?: string;
   readonly needs?: readonly [JobId, ...JobId[]];
+  readonly continueOnError?: boolean;
   readonly permissions?: WorkflowPermissions;
   readonly timeoutMinutes?: number;
   readonly defaults?: {

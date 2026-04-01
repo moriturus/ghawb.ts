@@ -617,6 +617,55 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'job_if_and_continue_on_error',
+    defineWorkflow({
+      id: createWorkflowId('job_if_and_continue_on_error'),
+      name: 'Job If And Continue On Error',
+    })
+      .onPush({ branches: ['main'] })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .needs(createJobId('build'))
+          .continueOnError(true)
+          .runsOn('ubuntu-latest')
+          .run('echo deploy');
+      })
+      .build(),
+    {
+      name: 'Job If And Continue On Error',
+      on: {
+        push: {
+          branches: ['main'],
+        },
+      },
+      jobs: {
+        build: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+        deploy: {
+          if: "github.ref == 'refs/heads/main'",
+          needs: ['build'],
+          'continue-on-error': true,
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'echo deploy',
+            },
+          ],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -771,5 +820,36 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     expectedIssues: [
       'trigger "workflow_dispatch" input "environment" type "choice" requires non-empty options',
     ],
+  },
+  {
+    name: 'job_blank_if_expression',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('job_blank_if'),
+        name: 'Job Blank If',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job.ifCondition('  ').runsOn('ubuntu-latest').run('bun test');
+        })
+        .build(),
+    expectedIssues: ['job "test" if must be a non-blank string'],
+  },
+  {
+    name: 'job_non_boolean_continue_on_error',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('job_bad_continue'),
+        name: 'Job Bad Continue',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .continueOnError('yes' as unknown as boolean)
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        })
+        .build(),
+    expectedIssues: ['job "test" continue-on-error must be a boolean'],
   },
 ];

@@ -42,7 +42,9 @@ interface WorkflowStepDraft extends StepMetadata {
 
 interface WorkflowJobDraft {
   readonly id: JobId;
+  readonly if?: string;
   readonly needs?: readonly JobId[];
+  readonly continueOnError?: boolean;
   readonly permissions?: WorkflowPermissions;
   readonly timeoutMinutes?: number;
   readonly defaults?: {
@@ -473,6 +475,18 @@ function createValidationIssues(
       }
     }
 
+    if (job.if !== undefined) {
+      if (typeof job.if !== 'string' || job.if.trim().length === 0) {
+        issues.push(`job "${jobId}" if must be a non-blank string`);
+      }
+    }
+
+    if (job.continueOnError !== undefined) {
+      if (typeof job.continueOnError !== 'boolean') {
+        issues.push(`job "${jobId}" continue-on-error must be a boolean`);
+      }
+    }
+
     if (job.timeoutMinutes !== undefined) {
       if (!Number.isInteger(job.timeoutMinutes) || job.timeoutMinutes <= 0) {
         issues.push(`job "${jobId}" timeout-minutes must be a positive integer`);
@@ -868,7 +882,9 @@ function finalizeDefaultsRun(defaultsRun: WorkflowDefaultsRun): WorkflowDefaults
 class JobBuilder {
   readonly id: JobId;
 
+  private jobIf?: string;
   private jobNeeds?: readonly JobId[];
+  private jobContinueOnError?: boolean;
   private jobPermissions?: WorkflowPermissions;
   private jobTimeoutMinutes?: number;
   private jobDefaults?: {
@@ -891,8 +907,18 @@ class JobBuilder {
     this.id = id;
   }
 
+  ifCondition(expression: string): this {
+    this.jobIf = expression;
+    return this;
+  }
+
   needs(dependencies: JobId | readonly [JobId, ...JobId[]]): this {
     this.jobNeeds = (Array.isArray(dependencies) ? [...dependencies] : [dependencies]) as JobId[];
+    return this;
+  }
+
+  continueOnError(continueOnError: boolean): this {
+    this.jobContinueOnError = continueOnError;
     return this;
   }
 
@@ -994,7 +1020,9 @@ class JobBuilder {
   toDraft(): WorkflowJobDraft {
     return {
       id: this.id,
+      ...(this.jobIf !== undefined ? { if: this.jobIf } : {}),
       ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
+      ...(this.jobContinueOnError !== undefined ? { continueOnError: this.jobContinueOnError } : {}),
       ...(this.jobPermissions !== undefined
         ? { permissions: clonePermissions(this.jobPermissions) }
         : {}),
@@ -1133,7 +1161,9 @@ export class WorkflowBuilder {
 
     const jobs: WorkflowJob[] = this.jobs.map((job) => ({
       id: job.id,
+      ...(job.if !== undefined ? { if: job.if } : {}),
       ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
+      ...(job.continueOnError !== undefined ? { continueOnError: job.continueOnError } : {}),
       ...(job.permissions !== undefined
         ? { permissions: canonicalizePermissions(job.permissions) }
         : {}),

@@ -65,9 +65,9 @@ Status: ready
 - Definition of Done: `workflow_dispatch` triggers support optional `inputs` with per-input metadata including `options` for `choice` type, validation rejects malformed input definitions, rendering is deterministic in declared input order, conformance fixtures cover inputs across runtimes, SPEC.md is updated, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Users can declare named inputs with optional `description`, `required`, `default`, `type`, and `options` fields, blank input names fail at build time, `type` values are validated against the GitHub Actions allowlist (`string`, `boolean`, `choice`, `number`, `environment`), `options` is required when `type` is `choice` and rejected on other types, unsupported input field shapes fail explicitly, the rendered YAML matches GitHub Actions expected structure for dispatch inputs, and cross-runtime conformance fixtures are added in the same slice.
 - Story Points: 5
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). This item intentionally broadens the `workflow_dispatch` supported surface, which was previously locked to a bare trigger. SPEC.md must be updated. Re-estimated from 4 to 5 SP during Sprint 9 refinement to account for `choice` type's `options` field. Test delegation should be split into parallel sub-agents per Sprint 8 retrospective guidance.
+- Status: done
+- Completed At: 2026-04-01T10:30:00Z
+- Notes/Links: [SPEC.md](../SPEC.md). This item intentionally broadens the `workflow_dispatch` supported surface, which was previously locked to a bare trigger. SPEC.md must be updated. Re-estimated from 4 to 5 SP during Sprint 9 refinement to account for `choice` type's `options` field. Test delegation should be split into parallel sub-agents per Sprint 8 retrospective guidance. PR #24 merged into sprint-9 branch.
 
 ### Item 27: Job-level conditional and continue-on-error
 

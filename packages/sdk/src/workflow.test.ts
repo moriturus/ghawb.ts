@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createJobId, createWorkflowId, WorkflowValidationError } from '@ghawb/shared';
 
-import { defineWorkflow } from './index.ts';
+import { defineWorkflow, createWorkflowRenderPayload } from './index.ts';
 
 describe('workflow builder', () => {
   it('builds a representative Sprint 1 workflow model', () => {
@@ -2273,5 +2273,145 @@ describe('workflow builder', () => {
     expect(Object.isFrozen(trigger.inputs)).toBe(true);
     expect(Object.isFrozen(trigger.inputs.env)).toBe(true);
     expect(Object.isFrozen(trigger.inputs.env!.options)).toBe(true);
+  });
+
+  it('builds job with if condition', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_if'),
+      name: 'Job If',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .runsOn('ubuntu-latest')
+          .run('echo deploy');
+      })
+      .build();
+
+    expect(workflow.jobs[0]!.if).toBe("github.ref == 'refs/heads/main'");
+  });
+
+  it('builds job with continue-on-error', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_continue'),
+      name: 'Job Continue',
+    })
+      .onPush()
+      .addJob(createJobId('lint'), (job) => {
+        job.continueOnError(true).runsOn('ubuntu-latest').run('bun run lint');
+      })
+      .build();
+
+    expect(workflow.jobs[0]!.continueOnError).toBe(true);
+  });
+
+  it('builds job with if and continue-on-error together', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_if_and_continue'),
+      name: 'Job If And Continue',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .needs(createJobId('build'))
+          .continueOnError(true)
+          .runsOn('ubuntu-latest')
+          .run('echo deploy');
+      })
+      .build();
+
+    const deployJob = workflow.jobs[1]!;
+    expect(deployJob.if).toBe("github.ref == 'refs/heads/main'");
+    expect(deployJob.continueOnError).toBe(true);
+    expect(deployJob.needs).toEqual([createJobId('build')]);
+  });
+
+  it('rejects blank job if expression', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('job_blank_if'),
+      name: 'Job Blank If',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job.ifCondition('  ').runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['job "test" if must be a non-blank string'])
+    );
+  });
+
+  it('rejects non-boolean job continue-on-error', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('job_bad_continue'),
+      name: 'Job Bad Continue',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .continueOnError('yes' as unknown as boolean)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['job "test" continue-on-error must be a boolean'])
+    );
+  });
+
+  it('renders job if before needs and continue-on-error after needs', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_field_order'),
+      name: 'Job Field Order',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .needs(createJobId('build'))
+          .continueOnError(true)
+          .runsOn('ubuntu-latest')
+          .run('echo deploy');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const deployPayload = payload.jobs.deploy!;
+    const keys = Object.keys(deployPayload);
+    const ifIndex = keys.indexOf('if');
+    const needsIndex = keys.indexOf('needs');
+    const continueOnErrorIndex = keys.indexOf('continue-on-error');
+
+    expect(ifIndex).toBeLessThan(needsIndex);
+    expect(needsIndex).toBeLessThan(continueOnErrorIndex);
+  });
+
+  it('deep-freezes job if and continue-on-error', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_freeze_if_continue'),
+      name: 'Job Freeze If Continue',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .continueOnError(true)
+          .runsOn('ubuntu-latest')
+          .run('echo deploy');
+      })
+      .build();
+
+    const job = workflow.jobs[0]!;
+    expect(Object.isFrozen(job)).toBe(true);
+    expect(job.if).toBe("github.ref == 'refs/heads/main'");
+    expect(job.continueOnError).toBe(true);
   });
 });

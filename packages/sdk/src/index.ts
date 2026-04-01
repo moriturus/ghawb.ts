@@ -14,6 +14,8 @@ export {
   renderWorkflow,
   WorkflowRenderError,
   type WorkflowEmitter,
+  type WorkflowRenderContainerCredentialsPayload,
+  type WorkflowRenderContainerPayload,
   type WorkflowRenderDispatchInputPayload,
   type WorkflowRenderDispatchPayload,
   type WorkflowRenderJobPayload,
@@ -24,6 +26,10 @@ export {
   type WorkflowRenderWorkflowCallPayload,
 } from './renderer.ts';
 export type {
+  ContainerConfig,
+  ContainerCredentials,
+  ContainerPort,
+  ContainerPorts,
   MatrixAxisValues,
   MatrixExcludeEntry,
   MatrixIncludeEntry,
@@ -60,6 +66,7 @@ export type {
   ReusableWorkflowJob,
   ReusableWorkflowJobSecrets,
   StepsJob,
+  WorkflowServices,
   WorkflowStrategy,
   WorkflowStep,
   WorkflowTrigger,

@@ -814,6 +814,85 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'container_and_services',
+    defineWorkflow({
+      id: createWorkflowId('container_and_services'),
+      name: 'Container And Services',
+    })
+      .onPush()
+      .addJob(createJobId('containerized'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .container({
+            image: 'node:20',
+            credentials: { username: 'user', password: '${{ secrets.DOCKER_PASSWORD }}' },
+            env: { NODE_ENV: 'test' },
+            ports: [80, '8080:80'],
+            volumes: ['/data:/data'],
+            options: '--cpus 2',
+          })
+          .run('npm test');
+      })
+      .addJob(createJobId('with_services'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .services({
+            postgres: {
+              image: 'postgres:15',
+              env: { POSTGRES_PASSWORD: 'test' },
+              ports: [5432],
+            },
+            redis: {
+              image: 'redis:7',
+            },
+          })
+          .run('npm test');
+      })
+      .build(),
+    {
+      name: 'Container And Services',
+      on: {
+        push: null,
+      },
+      jobs: {
+        containerized: {
+          'runs-on': 'ubuntu-latest',
+          container: {
+            image: 'node:20',
+            credentials: { username: 'user', password: '${{ secrets.DOCKER_PASSWORD }}' },
+            env: { NODE_ENV: 'test' },
+            ports: [80, '8080:80'],
+            volumes: ['/data:/data'],
+            options: '--cpus 2',
+          },
+          steps: [
+            {
+              run: 'npm test',
+            },
+          ],
+        },
+        with_services: {
+          'runs-on': 'ubuntu-latest',
+          services: {
+            postgres: {
+              image: 'postgres:15',
+              env: { POSTGRES_PASSWORD: 'test' },
+              ports: [5432],
+            },
+            redis: {
+              image: 'redis:7',
+            },
+          },
+          steps: [
+            {
+              run: 'npm test',
+            },
+          ],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -1093,5 +1172,44 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: ['job "test" continue-on-error must be a boolean'],
+  },
+  {
+    name: 'invalid_container_and_services',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('invalid_container_services'),
+        name: 'Invalid Container Services',
+      })
+        .onPush()
+        .addJob(createJobId('bad_container'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .container({ image: '  ', ports: ['  '] })
+            .services({ '1bad': { image: 'redis:7' } })
+            .run('bun test');
+        })
+        .build(),
+    expectedIssues: [
+      'job "bad_container" container image must be a non-blank string',
+      'job "bad_container" container ports must not contain blank strings',
+      'job "bad_container" service "1bad" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+    ],
+  },
+  {
+    name: 'reusable_workflow_rejects_container',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('reusable_with_container'),
+        name: 'Reusable With Container',
+      }).onPush();
+      builder.addJob(createJobId('call'), (job) => {
+        (job as unknown as { jobContainer: { image: string } }).jobContainer = {
+          image: 'node:20',
+        };
+        job.usesWorkflow('org/repo/.github/workflows/ci.yml@main');
+      });
+      return builder.build();
+    },
+    expectedIssues: ['job "call" reusable workflow job must not define container'],
   },
 ];

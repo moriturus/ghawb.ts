@@ -962,16 +962,14 @@ describe('workflow renderer', () => {
               run: 'bun run build',
             },
           ],
-          container: {
-            image: 'node:20',
-          },
+          unsupportedField: true,
         },
       ],
     } as unknown as WorkflowDefinition;
 
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
-    ).toThrowError(new WorkflowRenderError('unsupported job "build" field "container"'));
+    ).toThrowError(new WorkflowRenderError('unsupported job "build" field "unsupportedField"'));
   });
 
   it('fails explicitly before emission when execution metadata uses unsupported shapes', () => {
@@ -2119,5 +2117,171 @@ describe('workflow renderer', () => {
       },
       uses: './.github/workflows/deploy.yml@main',
     });
+  });
+
+  it('renders container in canonical field order after runs-on', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('container_order'),
+      name: 'Container Order',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .container({
+            image: 'node:20',
+            credentials: { username: 'user', password: 'pass' },
+            env: { CI: 'true' },
+            ports: [80, '8080:80'],
+            volumes: ['/data:/data'],
+            options: '--cpus 2',
+          })
+          .run('npm test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const jobPayload = payload.jobs.test!;
+    const keys = Object.keys(jobPayload);
+    const runsOnIndex = keys.indexOf('runs-on');
+    const containerIndex = keys.indexOf('container');
+    const stepsIndex = keys.indexOf('steps');
+
+    expect(containerIndex).toBeGreaterThan(runsOnIndex);
+    expect(containerIndex).toBeLessThan(stepsIndex);
+
+    expect(jobPayload.container).toEqual({
+      image: 'node:20',
+      credentials: { username: 'user', password: 'pass' },
+      env: { CI: 'true' },
+      ports: [80, '8080:80'],
+      volumes: ['/data:/data'],
+      options: '--cpus 2',
+    });
+  });
+
+  it('renders services in canonical field order after container', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('services_order'),
+      name: 'Services Order',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .container({ image: 'node:20' })
+          .services({
+            postgres: {
+              image: 'postgres:15',
+              env: { POSTGRES_PASSWORD: 'test' },
+              ports: [5432],
+            },
+            redis: {
+              image: 'redis:7',
+            },
+          })
+          .run('npm test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const jobPayload = payload.jobs.test!;
+    const keys = Object.keys(jobPayload);
+    const containerIndex = keys.indexOf('container');
+    const servicesIndex = keys.indexOf('services');
+    const stepsIndex = keys.indexOf('steps');
+
+    expect(servicesIndex).toBeGreaterThan(containerIndex);
+    expect(servicesIndex).toBeLessThan(stepsIndex);
+
+    expect(jobPayload.services).toEqual({
+      postgres: {
+        image: 'postgres:15',
+        env: { POSTGRES_PASSWORD: 'test' },
+        ports: [5432],
+      },
+      redis: {
+        image: 'redis:7',
+      },
+    });
+  });
+
+  it('renders container image only without optional fields', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('container_minimal'),
+      name: 'Container Minimal',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').container({ image: 'node:20' }).run('npm test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.jobs.test!.container).toEqual({ image: 'node:20' });
+  });
+
+  it('omits container and services when not defined', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('no_container'),
+      name: 'No Container',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('npm test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.jobs.test!.container).toBeUndefined();
+    expect(payload.jobs.test!.services).toBeUndefined();
+  });
+
+  it('renders container fields in canonical order: image, credentials, env, ports, volumes, options', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('container_field_order'),
+      name: 'Container Field Order',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .container({
+            image: 'node:20',
+            credentials: { username: 'user', password: 'pass' },
+            env: { CI: 'true' },
+            ports: [80],
+            volumes: ['/data:/data'],
+            options: '--cpus 2',
+          })
+          .run('npm test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const containerKeys = Object.keys(payload.jobs.test!.container!);
+    expect(containerKeys).toEqual(['image', 'credentials', 'env', 'ports', 'volumes', 'options']);
+  });
+
+  it('renders credentials fields in canonical order: username, password', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('credentials_order'),
+      name: 'Credentials Order',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .container({
+            image: 'node:20',
+            credentials: { username: 'user', password: 'pass' },
+          })
+          .run('npm test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const credKeys = Object.keys(payload.jobs.test!.container!.credentials!);
+    expect(credKeys).toEqual(['username', 'password']);
   });
 });

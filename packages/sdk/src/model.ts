@@ -189,6 +189,25 @@ export interface WorkflowConcurrency {
 export type WorkflowEnv = Readonly<Record<string, string>>;
 export type WorkflowJobOutputs = Readonly<Record<string, string>>;
 
+export interface ContainerCredentials {
+  readonly username: string;
+  readonly password: string;
+}
+
+export type ContainerPort = number | string;
+export type ContainerPorts = readonly ContainerPort[];
+
+export interface ContainerConfig {
+  readonly image: string;
+  readonly credentials?: ContainerCredentials;
+  readonly env?: WorkflowEnv;
+  readonly ports?: ContainerPorts;
+  readonly volumes?: readonly string[];
+  readonly options?: string;
+}
+
+export type WorkflowServices = Readonly<Record<string, ContainerConfig>>;
+
 export interface WorkflowJobBase {
   readonly id: JobId;
   readonly if?: string;
@@ -203,6 +222,8 @@ export interface WorkflowJobBase {
   readonly env?: WorkflowEnv;
   readonly strategy?: WorkflowStrategy;
   readonly runsOn?: RunsOnTarget;
+  readonly container?: ContainerConfig;
+  readonly services?: WorkflowServices;
   readonly outputs?: WorkflowJobOutputs;
   readonly steps?: readonly WorkflowStep[];
   readonly secrets?: ReusableWorkflowJobSecrets;
@@ -213,6 +234,8 @@ export interface WorkflowJobBase {
 export interface StepsJob extends WorkflowJobBase {
   readonly kind: 'steps';
   readonly runsOn: RunsOnTarget;
+  readonly container?: ContainerConfig;
+  readonly services?: WorkflowServices;
   readonly steps: readonly WorkflowStep[];
 }
 

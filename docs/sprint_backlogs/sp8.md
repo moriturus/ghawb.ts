@@ -38,9 +38,9 @@ Status: ready
 - Definition of Done: Workflow-level and job-level `env` maps render deterministically, validation rejects malformed entries explicitly, conformance fixtures cover the new surface across Bun/Node/Deno, docs and SPEC.md are updated, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Users can declare `env` on both workflow and job builders, workflow-level `env` renders after `permissions` and before `defaults`/`concurrency`, job-level `env` renders after `concurrency` and before `strategy`, blank keys are rejected at build time, empty env maps are omitted from rendering, existing step-level `env` behavior is unchanged, and cross-runtime conformance fixtures are added in the same slice.
 - Story Points: 3
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). Sprint 7 retrospective requires cross-runtime conformance fixture updates in the same slice as any workflow-surface expansion.
+- Status: done
+- Completed At: 2026-04-01T01:00:00Z
+- Notes/Links: [SPEC.md](../SPEC.md). Sprint 7 retrospective requires cross-runtime conformance fixture updates in the same slice as any workflow-surface expansion. PR #17 merged into sprint-8 branch.
 
 ### Item 21: Pull request activity type filters
 

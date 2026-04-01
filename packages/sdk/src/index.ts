@@ -22,6 +22,8 @@ export {
 } from './renderer.ts';
 export type {
   MatrixAxisValues,
+  MatrixExcludeEntry,
+  MatrixIncludeEntry,
   PullRequestActivityType,
   PullRequestTriggerFilter,
   RunStepMetadata,

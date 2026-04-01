@@ -5,6 +5,8 @@ import {
   PULL_REQUEST_ACTIVITY_TYPES,
   type FilteredTriggerType,
   type MatrixAxisValues,
+  type MatrixExcludeEntry,
+  type MatrixIncludeEntry,
   type PullRequestActivityType,
   type PullRequestTriggerFilter,
   type RunStepMetadata,
@@ -45,7 +47,11 @@ interface WorkflowJobDraft {
   readonly concurrency?: WorkflowConcurrency;
   readonly env?: WorkflowEnv;
   readonly strategy?: {
+    readonly failFast?: boolean;
+    readonly maxParallel?: number;
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
+    readonly include?: readonly Readonly<Record<string, unknown>>[];
+    readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   readonly runsOn?: string | readonly string[];
   readonly outputs?: WorkflowJobOutputs;
@@ -428,11 +434,23 @@ function createValidationIssues(
     validatePermissions(`job "${jobId}"`, job.permissions, issues);
 
     if (job.strategy !== undefined) {
+      if (job.strategy.failFast !== undefined && typeof job.strategy.failFast !== 'boolean') {
+        issues.push(`job "${jobId}" strategy.fail-fast must be a boolean`);
+      }
+
+      if (job.strategy.maxParallel !== undefined) {
+        if (!Number.isInteger(job.strategy.maxParallel) || job.strategy.maxParallel <= 0) {
+          issues.push(`job "${jobId}" strategy.max-parallel must be a positive integer`);
+        }
+      }
+
       const matrixEntries = Object.entries(job.strategy.matrix);
 
       if (matrixEntries.length === 0) {
         issues.push(`job "${jobId}" strategy.matrix must define at least one axis`);
       }
+
+      const declaredAxisKeys = new Set<string>();
 
       for (const [axis, values] of matrixEntries) {
         if (axis.trim().length === 0) {
@@ -443,6 +461,8 @@ function createValidationIssues(
         if (axis === 'include' || axis === 'exclude') {
           issues.push(`job "${jobId}" strategy.matrix does not support axis "${axis}"`);
         }
+
+        declaredAxisKeys.add(axis);
 
         if (!Array.isArray(values)) {
           issues.push(`job "${jobId}" strategy.matrix axis "${axis}" must be an array`);
@@ -464,6 +484,62 @@ function createValidationIssues(
             issues.push(
               `job "${jobId}" strategy.matrix axis "${axis}" must not contain blank values`
             );
+          }
+        }
+      }
+
+      if (job.strategy.include !== undefined) {
+        for (const [entryIndex, entry] of job.strategy.include.entries()) {
+          if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+            issues.push(
+              `job "${jobId}" strategy.matrix include entry ${entryIndex + 1} must be a record object`
+            );
+            continue;
+          }
+
+          for (const [key, value] of Object.entries(entry)) {
+            if (key.trim().length === 0) {
+              issues.push(
+                `job "${jobId}" strategy.matrix include entry ${entryIndex + 1} must not contain blank keys`
+              );
+            }
+
+            if (typeof value !== 'string') {
+              issues.push(
+                `job "${jobId}" strategy.matrix include entry ${entryIndex + 1} key "${key}" must be a string value`
+              );
+            }
+          }
+        }
+      }
+
+      if (job.strategy.exclude !== undefined) {
+        for (const [entryIndex, entry] of job.strategy.exclude.entries()) {
+          if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+            issues.push(
+              `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} must be a record object`
+            );
+            continue;
+          }
+
+          for (const [key, value] of Object.entries(entry)) {
+            if (key.trim().length === 0) {
+              issues.push(
+                `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} must not contain blank keys`
+              );
+            }
+
+            if (!declaredAxisKeys.has(key)) {
+              issues.push(
+                `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} references undeclared axis "${key}"`
+              );
+            }
+
+            if (typeof value !== 'string') {
+              issues.push(
+                `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} key "${key}" must be a string value`
+              );
+            }
           }
         }
       }
@@ -668,11 +744,35 @@ function finalizeMatrix(
   );
 }
 
+function finalizeIncludeEntry(entry: Readonly<Record<string, unknown>>): MatrixIncludeEntry {
+  return Object.fromEntries(
+    Object.entries(entry).map(([key, value]) => [key, String(value).trim()])
+  );
+}
+
+function finalizeExcludeEntry(entry: Readonly<Record<string, unknown>>): MatrixExcludeEntry {
+  return Object.fromEntries(
+    Object.entries(entry).map(([key, value]) => [key, String(value).trim()])
+  );
+}
+
 function finalizeStrategy(strategy: {
+  readonly failFast?: boolean;
+  readonly maxParallel?: number;
   readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
+  readonly include?: readonly Readonly<Record<string, unknown>>[];
+  readonly exclude?: readonly Readonly<Record<string, unknown>>[];
 }): WorkflowStrategy {
   return {
+    ...(strategy.failFast !== undefined ? { failFast: strategy.failFast } : {}),
+    ...(strategy.maxParallel !== undefined ? { maxParallel: strategy.maxParallel } : {}),
     matrix: finalizeMatrix(strategy.matrix),
+    ...(strategy.include !== undefined && strategy.include.length > 0
+      ? { include: strategy.include.map(finalizeIncludeEntry) }
+      : {}),
+    ...(strategy.exclude !== undefined && strategy.exclude.length > 0
+      ? { exclude: strategy.exclude.map(finalizeExcludeEntry) }
+      : {}),
   };
 }
 
@@ -697,7 +797,11 @@ class JobBuilder {
   private jobConcurrency?: WorkflowConcurrency;
   private jobEnv?: WorkflowEnv;
   private jobStrategy?: {
+    readonly failFast?: boolean;
+    readonly maxParallel?: number;
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
+    readonly include?: readonly Readonly<Record<string, unknown>>[];
+    readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   private jobRunsOn?: string | readonly string[];
   private jobOutputs?: WorkflowJobOutputs;
@@ -741,7 +845,40 @@ class JobBuilder {
 
   strategyMatrix(matrix: WorkflowMatrix): this {
     this.jobStrategy = {
+      ...this.jobStrategy,
       matrix: cloneMatrix(matrix),
+    };
+    return this;
+  }
+
+  strategyFailFast(failFast: boolean): this {
+    this.jobStrategy = {
+      ...(this.jobStrategy ?? { matrix: {} }),
+      failFast,
+    };
+    return this;
+  }
+
+  strategyMaxParallel(maxParallel: number): this {
+    this.jobStrategy = {
+      ...(this.jobStrategy ?? { matrix: {} }),
+      maxParallel,
+    };
+    return this;
+  }
+
+  strategyInclude(include: readonly MatrixIncludeEntry[]): this {
+    this.jobStrategy = {
+      ...(this.jobStrategy ?? { matrix: {} }),
+      include: include.map((entry) => ({ ...entry })),
+    };
+    return this;
+  }
+
+  strategyExclude(exclude: readonly MatrixExcludeEntry[]): this {
+    this.jobStrategy = {
+      ...(this.jobStrategy ?? { matrix: {} }),
+      exclude: exclude.map((entry) => ({ ...entry })),
     };
     return this;
   }
@@ -790,7 +927,23 @@ class JobBuilder {
         : {}),
       ...(this.jobEnv !== undefined ? { env: cloneEnv(this.jobEnv) } : {}),
       ...(this.jobStrategy !== undefined
-        ? { strategy: { matrix: cloneMatrix(this.jobStrategy.matrix) } }
+        ? {
+            strategy: {
+              ...(this.jobStrategy.failFast !== undefined
+                ? { failFast: this.jobStrategy.failFast }
+                : {}),
+              ...(this.jobStrategy.maxParallel !== undefined
+                ? { maxParallel: this.jobStrategy.maxParallel }
+                : {}),
+              matrix: cloneMatrix(this.jobStrategy.matrix),
+              ...(this.jobStrategy.include !== undefined
+                ? { include: this.jobStrategy.include.map((entry) => ({ ...entry })) }
+                : {}),
+              ...(this.jobStrategy.exclude !== undefined
+                ? { exclude: this.jobStrategy.exclude.map((entry) => ({ ...entry })) }
+                : {}),
+            },
+          }
         : {}),
       ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
       ...(this.jobOutputs !== undefined ? { outputs: { ...this.jobOutputs } } : {}),

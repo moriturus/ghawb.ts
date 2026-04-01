@@ -896,7 +896,7 @@ describe('workflow renderer', () => {
             matrix: {
               node: ['18', '20'],
             },
-            failFast: false,
+            customField: true,
           },
           runsOn: 'ubuntu-latest',
           steps: [
@@ -911,7 +911,7 @@ describe('workflow renderer', () => {
 
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
-    ).toThrowError(new WorkflowRenderError('unsupported job strategy field "failFast"'));
+    ).toThrowError(new WorkflowRenderError('unsupported job strategy field "customField"'));
   });
 
   it('renders workflow-level env after permissions and before concurrency', () => {
@@ -1433,6 +1433,143 @@ describe('workflow renderer', () => {
       });
       expect(jobKeys.indexOf('runs-on')).toBeLessThan(jobKeys.indexOf('outputs'));
       expect(jobKeys.indexOf('outputs')).toBeLessThan(jobKeys.indexOf('steps'));
+    });
+  });
+
+  describe('strategy completion — fail-fast, max-parallel, matrix include/exclude', () => {
+    it('renders strategy with fail-fast, max-parallel, include, and exclude', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy-full'),
+        name: 'Strategy Full',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+            })
+            .strategyFailFast(false)
+            .strategyMaxParallel(2)
+            .strategyInclude([{ os: 'macos-latest', node: '22', experimental: 'true' }])
+            .strategyExclude([{ os: 'windows-latest', node: '18' }])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const strategy = payload.jobs.test!.strategy!;
+
+      expect(strategy['fail-fast']).toBe(false);
+      expect(strategy['max-parallel']).toBe(2);
+      expect(strategy.matrix.os).toEqual(['ubuntu-latest', 'windows-latest']);
+      expect(strategy.matrix.node).toEqual(['18', '20']);
+      expect(strategy.matrix.include).toEqual([
+        { os: 'macos-latest', node: '22', experimental: 'true' },
+      ]);
+      expect(strategy.matrix.exclude).toEqual([{ os: 'windows-latest', node: '18' }]);
+
+      const json = renderWorkflow(workflow, emitPseudoYaml);
+      const failFastIdx = json.indexOf('"fail-fast"');
+      const maxParallelIdx = json.indexOf('"max-parallel"');
+      const matrixIdx = json.indexOf('"matrix"');
+      expect(failFastIdx).toBeLessThan(maxParallelIdx);
+      expect(maxParallelIdx).toBeLessThan(matrixIdx);
+    });
+
+    it('omits empty include and exclude from strategy payload', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy-empty-inc-exc'),
+        name: 'Strategy Empty IncExc',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({ os: ['ubuntu-latest'] })
+            .strategyInclude([])
+            .strategyExclude([])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const matrix = payload.jobs.test!.strategy!.matrix;
+
+      expect(matrix.os).toEqual(['ubuntu-latest']);
+      expect('include' in matrix).toBe(false);
+      expect('exclude' in matrix).toBe(false);
+    });
+
+    it('renders strategy with fail-fast only', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy-ff-only'),
+        name: 'Strategy FailFast Only',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({ os: ['ubuntu-latest'] })
+            .strategyFailFast(true)
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const strategy = payload.jobs.test!.strategy!;
+
+      expect(strategy['fail-fast']).toBe(true);
+      expect('max-parallel' in strategy).toBe(false);
+    });
+
+    it('renders strategy with max-parallel only', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy-mp-only'),
+        name: 'Strategy MaxParallel Only',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({ os: ['ubuntu-latest'] })
+            .strategyMaxParallel(3)
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const strategy = payload.jobs.test!.strategy!;
+
+      expect(strategy['max-parallel']).toBe(3);
+      expect('fail-fast' in strategy).toBe(false);
+    });
+
+    it('renders strategy with include containing arbitrary keys not in matrix axes', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy-arb-keys'),
+        name: 'Strategy Arbitrary Keys',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({ os: ['ubuntu-latest'] })
+            .strategyInclude([{ os: 'macos-latest', custom_key: 'value' }])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const include = payload.jobs.test!.strategy!.matrix.include as readonly Record<
+        string,
+        string
+      >[];
+
+      expect(include).toHaveLength(1);
+      expect(include[0]!.os).toBe('macos-latest');
+      expect(include[0]!.custom_key).toBe('value');
     });
   });
 });

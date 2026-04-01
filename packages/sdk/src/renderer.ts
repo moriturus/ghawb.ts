@@ -84,7 +84,11 @@ export interface WorkflowRenderJobPayload {
   };
   readonly env?: Readonly<Record<string, string>>;
   readonly strategy?: {
-    readonly matrix: Readonly<Record<string, readonly string[]>>;
+    readonly 'fail-fast'?: boolean;
+    readonly 'max-parallel'?: number;
+    readonly matrix: Readonly<
+      Record<string, readonly string[] | readonly Readonly<Record<string, string>>[]>
+    >;
   };
   readonly 'runs-on': string | readonly string[];
   readonly outputs?: Readonly<Record<string, string>>;
@@ -291,12 +295,35 @@ function createPermissionsPayload(
 }
 
 function createStrategyPayload(strategy: WorkflowStrategy): {
-  readonly matrix: Readonly<Record<string, readonly string[]>>;
+  readonly 'fail-fast'?: boolean;
+  readonly 'max-parallel'?: number;
+  readonly matrix: Readonly<
+    Record<string, readonly string[] | readonly Readonly<Record<string, string>>[]>
+  >;
 } {
-  assertAllowedKeys(strategy, ['matrix'], 'job strategy');
+  assertAllowedKeys(
+    strategy,
+    ['failFast', 'maxParallel', 'matrix', 'include', 'exclude'],
+    'job strategy'
+  );
+
+  const matrixPayload: Record<
+    string,
+    readonly string[] | readonly Readonly<Record<string, string>>[]
+  > = createMatrixPayload(strategy.matrix);
+
+  if (strategy.include !== undefined && strategy.include.length > 0) {
+    matrixPayload.include = strategy.include.map((entry) => ({ ...entry }));
+  }
+
+  if (strategy.exclude !== undefined && strategy.exclude.length > 0) {
+    matrixPayload.exclude = strategy.exclude.map((entry) => ({ ...entry }));
+  }
 
   return {
-    matrix: createMatrixPayload(strategy.matrix),
+    ...(strategy.failFast !== undefined ? { 'fail-fast': strategy.failFast } : {}),
+    ...(strategy.maxParallel !== undefined ? { 'max-parallel': strategy.maxParallel } : {}),
+    matrix: matrixPayload,
   };
 }
 

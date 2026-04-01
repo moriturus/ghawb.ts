@@ -1,12 +1,17 @@
 import type { Brand } from './brand.ts';
 import { InvalidIdentifierError } from './errors.ts';
 
-const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+export const IDENTIFIER_FORMAT_SOURCE = '^[a-zA-Z_][a-zA-Z0-9_-]*$';
+export const IDENTIFIER_FORMAT_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
 
 export type WorkflowId = Brand<string, 'WorkflowId'>;
 export type JobId = Brand<string, 'JobId'>;
 
 export { InvalidIdentifierError as IdentifierFormatError };
+
+export function matchesIdentifierFormat(value: string): boolean {
+  return IDENTIFIER_FORMAT_PATTERN.test(value);
+}
 
 function createIdentifier<TIdentifier extends WorkflowId | JobId>(
   kind: 'workflow' | 'job',
@@ -20,8 +25,8 @@ function createIdentifier<TIdentifier extends WorkflowId | JobId>(
     throw new InvalidIdentifierError(kind, value, 'value must not contain surrounding whitespace');
   }
 
-  if (!IDENTIFIER_PATTERN.test(value)) {
-    throw new InvalidIdentifierError(kind, value, 'value must match /^[A-Za-z0-9][A-Za-z0-9_-]*$/');
+  if (!IDENTIFIER_FORMAT_PATTERN.test(value)) {
+    throw new InvalidIdentifierError(kind, value, `value must match /${IDENTIFIER_FORMAT_SOURCE}/`);
   }
 
   return value as TIdentifier;

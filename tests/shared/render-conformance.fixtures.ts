@@ -820,6 +820,20 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     expectedIssues: ['job "test" contains duplicate step id "same-id"'],
   },
   {
+    name: 'step_id_format_rejected',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('bad_step_id_format'),
+        name: 'Bad Step ID Format',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo first', { id: '1start' });
+        })
+        .build(),
+    expectedIssues: ['job "test" step 1 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$'],
+  },
+  {
     name: 'job_output_undeclared_step_ref',
     build: () =>
       defineWorkflow({
@@ -859,6 +873,25 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     ],
   },
   {
+    name: 'matrix_axis_format_rejected',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('bad_matrix_axis_format'),
+        name: 'Bad Matrix Axis Format',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              '1os': ['ubuntu-latest'],
+            } as unknown as import('@ghawb/sdk').WorkflowMatrix)
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        })
+        .build(),
+    expectedIssues: ['job "test" strategy.matrix axis "1os" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$'],
+  },
+  {
     name: 'dispatch_choice_without_options',
     build: () =>
       defineWorkflow({
@@ -877,6 +910,26 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         .build(),
     expectedIssues: [
       'trigger "workflow_dispatch" input "environment" type "choice" requires non-empty options',
+    ],
+  },
+  {
+    name: 'dispatch_input_name_format_rejected',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('bad_dispatch_input_name'),
+        name: 'Bad Dispatch Input Name',
+      })
+        .onWorkflowDispatch({
+          '1start': {
+            description: 'bad',
+          },
+        } as unknown as import('@ghawb/sdk').WorkflowDispatchInputs)
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('bun run deploy');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "workflow_dispatch" input "1start" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
     ],
   },
   {

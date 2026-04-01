@@ -6,6 +6,7 @@ import {
   type WorkflowMatrix,
   type WorkflowPermissionKey,
   type WorkflowPermissionLevel,
+  type WorkflowPermissionShorthand,
   type WorkflowPermissions,
   type WorkflowStep,
   type WorkflowStrategy,
@@ -126,6 +127,12 @@ export interface WorkflowRenderPayload {
     >
   >;
   readonly permissions?: WorkflowRenderPermissionsPayload;
+  readonly defaults?: {
+    readonly run: {
+      readonly shell?: string;
+      readonly 'working-directory'?: string;
+    };
+  };
   readonly env?: Readonly<Record<string, string>>;
   readonly concurrency?: {
     readonly group: string;
@@ -135,6 +142,10 @@ export interface WorkflowRenderPayload {
 }
 
 export type WorkflowEmitter<TResult> = (payload: WorkflowRenderPayload) => TResult;
+
+function isPermissionsShorthand(value: unknown): value is WorkflowPermissionShorthand {
+  return value === 'read-all' || value === 'write-all';
+}
 
 function deepFreeze<T>(value: T): T {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -334,6 +345,20 @@ function createPermissionsPayload(
   permissions: WorkflowPermissions,
   label: string
 ): WorkflowRenderPermissionsPayload {
+  if (typeof permissions === 'string') {
+    if (!isPermissionsShorthand(permissions)) {
+      throw new WorkflowRenderError(`unsupported ${label} permissions shorthand "${permissions}"`);
+    }
+
+    return permissions;
+  }
+
+  if (Object.keys(permissions).some((key) => key === 'read-all' || key === 'write-all')) {
+    throw new WorkflowRenderError(
+      `unsupported ${label} permissions shape: cannot mix shorthand with object-map entries`
+    );
+  }
+
   for (const key of Object.keys(permissions)) {
     if (!WORKFLOW_PERMISSION_KEYS.includes(key as WorkflowPermissionKey)) {
       throw new WorkflowRenderError(`unsupported ${label} permissions key "${key}"`);
@@ -392,7 +417,7 @@ function createStrategyPayload(strategy: WorkflowStrategy): {
 export function createWorkflowRenderPayload(workflow: WorkflowDefinition): WorkflowRenderPayload {
   assertAllowedKeys(
     workflow,
-    ['id', 'name', 'on', 'permissions', 'env', 'concurrency', 'jobs'],
+    ['id', 'name', 'on', 'permissions', 'defaults', 'env', 'concurrency', 'jobs'],
     'workflow'
   );
 
@@ -416,6 +441,9 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
 
   const workflowPermissions = workflow.permissions
     ? createPermissionsPayload(workflow.permissions, 'workflow')
+    : undefined;
+  const workflowDefaults = workflow.defaults
+    ? { defaults: { run: createDefaultsRunPayload(workflow.defaults.run) } }
     : undefined;
   const workflowEnv =
     workflow.env && Object.keys(workflow.env).length > 0 ? { ...workflow.env } : undefined;
@@ -472,6 +500,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     name: workflow.name,
     on,
     ...(workflowPermissions ? { permissions: workflowPermissions } : {}),
+    ...workflowDefaults,
     ...(workflowEnv ? { env: workflowEnv } : {}),
     ...(workflowConcurrency ? { concurrency: workflowConcurrency } : {}),
     jobs,

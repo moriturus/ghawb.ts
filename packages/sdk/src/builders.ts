@@ -26,6 +26,8 @@ import {
   type WorkflowMatrix,
   type WorkflowPermissionKey,
   type WorkflowPermissionLevel,
+  type WorkflowPermissionMap,
+  type WorkflowPermissionShorthand,
   type WorkflowPermissions,
   type WorkflowStrategy,
   type WorkflowStep,
@@ -85,6 +87,10 @@ const WORKFLOW_PERMISSION_ALLOWED_LEVELS: Readonly<
   'security-events': WORKFLOW_PERMISSION_LEVELS,
   statuses: WORKFLOW_PERMISSION_LEVELS,
 };
+
+function isPermissionsShorthand(value: unknown): value is WorkflowPermissionShorthand {
+  return value === 'read-all' || value === 'write-all';
+}
 
 function deepFreeze<T>(value: T): T {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -186,15 +192,19 @@ function cloneRunStepMetadata(metadata: RunStepMetadata): RunStepMetadata {
 }
 
 function clonePermissions(permissions: WorkflowPermissions): WorkflowPermissions {
-  return { ...permissions };
+  return typeof permissions === 'string' ? permissions : { ...permissions };
 }
 
 function canonicalizePermissions(permissions: WorkflowPermissions): WorkflowPermissions {
+  if (typeof permissions === 'string') {
+    return permissions;
+  }
+
   return Object.fromEntries(
     WORKFLOW_PERMISSION_KEYS.flatMap((key) =>
       permissions[key] !== undefined ? [[key, permissions[key]]] : []
     )
-  ) as WorkflowPermissions;
+  ) as WorkflowPermissionMap;
 }
 
 function cloneMatrix(
@@ -248,6 +258,24 @@ function createValidationIssues(
   const seenTriggerTypes = new Set<string>();
 
   validatePermissions('workflow', workflow.getPermissions(), issues);
+  if (workflow.getDefaults() !== undefined) {
+    const { run } = workflow.getDefaults()!;
+
+    if (run.shell !== undefined && run.shell.trim().length === 0) {
+      issues.push('workflow defaults.run.shell must not be empty');
+    }
+
+    if (run.workingDirectory !== undefined && run.workingDirectory.trim().length === 0) {
+      issues.push('workflow defaults.run.working-directory must not be empty');
+    }
+
+    if (
+      (run.shell === undefined || run.shell.trim().length === 0) &&
+      (run.workingDirectory === undefined || run.workingDirectory.trim().length === 0)
+    ) {
+      issues.push('workflow defaults.run must define shell or working-directory');
+    }
+  }
   validateEnv('workflow', workflow.getEnv(), issues);
   validateConcurrency('workflow', workflow.getConcurrency(), issues);
 
@@ -727,6 +755,21 @@ function validatePermissions(
     return;
   }
 
+  if (typeof permissions === 'string') {
+    if (!isPermissionsShorthand(permissions)) {
+      issues.push(`${owner} permissions must be "read-all", "write-all", or an object map`);
+    }
+
+    return;
+  }
+
+  if (Object.keys(permissions).some((key) => key === 'read-all' || key === 'write-all')) {
+    issues.push(
+      `${owner} permissions must use either shorthand ("read-all"/"write-all") or an object map, not both`
+    );
+    return;
+  }
+
   for (const key of Object.keys(permissions)) {
     if (!WORKFLOW_PERMISSION_KEYS.includes(key as WorkflowPermissionKey)) {
       issues.push(`${owner} permissions contains unsupported key "${key}"`);
@@ -1072,6 +1115,9 @@ export class WorkflowBuilder {
 
   private readonly jobs: WorkflowJobDraft[] = [];
   private permissionsDraft?: WorkflowPermissions;
+  private defaultsDraft?: {
+    readonly run: WorkflowDefaultsRun;
+  };
   private envDraft?: WorkflowEnv;
   private concurrencyDraft?: WorkflowConcurrency;
 
@@ -1123,6 +1169,21 @@ export class WorkflowBuilder {
 
   getPermissions(): WorkflowPermissions | undefined {
     return this.permissionsDraft;
+  }
+
+  defaultsRun(defaultsRun: WorkflowDefaultsRun): this {
+    this.defaultsDraft = {
+      run: cloneDefaultsRun(defaultsRun),
+    };
+    return this;
+  }
+
+  getDefaults():
+    | {
+        readonly run: WorkflowDefaultsRun;
+      }
+    | undefined {
+    return this.defaultsDraft;
   }
 
   env(env: WorkflowEnv): this {
@@ -1187,6 +1248,9 @@ export class WorkflowBuilder {
       on: this.triggers.map(cloneTrigger),
       ...(this.permissionsDraft !== undefined
         ? { permissions: canonicalizePermissions(this.permissionsDraft) }
+        : {}),
+      ...(this.defaultsDraft !== undefined
+        ? { defaults: { run: finalizeDefaultsRun(this.defaultsDraft.run) } }
         : {}),
       ...(this.envDraft !== undefined && Object.keys(this.envDraft).length > 0
         ? { env: cloneEnv(this.envDraft) }

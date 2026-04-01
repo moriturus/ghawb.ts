@@ -10,8 +10,13 @@ export default defineWorkflow({
   .onPullRequest({
     branches: ['main'],
   })
+  .concurrency({
+    group: 'ci-${{ github.ref }}',
+    cancelInProgress: true,
+  })
   .addJob(createJobId('check'), (job) => {
     job
+      .permissions({ contents: 'read' })
       .runsOn('ubuntu-latest')
       .uses('actions/checkout@v4', {
         name: 'Checkout',

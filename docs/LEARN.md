@@ -84,3 +84,21 @@ Use this document to capture durable lessons discovered during implementation.
 - Why it matters: Regex capture groups always have an `undefined` element type in their match arrays under strict TypeScript, even when the group is not optional in the pattern. Forgetting to narrow creates type errors that are only caught at the type-check stage rather than at authoring time.
 - Recommendation: Always apply a nullish coalescing guard (`match[1] ?? ''`) or an explicit truthiness check when reading regex capture groups. Treat every `match[N]` access (where N > 0) as potentially `undefined` regardless of the pattern structure.
 - Links: [builders.ts](../packages/sdk/src/builders.ts)
+
+### Sub-agent prompts must require format-before-verify
+
+- Date: 2026-06-22
+- Context: Sprint 11, Item 35 (validation diagnostic enrichment).
+- What happened: The sub-agent performing the cross-cutting validation message enrichment did not run `bun run format` before its verification step. The coordinator had to intervene to format the code and verify the result. This is the same class of formatting friction noted in Sprint 9 and Sprint 10.
+- Why it matters: When sub-agents skip formatting, the coordinator loses time debugging whether test failures are logic errors or style violations. For cross-cutting changes that touch many files (Item 35 touched ~70 messages across 3 source files), the formatting delta can be large and confusing.
+- Recommendation: Include a standardized verification suffix in every sub-agent delegation prompt: `bun run format && bun run check && bun run coverage`. Make it explicit that format must run first, not after tests.
+- Links: [AGENTS.md](../AGENTS.md), [TEAM.md](./TEAM.md)
+
+### Sub-agents must not commit temporary test files
+
+- Date: 2026-06-22
+- Context: Sprint 11, Item 33 (container and services).
+- What happened: The sub-agent committed a stray `test-yaml-render.ts` temporary file alongside the Item 33 deliverables. The coordinator had to `git rm` it and amend the commit.
+- Why it matters: Temporary artifacts in commits create noise in reviews and can break CI if they contain invalid imports or duplicate test names. The cleanup cost is small but avoidable.
+- Recommendation: Add an explicit cleanup instruction to sub-agent prompts: "Before committing, verify that `git status` shows only files that are part of the deliverable. Remove any temporary test or scratch files."
+- Links: [AGENTS.md](../AGENTS.md)

@@ -6,6 +6,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 
 - [INDEX.md](./INDEX.md): Index of the documentation set under `docs/`.
 - [SPEC.md](./SPEC.md): Current product specification and quality constraints.
+- [SYNTAX_COVERAGE.md](./SYNTAX_COVERAGE.md): GitHub Actions workflow syntax support/non-support matrix.
 - [CONTRIBUTING.md](./CONTRIBUTING.md): Supported contributor verification flow and workflow authoring guidance.
 - [PRODUCT_BACKLOG.md](./PRODUCT_BACKLOG.md): Prioritized product backlog and delivery order.
 - [sprint_backlogs/sp1.md](./sprint_backlogs/sp1.md): Sprint 1 backlog record, planning notes, and delivered items.

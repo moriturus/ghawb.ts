@@ -9,5 +9,14 @@ export default defineConfig({
       'packages/sdk/src/**/*.test.ts',
       'tests/node/**/*.test.ts',
     ],
+    coverage: {
+      provider: 'v8',
+      include: ['packages/sdk/src/**/*.ts'],
+      reporter: ['text', 'lcov'],
+      reportsDirectory: './coverage',
+      thresholds: {
+        lines: 100,
+      },
+    },
   },
 });

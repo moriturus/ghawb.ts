@@ -14,7 +14,7 @@ describe('node smoke coverage via Vitest', () => {
       })
       .build();
 
-    expect(builtWorkflow.jobs[0]?.steps[0]?.kind).toBe('run');
+    expect(builtWorkflow.jobs[0]?.steps?.[0]?.kind).toBe('run');
   });
 
   it('sees explicit workflow validation errors', () => {

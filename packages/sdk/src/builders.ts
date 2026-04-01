@@ -1,4 +1,10 @@
-import { WorkflowValidationError, type JobId, type WorkflowId } from '@ghawb/shared';
+import {
+  IDENTIFIER_FORMAT_SOURCE,
+  WorkflowValidationError,
+  matchesIdentifierFormat,
+  type JobId,
+  type WorkflowId,
+} from '@ghawb/shared';
 
 import {
   WORKFLOW_PERMISSION_KEYS,
@@ -17,15 +23,26 @@ import {
   type WorkflowConcurrency,
   type WorkflowDefinition,
   type WorkflowDefaultsRun,
+  type WorkflowCallInput,
+  type WorkflowCallInputs,
+  type WorkflowCallOutput,
+  type WorkflowCallOutputs,
+  type WorkflowCallSecret,
+  type WorkflowCallSecrets,
   type WorkflowDispatchInput,
   type WorkflowDispatchInputs,
   type WorkflowDispatchInputType,
   type WorkflowEnv,
+  type ReusableWorkflowJobSecrets,
+  type ReusableWorkflowJob,
+  type StepsJob,
   type WorkflowJob,
   type WorkflowJobOutputs,
   type WorkflowMatrix,
   type WorkflowPermissionKey,
   type WorkflowPermissionLevel,
+  type WorkflowPermissionMap,
+  type WorkflowPermissionShorthand,
   type WorkflowPermissions,
   type WorkflowStrategy,
   type WorkflowStep,
@@ -40,12 +57,16 @@ interface WorkflowStepDraft extends StepMetadata {
   readonly workingDirectory?: string;
 }
 
-interface WorkflowJobDraft {
+interface WorkflowJobDraftBase {
   readonly id: JobId;
   readonly if?: string;
   readonly needs?: readonly JobId[];
   readonly continueOnError?: boolean;
   readonly permissions?: WorkflowPermissions;
+}
+
+interface StepsJobDraft extends WorkflowJobDraftBase {
+  readonly kind: 'steps';
   readonly timeoutMinutes?: number;
   readonly defaults?: {
     readonly run: WorkflowDefaultsRun;
@@ -63,6 +84,17 @@ interface WorkflowJobDraft {
   readonly outputs?: WorkflowJobOutputs;
   readonly steps: readonly WorkflowStepDraft[];
 }
+
+interface ReusableWorkflowJobDraft extends WorkflowJobDraftBase {
+  readonly kind: 'reusable-workflow';
+  readonly secrets?: ReusableWorkflowJobSecrets;
+  readonly with?: Readonly<Record<string, string>>;
+  readonly uses?: string;
+  readonly steps: readonly WorkflowStepDraft[];
+  readonly runsOn?: string | readonly string[];
+}
+
+type WorkflowJobDraft = StepsJobDraft | ReusableWorkflowJobDraft;
 
 const WORKFLOW_PERMISSION_LEVELS = ['read', 'write', 'none'] as const;
 
@@ -85,6 +117,10 @@ const WORKFLOW_PERMISSION_ALLOWED_LEVELS: Readonly<
   'security-events': WORKFLOW_PERMISSION_LEVELS,
   statuses: WORKFLOW_PERMISSION_LEVELS,
 };
+
+function isPermissionsShorthand(value: unknown): value is WorkflowPermissionShorthand {
+  return value === 'read-all' || value === 'write-all';
+}
 
 function deepFreeze<T>(value: T): T {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -133,6 +169,15 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
     };
   }
 
+  if (trigger.type === 'workflow_call') {
+    return {
+      type: 'workflow_call',
+      ...(trigger.inputs ? { inputs: cloneWorkflowCallInputs(trigger.inputs) } : {}),
+      ...(trigger.outputs ? { outputs: cloneWorkflowCallOutputs(trigger.outputs) } : {}),
+      ...(trigger.secrets ? { secrets: cloneWorkflowCallSecrets(trigger.secrets) } : {}),
+    };
+  }
+
   return {
     type: trigger.type,
     ...cloneFilter(trigger),
@@ -153,6 +198,50 @@ function cloneDispatchInput(input: WorkflowDispatchInput): WorkflowDispatchInput
     ...(input.default !== undefined ? { default: input.default } : {}),
     ...(input.type !== undefined ? { type: input.type } : {}),
     ...(input.options ? { options: [...input.options] as [string, ...string[]] } : {}),
+  };
+}
+
+function cloneWorkflowCallInputs(inputs: WorkflowCallInputs): WorkflowCallInputs {
+  return Object.fromEntries(
+    Object.entries(inputs).map(([name, input]) => [name, cloneWorkflowCallInput(input)])
+  );
+}
+
+function cloneWorkflowCallInput(input: WorkflowCallInput): WorkflowCallInput {
+  return {
+    ...(input.description !== undefined ? { description: input.description } : {}),
+    ...(input.required !== undefined ? { required: input.required } : {}),
+    ...(input.default !== undefined ? { default: input.default } : {}),
+    ...(input.type !== undefined ? { type: input.type } : {}),
+    ...('options' in (input as object)
+      ? { options: [...((input as { options?: readonly string[] }).options ?? [])] }
+      : {}),
+  };
+}
+
+function cloneWorkflowCallOutputs(outputs: WorkflowCallOutputs): WorkflowCallOutputs {
+  return Object.fromEntries(
+    Object.entries(outputs).map(([name, output]) => [name, cloneWorkflowCallOutput(output)])
+  );
+}
+
+function cloneWorkflowCallOutput(output: WorkflowCallOutput): WorkflowCallOutput {
+  return {
+    ...(output.description !== undefined ? { description: output.description } : {}),
+    value: output.value,
+  };
+}
+
+function cloneWorkflowCallSecrets(secrets: WorkflowCallSecrets): WorkflowCallSecrets {
+  return Object.fromEntries(
+    Object.entries(secrets).map(([name, secret]) => [name, cloneWorkflowCallSecret(secret)])
+  );
+}
+
+function cloneWorkflowCallSecret(secret: WorkflowCallSecret): WorkflowCallSecret {
+  return {
+    ...(secret.description !== undefined ? { description: secret.description } : {}),
+    ...(secret.required !== undefined ? { required: secret.required } : {}),
   };
 }
 
@@ -186,15 +275,19 @@ function cloneRunStepMetadata(metadata: RunStepMetadata): RunStepMetadata {
 }
 
 function clonePermissions(permissions: WorkflowPermissions): WorkflowPermissions {
-  return { ...permissions };
+  return typeof permissions === 'string' ? permissions : { ...permissions };
 }
 
 function canonicalizePermissions(permissions: WorkflowPermissions): WorkflowPermissions {
+  if (typeof permissions === 'string') {
+    return permissions;
+  }
+
   return Object.fromEntries(
     WORKFLOW_PERMISSION_KEYS.flatMap((key) =>
       permissions[key] !== undefined ? [[key, permissions[key]]] : []
     )
-  ) as WorkflowPermissions;
+  ) as WorkflowPermissionMap;
 }
 
 function cloneMatrix(
@@ -248,6 +341,24 @@ function createValidationIssues(
   const seenTriggerTypes = new Set<string>();
 
   validatePermissions('workflow', workflow.getPermissions(), issues);
+  if (workflow.getDefaults() !== undefined) {
+    const { run } = workflow.getDefaults()!;
+
+    if (run.shell !== undefined && run.shell.trim().length === 0) {
+      issues.push('workflow defaults.run.shell must not be empty');
+    }
+
+    if (run.workingDirectory !== undefined && run.workingDirectory.trim().length === 0) {
+      issues.push('workflow defaults.run.working-directory must not be empty');
+    }
+
+    if (
+      (run.shell === undefined || run.shell.trim().length === 0) &&
+      (run.workingDirectory === undefined || run.workingDirectory.trim().length === 0)
+    ) {
+      issues.push('workflow defaults.run must define shell or working-directory');
+    }
+  }
   validateEnv('workflow', workflow.getEnv(), issues);
   validateConcurrency('workflow', workflow.getConcurrency(), issues);
 
@@ -279,6 +390,13 @@ function createValidationIssues(
             continue;
           }
 
+          validateIdentifierLike(
+            `trigger "workflow_dispatch" input "${inputName}"`,
+            inputName,
+            issues,
+            'name'
+          );
+
           if (input.required !== undefined && typeof input.required !== 'boolean') {
             issues.push(
               `trigger "workflow_dispatch" input "${inputName}" required must be a boolean`
@@ -306,6 +424,104 @@ function createValidationIssues(
           } else if (input.options !== undefined) {
             issues.push(
               `trigger "workflow_dispatch" input "${inputName}" options is only valid when type is "choice"`
+            );
+          }
+        }
+      }
+
+      continue;
+    }
+
+    if (trigger.type === 'workflow_call') {
+      if ('branches' in trigger) {
+        issues.push('trigger "workflow_call" does not support branches');
+      }
+
+      if ('paths' in trigger) {
+        issues.push('trigger "workflow_call" does not support paths');
+      }
+
+      if ('types' in trigger) {
+        issues.push('trigger "workflow_call" does not support types');
+      }
+
+      if (trigger.inputs !== undefined) {
+        for (const [inputName, input] of Object.entries(trigger.inputs)) {
+          if (inputName.trim().length === 0) {
+            issues.push('trigger "workflow_call" inputs must not contain blank names');
+            continue;
+          }
+
+          validateIdentifierLike(
+            `trigger "workflow_call" input "${inputName}"`,
+            inputName,
+            issues,
+            'name'
+          );
+
+          if (input.required !== undefined && typeof input.required !== 'boolean') {
+            issues.push(`trigger "workflow_call" input "${inputName}" required must be a boolean`);
+          }
+
+          if (input.type !== undefined) {
+            if (!WORKFLOW_DISPATCH_INPUT_TYPES.includes(input.type as WorkflowDispatchInputType)) {
+              issues.push(
+                `trigger "workflow_call" input "${inputName}" type "${input.type}" is not a valid input type`
+              );
+            }
+
+            if (input.type === 'choice') {
+              issues.push(
+                `trigger "workflow_call" input "${inputName}" type "choice" is not supported`
+              );
+            }
+          }
+
+          if ('options' in (input as object)) {
+            issues.push(`trigger "workflow_call" input "${inputName}" options is not supported`);
+          }
+        }
+      }
+
+      if (trigger.outputs !== undefined) {
+        for (const [outputName, output] of Object.entries(trigger.outputs)) {
+          if (outputName.trim().length === 0) {
+            issues.push('trigger "workflow_call" outputs must not contain blank names');
+            continue;
+          }
+
+          validateIdentifierLike(
+            `trigger "workflow_call" output "${outputName}"`,
+            outputName,
+            issues,
+            'name'
+          );
+
+          if (typeof output.value !== 'string' || output.value.trim().length === 0) {
+            issues.push(
+              `trigger "workflow_call" output "${outputName}" value must be a non-blank string`
+            );
+          }
+        }
+      }
+
+      if (trigger.secrets !== undefined) {
+        for (const [secretName, secret] of Object.entries(trigger.secrets)) {
+          if (secretName.trim().length === 0) {
+            issues.push('trigger "workflow_call" secrets must not contain blank names');
+            continue;
+          }
+
+          validateIdentifierLike(
+            `trigger "workflow_call" secret "${secretName}"`,
+            secretName,
+            issues,
+            'name'
+          );
+
+          if (secret.required !== undefined && typeof secret.required !== 'boolean') {
+            issues.push(
+              `trigger "workflow_call" secret "${secretName}" required must be a boolean`
             );
           }
         }
@@ -427,22 +643,6 @@ function createValidationIssues(
       seenJobIds.add(jobId);
     }
 
-    if (job.runsOn === undefined) {
-      issues.push(`job "${jobId}" must define runs-on`);
-    } else if (typeof job.runsOn === 'string') {
-      if (job.runsOn.trim().length === 0) {
-        issues.push(`job "${jobId}" runs-on must not be empty`);
-      }
-    } else {
-      if (job.runsOn.length === 0) {
-        issues.push(`job "${jobId}" runs-on array must not be empty`);
-      }
-
-      if (job.runsOn.some((target) => target.trim().length === 0)) {
-        issues.push(`job "${jobId}" runs-on array must not contain blank values`);
-      }
-    }
-
     if (job.needs !== undefined) {
       if (job.needs.length === 0) {
         issues.push(`job "${jobId}" needs must not be empty`);
@@ -483,6 +683,58 @@ function createValidationIssues(
       }
     }
 
+    validatePermissions(`job "${jobId}"`, job.permissions, issues);
+
+    if (job.kind === 'reusable-workflow') {
+      if (job.uses === undefined) {
+        issues.push(`job "${jobId}" reusable workflow job must define uses`);
+      } else if (job.uses.trim().length === 0) {
+        issues.push(`job "${jobId}" reusable workflow uses must not be empty`);
+      }
+
+      if (job.runsOn !== undefined) {
+        issues.push(`job "${jobId}" reusable workflow job must not define runs-on`);
+      }
+
+      if (job.steps.length > 0) {
+        issues.push(`job "${jobId}" reusable workflow job must not define inline steps`);
+      }
+
+      if (job.with !== undefined && Object.keys(job.with).some((key) => key.trim().length === 0)) {
+        issues.push(`job "${jobId}" with must not contain blank keys`);
+      }
+
+      if (job.secrets !== undefined && job.secrets !== 'inherit') {
+        if (Object.keys(job.secrets).some((key) => key.trim().length === 0)) {
+          issues.push(`job "${jobId}" secrets must not contain blank keys`);
+        }
+
+        for (const [key, value] of Object.entries(job.secrets)) {
+          if (value.trim().length === 0) {
+            issues.push(`job "${jobId}" secrets key "${key}" must not have a blank value`);
+          }
+        }
+      }
+
+      continue;
+    }
+
+    if (job.runsOn === undefined) {
+      issues.push(`job "${jobId}" must define runs-on`);
+    } else if (typeof job.runsOn === 'string') {
+      if (job.runsOn.trim().length === 0) {
+        issues.push(`job "${jobId}" runs-on must not be empty`);
+      }
+    } else {
+      if (job.runsOn.length === 0) {
+        issues.push(`job "${jobId}" runs-on array must not be empty`);
+      }
+
+      if (job.runsOn.some((target) => target.trim().length === 0)) {
+        issues.push(`job "${jobId}" runs-on array must not contain blank values`);
+      }
+    }
+
     if (job.timeoutMinutes !== undefined) {
       if (!Number.isInteger(job.timeoutMinutes) || job.timeoutMinutes <= 0) {
         issues.push(`job "${jobId}" timeout-minutes must be a positive integer`);
@@ -509,8 +761,6 @@ function createValidationIssues(
 
     validateEnv(`job "${jobId}"`, job.env, issues);
 
-    validatePermissions(`job "${jobId}"`, job.permissions, issues);
-
     if (job.strategy !== undefined) {
       if (job.strategy.failFast !== undefined && typeof job.strategy.failFast !== 'boolean') {
         issues.push(`job "${jobId}" strategy.fail-fast must be a boolean`);
@@ -535,6 +785,8 @@ function createValidationIssues(
           issues.push(`job "${jobId}" strategy.matrix must not contain blank axis names`);
           continue;
         }
+
+        validateIdentifierLike(`job "${jobId}" strategy.matrix axis "${axis}"`, axis, issues);
 
         if (axis === 'include' || axis === 'exclude') {
           issues.push(`job "${jobId}" strategy.matrix does not support axis "${axis}"`);
@@ -640,6 +892,10 @@ function createValidationIssues(
       if (step.id !== undefined) {
         if (step.id.trim().length === 0) {
           issues.push(`${location} id must not be empty`);
+        } else if (step.id !== step.id.trim()) {
+          issues.push(`${location} id must not contain surrounding whitespace`);
+        } else if (!matchesIdentifierFormat(step.id)) {
+          issues.push(`${location} id must match ${IDENTIFIER_FORMAT_SOURCE}`);
         } else if (stepIds.has(step.id)) {
           issues.push(`job "${jobId}" contains duplicate step id "${step.id}"`);
         } else {
@@ -727,6 +983,21 @@ function validatePermissions(
     return;
   }
 
+  if (typeof permissions === 'string') {
+    if (!isPermissionsShorthand(permissions)) {
+      issues.push(`${owner} permissions must be "read-all", "write-all", or an object map`);
+    }
+
+    return;
+  }
+
+  if (Object.keys(permissions).some((key) => key === 'read-all' || key === 'write-all')) {
+    issues.push(
+      `${owner} permissions must use either shorthand ("read-all"/"write-all") or an object map, not both`
+    );
+    return;
+  }
+
   for (const key of Object.keys(permissions)) {
     if (!WORKFLOW_PERMISSION_KEYS.includes(key as WorkflowPermissionKey)) {
       issues.push(`${owner} permissions contains unsupported key "${key}"`);
@@ -777,9 +1048,20 @@ function validateEnv(owner: string, env: WorkflowEnv | undefined, issues: string
   }
 }
 
+function validateIdentifierLike(
+  location: string,
+  value: string,
+  issues: string[],
+  label?: string
+): void {
+  if (!matchesIdentifierFormat(value)) {
+    issues.push(`${location}${label ? ` ${label}` : ''} must match ${IDENTIFIER_FORMAT_SOURCE}`);
+  }
+}
+
 function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   const base = {
-    ...(step.id !== undefined ? { id: step.id.trim() } : {}),
+    ...(step.id !== undefined ? { id: step.id } : {}),
     ...(step.name !== undefined ? { name: step.name.trim() } : {}),
     ...(step.env ? { env: { ...step.env } } : {}),
     ...(step.with ? { with: { ...step.with } } : {}),
@@ -875,6 +1157,16 @@ function finalizeDefaultsRun(defaultsRun: WorkflowDefaultsRun): WorkflowDefaults
   };
 }
 
+function finalizeReusableWorkflowJobSecrets(
+  secrets: ReusableWorkflowJobSecrets
+): ReusableWorkflowJobSecrets {
+  if (secrets === 'inherit') {
+    return secrets;
+  }
+
+  return Object.fromEntries(Object.entries(secrets).map(([key, value]) => [key, value.trim()]));
+}
+
 class JobBuilder {
   readonly id: JobId;
 
@@ -897,6 +1189,10 @@ class JobBuilder {
   };
   private jobRunsOn?: string | readonly string[];
   private jobOutputs?: WorkflowJobOutputs;
+  private jobKind: 'steps' | 'reusable-workflow' = 'steps';
+  private jobUses?: string;
+  private jobWith?: Readonly<Record<string, string>>;
+  private jobSecrets?: ReusableWorkflowJobSecrets;
   private readonly jobSteps: WorkflowStepDraft[] = [];
 
   constructor(id: JobId) {
@@ -995,6 +1291,29 @@ class JobBuilder {
     return this;
   }
 
+  usesWorkflow(
+    workflow: string,
+    options: Readonly<{
+      with?: Readonly<Record<string, string>>;
+      secrets?: ReusableWorkflowJobSecrets;
+    }> = {}
+  ): this {
+    this.jobKind = 'reusable-workflow';
+    this.jobUses = workflow;
+    if (options.with !== undefined) {
+      this.jobWith = { ...options.with };
+    } else {
+      delete this.jobWith;
+    }
+
+    if (options.secrets !== undefined) {
+      this.jobSecrets = options.secrets === 'inherit' ? 'inherit' : { ...options.secrets };
+    } else {
+      delete this.jobSecrets;
+    }
+    return this;
+  }
+
   run(command: string, metadata: RunStepMetadata = {}): this {
     this.jobSteps.push({
       kind: 'run',
@@ -1014,7 +1333,41 @@ class JobBuilder {
   }
 
   toDraft(): WorkflowJobDraft {
+    if (this.jobKind === 'reusable-workflow') {
+      return {
+        kind: 'reusable-workflow',
+        id: this.id,
+        ...(this.jobIf !== undefined ? { if: this.jobIf } : {}),
+        ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
+        ...(this.jobContinueOnError !== undefined
+          ? { continueOnError: this.jobContinueOnError }
+          : {}),
+        ...(this.jobPermissions !== undefined
+          ? { permissions: clonePermissions(this.jobPermissions) }
+          : {}),
+        ...(this.jobUses !== undefined ? { uses: this.jobUses } : {}),
+        ...(this.jobWith !== undefined ? { with: { ...this.jobWith } } : {}),
+        ...(this.jobSecrets !== undefined
+          ? {
+              secrets: this.jobSecrets === 'inherit' ? 'inherit' : { ...this.jobSecrets },
+            }
+          : {}),
+        ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+        steps: this.jobSteps.map((step) => ({
+          kind: step.kind,
+          ...(step.run !== undefined ? { run: step.run } : {}),
+          ...(step.shell !== undefined ? { shell: step.shell } : {}),
+          ...(step.uses !== undefined ? { uses: step.uses } : {}),
+          ...(step.workingDirectory !== undefined
+            ? { workingDirectory: step.workingDirectory }
+            : {}),
+          ...cloneStepMetadata(step),
+        })),
+      };
+    }
+
     return {
+      kind: 'steps',
       id: this.id,
       ...(this.jobIf !== undefined ? { if: this.jobIf } : {}),
       ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
@@ -1072,6 +1425,9 @@ export class WorkflowBuilder {
 
   private readonly jobs: WorkflowJobDraft[] = [];
   private permissionsDraft?: WorkflowPermissions;
+  private defaultsDraft?: {
+    readonly run: WorkflowDefaultsRun;
+  };
   private envDraft?: WorkflowEnv;
   private concurrencyDraft?: WorkflowConcurrency;
 
@@ -1108,6 +1464,22 @@ export class WorkflowBuilder {
     return this;
   }
 
+  onWorkflowCall(
+    config: Readonly<{
+      inputs?: WorkflowCallInputs;
+      outputs?: WorkflowCallOutputs;
+      secrets?: WorkflowCallSecrets;
+    }> = {}
+  ): this {
+    this.triggers.push({
+      type: 'workflow_call',
+      ...(config.inputs ? { inputs: cloneWorkflowCallInputs(config.inputs) } : {}),
+      ...(config.outputs ? { outputs: cloneWorkflowCallOutputs(config.outputs) } : {}),
+      ...(config.secrets ? { secrets: cloneWorkflowCallSecrets(config.secrets) } : {}),
+    });
+    return this;
+  }
+
   onSchedule(cron: string | readonly [string, ...string[]]): this {
     this.triggers.push({
       type: 'schedule',
@@ -1123,6 +1495,21 @@ export class WorkflowBuilder {
 
   getPermissions(): WorkflowPermissions | undefined {
     return this.permissionsDraft;
+  }
+
+  defaultsRun(defaultsRun: WorkflowDefaultsRun): this {
+    this.defaultsDraft = {
+      run: cloneDefaultsRun(defaultsRun),
+    };
+    return this;
+  }
+
+  getDefaults():
+    | {
+        readonly run: WorkflowDefaultsRun;
+      }
+    | undefined {
+    return this.defaultsDraft;
   }
 
   env(env: WorkflowEnv): this {
@@ -1157,29 +1544,54 @@ export class WorkflowBuilder {
       throw new WorkflowValidationError(issues);
     }
 
-    const jobs: WorkflowJob[] = this.jobs.map((job) => ({
-      id: job.id,
-      ...(job.if !== undefined ? { if: job.if } : {}),
-      ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
-      ...(job.continueOnError !== undefined ? { continueOnError: job.continueOnError } : {}),
-      ...(job.permissions !== undefined
-        ? { permissions: canonicalizePermissions(job.permissions) }
-        : {}),
-      ...(job.timeoutMinutes !== undefined ? { timeoutMinutes: job.timeoutMinutes } : {}),
-      ...(job.defaults !== undefined
-        ? { defaults: { run: finalizeDefaultsRun(job.defaults.run) } }
-        : {}),
-      ...(job.concurrency !== undefined ? { concurrency: cloneConcurrency(job.concurrency) } : {}),
-      ...(job.env !== undefined && Object.keys(job.env).length > 0
-        ? { env: cloneEnv(job.env) }
-        : {}),
-      ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
-      runsOn: finalizeRunsOn(job.runsOn!),
-      ...(job.outputs !== undefined && Object.keys(job.outputs).length > 0
-        ? { outputs: { ...job.outputs } }
-        : {}),
-      steps: job.steps.map(finalizeStep),
-    }));
+    const jobs: WorkflowJob[] = this.jobs.map((job) => {
+      if (job.kind === 'reusable-workflow') {
+        return {
+          kind: 'reusable-workflow',
+          id: job.id,
+          ...(job.if !== undefined ? { if: job.if } : {}),
+          ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
+          ...(job.continueOnError !== undefined ? { continueOnError: job.continueOnError } : {}),
+          ...(job.permissions !== undefined
+            ? { permissions: canonicalizePermissions(job.permissions) }
+            : {}),
+          ...(job.secrets !== undefined
+            ? { secrets: finalizeReusableWorkflowJobSecrets(job.secrets) }
+            : {}),
+          ...(job.with !== undefined && Object.keys(job.with).length > 0
+            ? { with: { ...job.with } }
+            : {}),
+          uses: job.uses!.trim(),
+        } satisfies ReusableWorkflowJob;
+      }
+
+      return {
+        kind: 'steps',
+        id: job.id,
+        ...(job.if !== undefined ? { if: job.if } : {}),
+        ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
+        ...(job.continueOnError !== undefined ? { continueOnError: job.continueOnError } : {}),
+        ...(job.permissions !== undefined
+          ? { permissions: canonicalizePermissions(job.permissions) }
+          : {}),
+        ...(job.timeoutMinutes !== undefined ? { timeoutMinutes: job.timeoutMinutes } : {}),
+        ...(job.defaults !== undefined
+          ? { defaults: { run: finalizeDefaultsRun(job.defaults.run) } }
+          : {}),
+        ...(job.concurrency !== undefined
+          ? { concurrency: cloneConcurrency(job.concurrency) }
+          : {}),
+        ...(job.env !== undefined && Object.keys(job.env).length > 0
+          ? { env: cloneEnv(job.env) }
+          : {}),
+        ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
+        runsOn: finalizeRunsOn(job.runsOn!),
+        ...(job.outputs !== undefined && Object.keys(job.outputs).length > 0
+          ? { outputs: { ...job.outputs } }
+          : {}),
+        steps: job.steps.map(finalizeStep),
+      } satisfies StepsJob;
+    });
 
     return deepFreeze({
       id: this.id,
@@ -1187,6 +1599,9 @@ export class WorkflowBuilder {
       on: this.triggers.map(cloneTrigger),
       ...(this.permissionsDraft !== undefined
         ? { permissions: canonicalizePermissions(this.permissionsDraft) }
+        : {}),
+      ...(this.defaultsDraft !== undefined
+        ? { defaults: { run: finalizeDefaultsRun(this.defaultsDraft.run) } }
         : {}),
       ...(this.envDraft !== undefined && Object.keys(this.envDraft).length > 0
         ? { env: cloneEnv(this.envDraft) }

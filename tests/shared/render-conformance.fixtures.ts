@@ -144,6 +144,64 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
     }
   ),
   createRenderFixture(
+    'workflow_defaults_and_permissions_shorthand',
+    defineWorkflow({
+      id: createWorkflowId('workflow_defaults_and_permissions_shorthand'),
+      name: 'Workflow Defaults And Permissions Shorthand',
+    })
+      .onPush({
+        branches: ['main'],
+      })
+      .permissions('read-all')
+      .defaultsRun({
+        shell: 'bash',
+        workingDirectory: './',
+      })
+      .addJob(createJobId('build'), (job) => {
+        job
+          .permissions('write-all')
+          .defaultsRun({
+            shell: 'sh',
+            workingDirectory: './packages/sdk',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun run build');
+      })
+      .build(),
+    {
+      name: 'Workflow Defaults And Permissions Shorthand',
+      on: {
+        push: {
+          branches: ['main'],
+        },
+      },
+      permissions: 'read-all',
+      defaults: {
+        run: {
+          shell: 'bash',
+          'working-directory': './',
+        },
+      },
+      jobs: {
+        build: {
+          permissions: 'write-all',
+          defaults: {
+            run: {
+              shell: 'sh',
+              'working-directory': './packages/sdk',
+            },
+          },
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
     'dispatch_and_schedule',
     defineWorkflow({
       id: createWorkflowId('dispatch_and_schedule'),
@@ -666,6 +724,96 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'workflow_call_and_reusable_job',
+    defineWorkflow({
+      id: createWorkflowId('workflow_call_and_reusable_job'),
+      name: 'Workflow Call And Reusable Job',
+    })
+      .onWorkflowCall({
+        inputs: {
+          environment: {
+            description: 'Target environment',
+            required: true,
+            default: 'staging',
+            type: 'string',
+          },
+        },
+        outputs: {
+          artifact_url: {
+            description: 'Artifact URL',
+            value: '${{ jobs.build.outputs.artifact_url }}',
+          },
+        },
+        secrets: {
+          github_token: {
+            description: 'GitHub token',
+            required: true,
+          },
+        },
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .needs(createJobId('build'))
+          .continueOnError(true)
+          .usesWorkflow('./.github/workflows/deploy.yml@main', {
+            with: {
+              environment: 'production',
+            },
+            secrets: 'inherit',
+          });
+      })
+      .build(),
+    {
+      name: 'Workflow Call And Reusable Job',
+      on: {
+        workflow_call: {
+          inputs: {
+            environment: {
+              description: 'Target environment',
+              required: true,
+              default: 'staging',
+              type: 'string',
+            },
+          },
+          outputs: {
+            artifact_url: {
+              description: 'Artifact URL',
+              value: '${{ jobs.build.outputs.artifact_url }}',
+            },
+          },
+          secrets: {
+            github_token: {
+              description: 'GitHub token',
+              required: true,
+            },
+          },
+        },
+      },
+      jobs: {
+        build: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+        deploy: {
+          needs: ['build'],
+          'continue-on-error': true,
+          secrets: 'inherit',
+          with: {
+            environment: 'production',
+          },
+          uses: './.github/workflows/deploy.yml@main',
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -682,6 +830,47 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: ['trigger "schedule" cron must not contain blank values'],
+  },
+  {
+    name: 'invalid_workflow_call_and_reusable_job',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('invalid_workflow_call_and_reusable_job'),
+        name: 'Invalid Workflow Call And Reusable Job',
+      })
+        .onWorkflowCall({
+          inputs: {
+            choice_input: {
+              type: 'choice' as unknown as 'string',
+              options: ['a', 'b'],
+            } as unknown as import('../../packages/sdk/src/index.ts').WorkflowCallInput,
+          },
+          outputs: {
+            'bad/name': {
+              value: ' ',
+            },
+          } as unknown as import('../../packages/sdk/src/index.ts').WorkflowCallOutputs,
+        })
+        .addJob(createJobId('deploy'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .run('echo deploy')
+            .usesWorkflow('./.github/workflows/deploy.yml@main', {
+              secrets: {
+                ' ': '${{ secrets.GITHUB_TOKEN }}',
+              },
+            });
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "workflow_call" input "choice_input" type "choice" is not supported',
+      'trigger "workflow_call" input "choice_input" options is not supported',
+      'trigger "workflow_call" output "bad/name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+      'trigger "workflow_call" output "bad/name" value must be a non-blank string',
+      'job "deploy" reusable workflow job must not define runs-on',
+      'job "deploy" reusable workflow job must not define inline steps',
+      'job "deploy" secrets must not contain blank keys',
+    ],
   },
   {
     name: 'blank_env_keys',
@@ -762,6 +951,20 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     expectedIssues: ['job "test" contains duplicate step id "same-id"'],
   },
   {
+    name: 'step_id_format_rejected',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('bad_step_id_format'),
+        name: 'Bad Step ID Format',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo first', { id: '1start' });
+        })
+        .build(),
+    expectedIssues: ['job "test" step 1 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$'],
+  },
+  {
     name: 'job_output_undeclared_step_ref',
     build: () =>
       defineWorkflow({
@@ -801,6 +1004,25 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     ],
   },
   {
+    name: 'matrix_axis_format_rejected',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('bad_matrix_axis_format'),
+        name: 'Bad Matrix Axis Format',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              '1os': ['ubuntu-latest'],
+            } as unknown as import('@ghawb/sdk').WorkflowMatrix)
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        })
+        .build(),
+    expectedIssues: ['job "test" strategy.matrix axis "1os" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$'],
+  },
+  {
     name: 'dispatch_choice_without_options',
     build: () =>
       defineWorkflow({
@@ -819,6 +1041,26 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         .build(),
     expectedIssues: [
       'trigger "workflow_dispatch" input "environment" type "choice" requires non-empty options',
+    ],
+  },
+  {
+    name: 'dispatch_input_name_format_rejected',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('bad_dispatch_input_name'),
+        name: 'Bad Dispatch Input Name',
+      })
+        .onWorkflowDispatch({
+          '1start': {
+            description: 'bad',
+          },
+        } as unknown as import('@ghawb/sdk').WorkflowDispatchInputs)
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('bun run deploy');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "workflow_dispatch" input "1start" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
     ],
   },
   {

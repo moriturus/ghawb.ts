@@ -61,6 +61,7 @@ if (import.meta.main) {
     await ensureCleanWorktree();
     await runScript('verify:workflows');
     await runScript('check');
+    await runScript('coverage');
     await runScript('test:vitest:node');
     console.log('Verified pre-push workflow checks');
   } catch (error) {

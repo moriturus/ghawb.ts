@@ -171,6 +171,152 @@ describe('workflow renderer', () => {
     expect(Object.keys(payload.on)).toEqual(['push', 'workflow_dispatch', 'schedule']);
   });
 
+  it('renders workflow_call in canonical trigger order after workflow_dispatch', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('reusable_order'),
+      name: 'Reusable Order',
+    })
+      .onSchedule('0 0 * * *')
+      .onWorkflowCall({
+        inputs: {
+          environment: {
+            type: 'string',
+          },
+        },
+      })
+      .onWorkflowDispatch()
+      .onPush({
+        branches: ['main'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(Object.keys(payload.on)).toEqual([
+      'push',
+      'workflow_dispatch',
+      'workflow_call',
+      'schedule',
+    ]);
+  });
+
+  it('renders workflow_call fields in canonical order', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_call_render'),
+      name: 'Workflow Call Render',
+    })
+      .onWorkflowCall({
+        inputs: {
+          environment: {
+            description: 'Target environment',
+            required: true,
+            default: 'staging',
+            type: 'string',
+          },
+        },
+        outputs: {
+          artifact_url: {
+            description: 'Artifact URL',
+            value: '${{ jobs.build.outputs.artifact_url }}',
+          },
+        },
+        secrets: {
+          token: {
+            description: 'Deploy token',
+            required: true,
+          },
+        },
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const workflowCallPayload = payload.on.workflow_call!;
+
+    expect(workflowCallPayload).toEqual({
+      inputs: {
+        environment: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'string',
+        },
+      },
+      outputs: {
+        artifact_url: {
+          description: 'Artifact URL',
+          value: '${{ jobs.build.outputs.artifact_url }}',
+        },
+      },
+      secrets: {
+        token: {
+          description: 'Deploy token',
+          required: true,
+        },
+      },
+    });
+    expect(Object.keys(workflowCallPayload)).toEqual(['inputs', 'outputs', 'secrets']);
+  });
+
+  it('renders workflow_call without inputs when only outputs are declared', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_call_outputs_only'),
+      name: 'Workflow Call Outputs Only',
+    })
+      .onWorkflowCall({
+        outputs: {
+          artifact_url: {
+            value: '${{ jobs.build.outputs.artifact_url }}',
+          },
+        },
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).on.workflow_call).toEqual({
+      outputs: {
+        artifact_url: {
+          value: '${{ jobs.build.outputs.artifact_url }}',
+        },
+      },
+    });
+  });
+
+  it('renders workflow_call secrets with description and required', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_call_secret_render'),
+      name: 'Workflow Call Secret Render',
+    })
+      .onWorkflowCall({
+        secrets: {
+          token: {
+            description: 'Deploy token',
+            required: true,
+          },
+        },
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).on.workflow_call).toEqual({
+      secrets: {
+        token: {
+          description: 'Deploy token',
+          required: true,
+        },
+      },
+    });
+  });
+
   it('renders identical output across repeated runs with the same emitter', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('repeatable'),
@@ -209,6 +355,38 @@ describe('workflow renderer', () => {
               run: 'bun test',
             },
           ],
+        },
+      },
+    });
+  });
+
+  it('renders workflow_dispatch inputs with all fields in payload order', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('dispatch_render_full'),
+      name: 'Dispatch Render Full',
+    })
+      .onWorkflowDispatch({
+        environment: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'choice',
+          options: ['staging', 'production'],
+        },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).on.workflow_dispatch).toEqual({
+      inputs: {
+        environment: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'choice',
+          options: ['staging', 'production'],
         },
       },
     });
@@ -393,6 +571,49 @@ describe('workflow renderer', () => {
     expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
   });
 
+  it('renders workflow-level defaults and permissions shorthand deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_defaults_permissions_shorthand'),
+      name: 'Workflow Defaults And Permissions Shorthand',
+    })
+      .onPush()
+      .permissions('read-all')
+      .defaultsRun({
+        shell: 'bash',
+        workingDirectory: './',
+      })
+      .addJob(createJobId('check'), (job) => {
+        job.permissions('write-all').runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: 'Workflow Defaults And Permissions Shorthand',
+      on: {
+        push: null,
+      },
+      permissions: 'read-all',
+      defaults: {
+        run: {
+          shell: 'bash',
+          'working-directory': './',
+        },
+      },
+      jobs: {
+        check: {
+          permissions: 'write-all',
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
   it('renders execution environment metadata deterministically', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('execution_metadata'),
@@ -440,6 +661,27 @@ describe('workflow renderer', () => {
       },
     });
     expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it('renders workflow defaults.run with shell-only payloads', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('defaults_shell_only'),
+      name: 'Defaults Shell Only',
+    })
+      .onPush()
+      .defaultsRun({
+        shell: 'bash',
+      })
+      .addJob(createJobId('check'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).defaults).toEqual({
+      run: {
+        shell: 'bash',
+      },
+    });
   });
 
   it('renders workflow-level and job-level concurrency deterministically', () => {
@@ -501,6 +743,7 @@ describe('workflow renderer', () => {
       ],
       jobs: [
         {
+          kind: 'steps',
           id: createJobId('test'),
           runsOn: 'ubuntu-latest',
           steps: [
@@ -511,17 +754,9 @@ describe('workflow renderer', () => {
           ],
         },
       ],
-      defaults: {
-        run: {
-          shell: 'bash',
-        },
-      },
+      timeoutMinutes: 15,
     } as WorkflowDefinition & {
-      defaults: {
-        run: {
-          shell: string;
-        };
-      };
+      timeoutMinutes: number;
     };
 
     expect(() =>
@@ -529,7 +764,7 @@ describe('workflow renderer', () => {
         emitterCalls += 1;
         return emitPseudoYaml(payload);
       })
-    ).toThrowError(new WorkflowRenderError('unsupported workflow field "defaults"'));
+    ).toThrowError(new WorkflowRenderError('unsupported workflow field "timeoutMinutes"'));
     expect(emitterCalls).toBe(0);
   });
 
@@ -600,6 +835,42 @@ describe('workflow renderer', () => {
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(
       new WorkflowRenderError('unsupported workflow permissions value "contents: undefined"')
+    );
+  });
+
+  it('fails explicitly before emission when permissions mix shorthand with object-map entries', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('mixed_permissions'),
+      name: 'Mixed Permissions',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      permissions: {
+        contents: 'read',
+        'read-all': 'write',
+      },
+      jobs: [
+        {
+          id: createJobId('check'),
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(
+      new WorkflowRenderError(
+        'unsupported workflow permissions shape: cannot mix shorthand with object-map entries'
+      )
     );
   });
 
@@ -812,6 +1083,40 @@ describe('workflow renderer', () => {
     ).toThrowError(new WorkflowRenderError('unsupported workflow concurrency value "group:  "'));
   });
 
+  it('fails explicitly before emission when job concurrency cancelInProgress is not a boolean', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('invalid_job_concurrency_cancel'),
+      name: 'Invalid Job Concurrency Cancel',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      jobs: [
+        {
+          id: createJobId('check'),
+          concurrency: {
+            group: 'check',
+            cancelInProgress: 'yes',
+          },
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(
+      new WorkflowRenderError('unsupported job "check" concurrency value "cancelInProgress: yes"')
+    );
+  });
+
   it('fails explicitly before emission when execution metadata leaves defaults.run empty', () => {
     const unsupportedWorkflow = {
       id: createWorkflowId('empty_defaults_run'),
@@ -841,6 +1146,68 @@ describe('workflow renderer', () => {
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(new WorkflowRenderError('defaults.run must define shell or working-directory'));
+  });
+
+  it('fails explicitly before emission when workflow-level defaults.run is empty', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('empty_workflow_defaults_run'),
+      name: 'Empty Workflow Defaults Run',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      defaults: {
+        run: {},
+      },
+      jobs: [
+        {
+          id: createJobId('check'),
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('defaults.run must define shell or working-directory'));
+  });
+
+  it('fails explicitly before emission when permissions shorthand is invalid', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('invalid_permissions_shorthand'),
+      name: 'Invalid Permissions Shorthand',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      permissions: 'admin-all',
+      jobs: [
+        {
+          id: createJobId('check'),
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(
+      new WorkflowRenderError('unsupported workflow permissions shorthand "admin-all"')
+    );
   });
 
   it('fails explicitly before emission when uses steps receive run-only execution metadata', () => {
@@ -915,6 +1282,9 @@ describe('workflow renderer', () => {
       .permissions({
         contents: 'read',
       })
+      .defaultsRun({
+        shell: 'bash',
+      })
       .env({
         CI: 'true',
         NODE_ENV: 'production',
@@ -937,6 +1307,11 @@ describe('workflow renderer', () => {
       permissions: {
         contents: 'read',
       },
+      defaults: {
+        run: {
+          shell: 'bash',
+        },
+      },
       env: {
         CI: 'true',
         NODE_ENV: 'production',
@@ -956,7 +1331,8 @@ describe('workflow renderer', () => {
       },
     });
     const topKeys = Object.keys(payload);
-    expect(topKeys.indexOf('permissions')).toBeLessThan(topKeys.indexOf('env'));
+    expect(topKeys.indexOf('permissions')).toBeLessThan(topKeys.indexOf('defaults'));
+    expect(topKeys.indexOf('defaults')).toBeLessThan(topKeys.indexOf('env'));
     expect(topKeys.indexOf('env')).toBeLessThan(topKeys.indexOf('concurrency'));
   });
 
@@ -1045,6 +1421,7 @@ describe('workflow renderer', () => {
     })
       .onPush()
       .permissions({ contents: 'read' })
+      .defaultsRun({ shell: 'bash' })
       .env({ CI: 'true' })
       .concurrency({ group: 'deploy', cancelInProgress: true })
       .addJob(createJobId('build'), (job) => {
@@ -1062,7 +1439,15 @@ describe('workflow renderer', () => {
     const payload = createWorkflowRenderPayload(workflow);
 
     const topKeys = Object.keys(payload);
-    expect(topKeys).toEqual(['name', 'on', 'permissions', 'env', 'concurrency', 'jobs']);
+    expect(topKeys).toEqual([
+      'name',
+      'on',
+      'permissions',
+      'defaults',
+      'env',
+      'concurrency',
+      'jobs',
+    ]);
 
     const jobKeys = Object.keys(payload.jobs.build!);
     expect(jobKeys).toEqual([
@@ -1344,7 +1729,7 @@ describe('workflow renderer', () => {
         .build();
 
       const payload = createWorkflowRenderPayload(workflow);
-      const stepPayload = payload.jobs.build!.steps[0]!;
+      const stepPayload = payload.jobs.build!.steps![0]!;
       const stepKeys = Object.keys(stepPayload);
 
       expect(stepPayload).toEqual({
@@ -1372,7 +1757,7 @@ describe('workflow renderer', () => {
         .build();
 
       const payload = createWorkflowRenderPayload(workflow);
-      const stepPayload = payload.jobs.build!.steps[0]!;
+      const stepPayload = payload.jobs.build!.steps![0]!;
       const stepKeys = Object.keys(stepPayload);
 
       expect(stepPayload).toEqual({
@@ -1395,7 +1780,7 @@ describe('workflow renderer', () => {
         .build();
 
       const payload = createWorkflowRenderPayload(workflow);
-      const stepPayload = payload.jobs.build!.steps[0]!;
+      const stepPayload = payload.jobs.build!.steps![0]!;
 
       expect(stepPayload).not.toHaveProperty('id');
     });
@@ -1581,7 +1966,7 @@ describe('workflow renderer', () => {
       .build();
 
     const payload = createWorkflowRenderPayload(workflow);
-    const stepPayload = payload.jobs.build!.steps[0]!;
+    const stepPayload = payload.jobs.build!.steps![0]!;
     const stepKeys = Object.keys(stepPayload);
 
     expect(stepPayload['continue-on-error']).toBe(true);
@@ -1610,9 +1995,129 @@ describe('workflow renderer', () => {
       .build();
 
     const payload = createWorkflowRenderPayload(workflow);
-    const stepPayload = payload.jobs.build!.steps[0]!;
+    const stepPayload = payload.jobs.build!.steps![0]!;
 
     expect(stepPayload['continue-on-error']).toBe(false);
     expect(stepPayload['timeout-minutes']).toBe(5);
+  });
+
+  it('renders uses steps with if and env metadata', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('render_uses_if_env'),
+      name: 'Render Uses If Env',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').uses('actions/checkout@v4', {
+          if: 'success()',
+          env: {
+            CI: 'true',
+          },
+        });
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).jobs.build!.steps![0]).toEqual({
+      if: 'success()',
+      env: {
+        CI: 'true',
+      },
+      uses: 'actions/checkout@v4',
+    });
+  });
+
+  it('renders reusable workflow jobs in canonical field order', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('reusable_job_render'),
+      name: 'Reusable Job Render',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .needs(createJobId('build'))
+          .continueOnError(true)
+          .permissions('read-all')
+          .usesWorkflow('./.github/workflows/deploy.yml@main', {
+            secrets: 'inherit',
+            with: {
+              environment: 'production',
+            },
+          });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const deployJob = payload.jobs.deploy!;
+
+    expect(deployJob).toEqual({
+      if: "github.ref == 'refs/heads/main'",
+      needs: ['build'],
+      'continue-on-error': true,
+      permissions: 'read-all',
+      secrets: 'inherit',
+      with: {
+        environment: 'production',
+      },
+      uses: './.github/workflows/deploy.yml@main',
+    });
+    expect(Object.keys(deployJob)).toEqual([
+      'if',
+      'needs',
+      'continue-on-error',
+      'permissions',
+      'secrets',
+      'with',
+      'uses',
+    ]);
+  });
+
+  it('renders reusable workflow jobs with explicit secret maps', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('reusable_job_secret_map'),
+      name: 'Reusable Job Secret Map',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.usesWorkflow('./.github/workflows/deploy.yml@main', {
+          secrets: {
+            token: '${{ secrets.GITHUB_TOKEN }}',
+          },
+        });
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).jobs.deploy).toEqual({
+      secrets: {
+        token: '${{ secrets.GITHUB_TOKEN }}',
+      },
+      uses: './.github/workflows/deploy.yml@main',
+    });
+  });
+
+  it('renders reusable workflow jobs without secrets', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('reusable_job_without_secrets'),
+      name: 'Reusable Job Without Secrets',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.usesWorkflow('./.github/workflows/deploy.yml@main', {
+          with: {
+            environment: 'production',
+          },
+        });
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).jobs.deploy).toEqual({
+      with: {
+        environment: 'production',
+      },
+      uses: './.github/workflows/deploy.yml@main',
+    });
   });
 });

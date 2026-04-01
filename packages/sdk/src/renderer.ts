@@ -423,7 +423,9 @@ function createDefaultsRunPayload(defaultsRun: {
   assertAllowedKeys(defaultsRun, ['shell', 'workingDirectory'], 'defaults.run');
 
   if (defaultsRun.shell === undefined && defaultsRun.workingDirectory === undefined) {
-    throw new WorkflowRenderError('defaults.run must define shell or working-directory');
+    throw new WorkflowRenderError(
+      'defaults.run must define shell or working-directory. Expected: at least one of shell or working-directory'
+    );
   }
 
   return {
@@ -448,7 +450,7 @@ function createConcurrencyPayload(
 
   if (typeof concurrency.group !== 'string' || concurrency.group.trim().length === 0) {
     throw new WorkflowRenderError(
-      `unsupported ${label} concurrency value "group: ${concurrency.group}"`
+      `unsupported ${label} concurrency value "group: ${concurrency.group}". Expected: a non-blank string`
     );
   }
 
@@ -475,7 +477,9 @@ function createPermissionsPayload(
 ): WorkflowRenderPermissionsPayload {
   if (typeof permissions === 'string') {
     if (!isPermissionsShorthand(permissions)) {
-      throw new WorkflowRenderError(`unsupported ${label} permissions shorthand "${permissions}"`);
+      throw new WorkflowRenderError(
+        `unsupported ${label} permissions shorthand "${permissions}". Expected: "read-all" or "write-all"`
+      );
     }
 
     return permissions;
@@ -489,7 +493,9 @@ function createPermissionsPayload(
 
   for (const key of Object.keys(permissions)) {
     if (!WORKFLOW_PERMISSION_KEYS.includes(key as WorkflowPermissionKey)) {
-      throw new WorkflowRenderError(`unsupported ${label} permissions key "${key}"`);
+      throw new WorkflowRenderError(
+        `unsupported ${label} permissions key "${key}". Expected: one of ${WORKFLOW_PERMISSION_KEYS.join(', ')}`
+      );
     }
 
     const permissionKey = key as WorkflowPermissionKey;
@@ -497,7 +503,7 @@ function createPermissionsPayload(
 
     if (value === undefined || !WORKFLOW_PERMISSION_ALLOWED_LEVELS[permissionKey].includes(value)) {
       throw new WorkflowRenderError(
-        `unsupported ${label} permissions value "${permissionKey}: ${value}"`
+        `unsupported ${label} permissions value "${permissionKey}: ${value}". Expected: one of ${WORKFLOW_PERMISSION_ALLOWED_LEVELS[permissionKey].join(', ')}`
       );
     }
   }

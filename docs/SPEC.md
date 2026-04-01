@@ -40,6 +40,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - optional step `id` field whose value must match `^[a-zA-Z_][a-zA-Z0-9_-]*$`, with uniqueness enforcement within a job and explicit rejection of surrounding whitespace instead of trimming
   - job-level `outputs` maps (`Readonly<Record<string, string>>`) with blank key/value rejection and `steps.<id>` referential validation against declared step IDs in the same job; non-step expression forms are accepted without referential validation
 - Validation occurs at `build()` time and fails through explicit exceptions for invalid definitions.
+- Validation error messages follow the convention `[scope] [field] [constraint]. Expected: [format/values]`. The `[scope] [field] [constraint]` prefix is preserved for programmatic compatibility. Format, type, value-constraint, and unsupported-feature messages include expected values or alternatives. Blank/empty and boolean messages are enriched only when added guidance is non-trivial.
 - Identifier factories reject surrounding whitespace instead of silently normalizing values, and require the shared format `^[a-zA-Z_][a-zA-Z0-9_-]*$`.
 - Duplicate trigger definitions are rejected during `build()`.
 - `workflow_dispatch` rejects unsupported trigger fields such as branch or path filters instead of silently coercing them.

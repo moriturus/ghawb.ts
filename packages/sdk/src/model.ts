@@ -291,7 +291,29 @@ export type WorkflowPermissionMap = Readonly<
 >;
 export type WorkflowPermissions = WorkflowPermissionMap | WorkflowPermissionShorthand;
 
-export type RunsOnTarget = string | readonly [string, ...string[]];
+export const RunnerLabel = {
+  UbuntuLatest: 'ubuntu-latest',
+  Ubuntu2404: 'ubuntu-24.04',
+  Ubuntu2204: 'ubuntu-22.04',
+  WindowsLatest: 'windows-latest',
+  Windows2025: 'windows-2025',
+  Windows2022: 'windows-2022',
+  MacosLatest: 'macos-latest',
+  Macos15: 'macos-15',
+  Macos14: 'macos-14',
+  Macos13: 'macos-13',
+  MacosLarge15: 'macos-15-large',
+  MacosLarge14: 'macos-14-large',
+  MacosLarge13: 'macos-13-large',
+  MacosXlarge15: 'macos-15-xlarge',
+  MacosXlarge14: 'macos-14-xlarge',
+  MacosXlarge13: 'macos-13-xlarge',
+} as const;
+
+export type RunnerLabel = (typeof RunnerLabel)[keyof typeof RunnerLabel];
+
+export type RunsOnValue = RunnerLabel | (string & {});
+export type RunsOnTarget = RunsOnValue | readonly [RunsOnValue, ...RunsOnValue[]];
 export type MatrixAxisValues = readonly [string, ...string[]];
 export type WorkflowMatrix = Readonly<Record<string, MatrixAxisValues>>;
 export type MatrixIncludeEntry = Readonly<Record<string, string>>;

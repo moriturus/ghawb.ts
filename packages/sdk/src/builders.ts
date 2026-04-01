@@ -23,6 +23,7 @@ import {
   type PullRequestTriggerFilter,
   type RunStepMetadata,
   type RunsOnTarget,
+  type RunsOnValue,
   type SimpleEventTrigger,
   type SimpleEventType,
   type StepMetadata,
@@ -1669,7 +1670,7 @@ class JobBuilder {
     return this;
   }
 
-  runsOn(target: string | readonly string[]): this {
+  runsOn(target: RunsOnValue | readonly RunsOnValue[]): this {
     this.jobRunsOn = Array.isArray(target) ? [...target] : target;
     return this;
   }

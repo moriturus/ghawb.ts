@@ -43,8 +43,29 @@ export interface FilteredWorkflowTrigger extends TriggerFilter {
   readonly types?: readonly PullRequestActivityType[];
 }
 
+export const WORKFLOW_DISPATCH_INPUT_TYPES = [
+  'string',
+  'boolean',
+  'choice',
+  'number',
+  'environment',
+] as const;
+
+export type WorkflowDispatchInputType = (typeof WORKFLOW_DISPATCH_INPUT_TYPES)[number];
+
+export interface WorkflowDispatchInput {
+  readonly description?: string;
+  readonly required?: boolean;
+  readonly default?: string;
+  readonly type?: WorkflowDispatchInputType;
+  readonly options?: readonly [string, ...string[]];
+}
+
+export type WorkflowDispatchInputs = Readonly<Record<string, WorkflowDispatchInput>>;
+
 export interface WorkflowDispatchTrigger {
   readonly type: 'workflow_dispatch';
+  readonly inputs?: WorkflowDispatchInputs;
 }
 
 export interface ScheduleTrigger {

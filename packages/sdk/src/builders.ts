@@ -3,6 +3,7 @@ import { WorkflowValidationError, type JobId, type WorkflowId } from '@ghawb/sha
 import {
   WORKFLOW_PERMISSION_KEYS,
   PULL_REQUEST_ACTIVITY_TYPES,
+  WORKFLOW_DISPATCH_INPUT_TYPES,
   type FilteredTriggerType,
   type MatrixAxisValues,
   type MatrixExcludeEntry,
@@ -16,6 +17,9 @@ import {
   type WorkflowConcurrency,
   type WorkflowDefinition,
   type WorkflowDefaultsRun,
+  type WorkflowDispatchInput,
+  type WorkflowDispatchInputs,
+  type WorkflowDispatchInputType,
   type WorkflowEnv,
   type WorkflowJob,
   type WorkflowJobOutputs,
@@ -116,6 +120,7 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
   if (trigger.type === 'workflow_dispatch') {
     return {
       type: 'workflow_dispatch',
+      ...(trigger.inputs ? { inputs: cloneDispatchInputs(trigger.inputs) } : {}),
     };
   }
 
@@ -130,6 +135,22 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
     type: trigger.type,
     ...cloneFilter(trigger),
     ...(trigger.types ? { types: [...trigger.types] } : {}),
+  };
+}
+
+function cloneDispatchInputs(inputs: WorkflowDispatchInputs): WorkflowDispatchInputs {
+  return Object.fromEntries(
+    Object.entries(inputs).map(([name, input]) => [name, cloneDispatchInput(input)])
+  );
+}
+
+function cloneDispatchInput(input: WorkflowDispatchInput): WorkflowDispatchInput {
+  return {
+    ...(input.description !== undefined ? { description: input.description } : {}),
+    ...(input.required !== undefined ? { required: input.required } : {}),
+    ...(input.default !== undefined ? { default: input.default } : {}),
+    ...(input.type !== undefined ? { type: input.type } : {}),
+    ...(input.options ? { options: [...input.options] as [string, ...string[]] } : {}),
   };
 }
 
@@ -247,6 +268,49 @@ function createValidationIssues(
 
       if ('types' in trigger) {
         issues.push('trigger "workflow_dispatch" does not support types');
+      }
+
+      if (trigger.inputs !== undefined) {
+        for (const [inputName, input] of Object.entries(trigger.inputs)) {
+          if (inputName.trim().length === 0) {
+            issues.push('trigger "workflow_dispatch" inputs must not contain blank names');
+            continue;
+          }
+
+          if (input.required !== undefined && typeof input.required !== 'boolean') {
+            issues.push(
+              `trigger "workflow_dispatch" input "${inputName}" required must be a boolean`
+            );
+          }
+
+          if (input.type !== undefined) {
+            if (
+              !WORKFLOW_DISPATCH_INPUT_TYPES.includes(
+                input.type as WorkflowDispatchInputType
+              )
+            ) {
+              issues.push(
+                `trigger "workflow_dispatch" input "${inputName}" type "${input.type}" is not a valid input type`
+              );
+            }
+
+            if (input.type === 'choice') {
+              if (input.options === undefined || input.options.length === 0) {
+                issues.push(
+                  `trigger "workflow_dispatch" input "${inputName}" type "choice" requires non-empty options`
+                );
+              }
+            } else if (input.options !== undefined) {
+              issues.push(
+                `trigger "workflow_dispatch" input "${inputName}" options is only valid when type is "choice"`
+              );
+            }
+          } else if (input.options !== undefined) {
+            issues.push(
+              `trigger "workflow_dispatch" input "${inputName}" options is only valid when type is "choice"`
+            );
+          }
+        }
       }
 
       continue;
@@ -1010,9 +1074,10 @@ export class WorkflowBuilder {
     return this;
   }
 
-  onWorkflowDispatch(): this {
+  onWorkflowDispatch(inputs?: WorkflowDispatchInputs): this {
     this.triggers.push({
       type: 'workflow_dispatch',
+      ...(inputs ? { inputs: cloneDispatchInputs(inputs) } : {}),
     });
     return this;
   }

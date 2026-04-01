@@ -2027,4 +2027,251 @@ describe('workflow builder', () => {
       ])
     );
   });
+
+  it('builds workflow_dispatch with inputs', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('dispatch_inputs'),
+      name: 'Dispatch Inputs',
+    })
+      .onWorkflowDispatch({
+        env: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'choice',
+          options: ['staging', 'production'],
+        },
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo deploy');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'workflow_dispatch',
+        inputs: {
+          env: {
+            description: 'Target environment',
+            required: true,
+            default: 'staging',
+            type: 'choice',
+            options: ['staging', 'production'],
+          },
+        },
+      },
+    ]);
+  });
+
+  it('builds workflow_dispatch with minimal input (no optional fields)', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('dispatch_minimal'),
+      name: 'Dispatch Minimal',
+    })
+      .onWorkflowDispatch({
+        name: {},
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'workflow_dispatch',
+        inputs: {
+          name: {},
+        },
+      },
+    ]);
+  });
+
+  it('builds workflow_dispatch with input using all types', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('dispatch_all_types'),
+      name: 'Dispatch All Types',
+    })
+      .onWorkflowDispatch({
+        str: { type: 'string' },
+        bool: { type: 'boolean' },
+        num: { type: 'number' },
+        env: { type: 'environment' },
+        ch: { type: 'choice', options: ['a', 'b'] },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'workflow_dispatch',
+        inputs: {
+          str: { type: 'string' },
+          bool: { type: 'boolean' },
+          num: { type: 'number' },
+          env: { type: 'environment' },
+          ch: { type: 'choice', options: ['a', 'b'] },
+        },
+      },
+    ]);
+  });
+
+  it('rejects blank workflow_dispatch input names', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_blank_name'),
+      name: 'Dispatch Blank Name',
+    })
+      .onWorkflowDispatch({
+        '': { description: 'bad' },
+      } as unknown as Record<string, { description?: string }>)
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" inputs must not contain blank names',
+      ])
+    );
+  });
+
+  it('rejects non-boolean required in workflow_dispatch input', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_bad_required'),
+      name: 'Dispatch Bad Required',
+    })
+      .onWorkflowDispatch({
+        name: { required: 'yes' as unknown as boolean },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "name" required must be a boolean',
+      ])
+    );
+  });
+
+  it('rejects invalid workflow_dispatch input type', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_bad_type'),
+      name: 'Dispatch Bad Type',
+    })
+      .onWorkflowDispatch({
+        name: { type: 'invalid' as unknown as 'string' },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "name" type "invalid" is not a valid input type',
+      ])
+    );
+  });
+
+  it('rejects choice type without options in workflow_dispatch input', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_choice_no_opts'),
+      name: 'Dispatch Choice No Opts',
+    })
+      .onWorkflowDispatch({
+        name: { type: 'choice' },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "name" type "choice" requires non-empty options',
+      ])
+    );
+  });
+
+  it('rejects options on non-choice workflow_dispatch input type', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_opts_non_choice'),
+      name: 'Dispatch Opts Non Choice',
+    })
+      .onWorkflowDispatch({
+        name: {
+          type: 'string',
+          options: ['a', 'b'],
+        } as unknown as { type: 'string' },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "name" options is only valid when type is "choice"',
+      ])
+    );
+  });
+
+  it('rejects options without type in workflow_dispatch input', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_opts_no_type'),
+      name: 'Dispatch Opts No Type',
+    })
+      .onWorkflowDispatch({
+        name: {
+          options: ['a', 'b'],
+        } as unknown as { options?: readonly [string, ...string[]] },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "name" options is only valid when type is "choice"',
+      ])
+    );
+  });
+
+  it('deep-freezes workflow_dispatch inputs', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('dispatch_frozen_inputs'),
+      name: 'Dispatch Frozen Inputs',
+    })
+      .onWorkflowDispatch({
+        env: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'choice',
+          options: ['staging', 'production'],
+        },
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo deploy');
+      })
+      .build();
+
+    const trigger = workflow.on[0]! as {
+      type: 'workflow_dispatch';
+      inputs: Record<
+        string,
+        {
+          description?: string;
+          required?: boolean;
+          default?: string;
+          type?: string;
+          options?: readonly string[];
+        }
+      >;
+    };
+
+    expect(Object.isFrozen(trigger)).toBe(true);
+    expect(Object.isFrozen(trigger.inputs)).toBe(true);
+    expect(Object.isFrozen(trigger.inputs.env)).toBe(true);
+    expect(Object.isFrozen(trigger.inputs.env!.options)).toBe(true);
+  });
 });

@@ -1,7 +1,12 @@
 import type { JobId, WorkflowId } from '@ghawb/shared';
 
 export type FilteredTriggerType = 'push' | 'pull_request' | 'pull_request_target';
-export type TriggerType = FilteredTriggerType | 'workflow_dispatch' | 'workflow_call' | 'schedule';
+export type TriggerType =
+  | FilteredTriggerType
+  | 'workflow_dispatch'
+  | 'workflow_call'
+  | 'workflow_run'
+  | 'schedule';
 
 export const PULL_REQUEST_ACTIVITY_TYPES = [
   'assigned',
@@ -103,10 +108,22 @@ export interface ScheduleTrigger {
   readonly cron: readonly [string, ...string[]];
 }
 
+export const WORKFLOW_RUN_ACTIVITY_TYPES = ['completed', 'requested', 'in_progress'] as const;
+export type WorkflowRunActivityType = (typeof WORKFLOW_RUN_ACTIVITY_TYPES)[number];
+
+export interface WorkflowRunTrigger {
+  readonly type: 'workflow_run';
+  readonly workflows: readonly [string, ...string[]];
+  readonly types?: readonly WorkflowRunActivityType[];
+  readonly branches?: readonly string[];
+  readonly branchesIgnore?: readonly string[];
+}
+
 export type WorkflowTrigger =
   | FilteredWorkflowTrigger
   | WorkflowDispatchTrigger
   | WorkflowCallTrigger
+  | WorkflowRunTrigger
   | ScheduleTrigger;
 
 export interface StepMetadata {

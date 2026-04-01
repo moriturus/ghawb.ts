@@ -10,6 +10,7 @@ import {
   WORKFLOW_PERMISSION_KEYS,
   PULL_REQUEST_ACTIVITY_TYPES,
   WORKFLOW_DISPATCH_INPUT_TYPES,
+  WORKFLOW_RUN_ACTIVITY_TYPES,
   type ContainerConfig,
   type FilteredTriggerType,
   type MatrixAxisValues,
@@ -46,6 +47,8 @@ import {
   type WorkflowPermissionMap,
   type WorkflowPermissionShorthand,
   type WorkflowPermissions,
+  type WorkflowRunActivityType,
+  type WorkflowRunTrigger,
   type WorkflowServices,
   type WorkflowStrategy,
   type WorkflowStep,
@@ -185,6 +188,16 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
       ...(trigger.inputs ? { inputs: cloneWorkflowCallInputs(trigger.inputs) } : {}),
       ...(trigger.outputs ? { outputs: cloneWorkflowCallOutputs(trigger.outputs) } : {}),
       ...(trigger.secrets ? { secrets: cloneWorkflowCallSecrets(trigger.secrets) } : {}),
+    };
+  }
+
+  if (trigger.type === 'workflow_run') {
+    return {
+      type: 'workflow_run',
+      workflows: [...trigger.workflows] as [string, ...string[]],
+      ...(trigger.types ? { types: [...trigger.types] } : {}),
+      ...(trigger.branches ? { branches: [...trigger.branches] } : {}),
+      ...(trigger.branchesIgnore ? { branchesIgnore: [...trigger.branchesIgnore] } : {}),
     };
   }
 
@@ -568,6 +581,80 @@ function createValidationIssues(
             issues.push(
               `trigger "workflow_call" secret "${secretName}" required must be a boolean. Expected: true or false`
             );
+          }
+        }
+      }
+
+      continue;
+    }
+
+    if (trigger.type === 'workflow_run') {
+      if ('paths' in trigger) {
+        issues.push(
+          'trigger "workflow_run" does not support paths. Supported: workflows, types, branches, branches-ignore'
+        );
+      }
+
+      if ('pathsIgnore' in trigger) {
+        issues.push(
+          'trigger "workflow_run" does not support paths-ignore. Supported: workflows, types, branches, branches-ignore'
+        );
+      }
+
+      if ('tags' in trigger) {
+        issues.push(
+          'trigger "workflow_run" does not support tags. Supported: workflows, types, branches, branches-ignore'
+        );
+      }
+
+      if ('tagsIgnore' in trigger) {
+        issues.push(
+          'trigger "workflow_run" does not support tags-ignore. Supported: workflows, types, branches, branches-ignore'
+        );
+      }
+
+      const wfTrigger = trigger as WorkflowRunTrigger;
+
+      if (wfTrigger.workflows.length === 0) {
+        issues.push('trigger "workflow_run" workflows must not be empty');
+      } else {
+        for (const wf of wfTrigger.workflows) {
+          if (wf.trim().length === 0) {
+            issues.push('trigger "workflow_run" workflows must not contain blank values');
+            break;
+          }
+        }
+      }
+
+      if (wfTrigger.branches !== undefined && wfTrigger.branchesIgnore !== undefined) {
+        issues.push(
+          'trigger "workflow_run" must not combine branches and branches-ignore. Use one or the other, not both'
+        );
+      }
+
+      for (const [field, values] of [
+        ['branches', wfTrigger.branches],
+        ['branches-ignore', wfTrigger.branchesIgnore],
+      ] as const) {
+        if (values !== undefined) {
+          if (values.length === 0) {
+            issues.push(`trigger "workflow_run" ${field} must not be empty`);
+          } else if (values.some((v) => v.trim().length === 0)) {
+            issues.push(`trigger "workflow_run" ${field} must not contain blank values`);
+          }
+        }
+      }
+
+      if (wfTrigger.types !== undefined) {
+        if (wfTrigger.types.length === 0) {
+          issues.push('trigger "workflow_run" types must not be empty');
+        } else {
+          for (const activityType of wfTrigger.types) {
+            if (!WORKFLOW_RUN_ACTIVITY_TYPES.includes(activityType as WorkflowRunActivityType)) {
+              issues.push(
+                `trigger "workflow_run" types contains unknown activity type "${activityType}". Expected: one of ${WORKFLOW_RUN_ACTIVITY_TYPES.map((t) => `"${t}"`).join(', ')}`
+              );
+            }
           }
         }
       }
@@ -1758,6 +1845,27 @@ export class WorkflowBuilder {
       ...(config.inputs ? { inputs: cloneWorkflowCallInputs(config.inputs) } : {}),
       ...(config.outputs ? { outputs: cloneWorkflowCallOutputs(config.outputs) } : {}),
       ...(config.secrets ? { secrets: cloneWorkflowCallSecrets(config.secrets) } : {}),
+    });
+    return this;
+  }
+
+  onWorkflowRun(
+    config: Readonly<{
+      workflows: string | readonly [string, ...string[]];
+      types?: readonly WorkflowRunActivityType[];
+      branches?: readonly string[];
+      branchesIgnore?: readonly string[];
+    }>
+  ): this {
+    const workflows = (
+      typeof config.workflows === 'string' ? [config.workflows] : [...config.workflows]
+    ) as [string, ...string[]];
+    this.triggers.push({
+      type: 'workflow_run',
+      workflows,
+      ...(config.types ? { types: [...config.types] } : {}),
+      ...(config.branches ? { branches: [...config.branches] } : {}),
+      ...(config.branchesIgnore ? { branchesIgnore: [...config.branchesIgnore] } : {}),
     });
     return this;
   }

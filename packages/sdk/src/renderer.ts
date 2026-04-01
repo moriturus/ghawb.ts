@@ -12,6 +12,7 @@ import {
   type WorkflowPermissionLevel,
   type WorkflowPermissionShorthand,
   type WorkflowPermissions,
+  type WorkflowRunTrigger,
   type WorkflowServices,
   type WorkflowStep,
   type WorkflowStrategy,
@@ -87,6 +88,13 @@ export interface WorkflowRenderWorkflowCallPayload {
   readonly inputs?: Readonly<Record<string, WorkflowRenderDispatchInputPayload>>;
   readonly outputs?: Readonly<Record<string, WorkflowRenderWorkflowCallOutputPayload>>;
   readonly secrets?: Readonly<Record<string, WorkflowRenderWorkflowCallSecretPayload>>;
+}
+
+export interface WorkflowRenderWorkflowRunPayload {
+  readonly workflows: readonly string[];
+  readonly types?: readonly string[];
+  readonly branches?: readonly string[];
+  readonly 'branches-ignore'?: readonly string[];
 }
 
 export interface WorkflowRenderStepPayload {
@@ -181,6 +189,7 @@ export interface WorkflowRenderPayload {
         | readonly WorkflowRenderScheduleEntryPayload[]
         | WorkflowRenderDispatchPayload
         | WorkflowRenderWorkflowCallPayload
+        | WorkflowRenderWorkflowRunPayload
         | null
       >
     >
@@ -277,6 +286,7 @@ function createTriggerPayload(
   | readonly WorkflowRenderScheduleEntryPayload[]
   | WorkflowRenderDispatchPayload
   | WorkflowRenderWorkflowCallPayload
+  | WorkflowRenderWorkflowRunPayload
   | null {
   if (trigger.type === 'workflow_dispatch') {
     assertAllowedKeys(trigger, ['type', 'inputs'], `trigger "${trigger.type}"`);
@@ -336,6 +346,22 @@ function createTriggerPayload(
       ...(inputs ? { inputs } : {}),
       ...(outputs ? { outputs } : {}),
       ...(secrets ? { secrets } : {}),
+    };
+  }
+
+  if (trigger.type === 'workflow_run') {
+    const wfTrigger = trigger as WorkflowRunTrigger;
+    assertAllowedKeys(
+      trigger,
+      ['type', 'workflows', 'types', 'branches', 'branchesIgnore'],
+      `trigger "${trigger.type}"`
+    );
+
+    return {
+      workflows: [...wfTrigger.workflows],
+      ...(wfTrigger.types ? { types: [...wfTrigger.types] } : {}),
+      ...(wfTrigger.branches ? { branches: [...wfTrigger.branches] } : {}),
+      ...(wfTrigger.branchesIgnore ? { 'branches-ignore': [...wfTrigger.branchesIgnore] } : {}),
     };
   }
 
@@ -595,6 +621,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       | readonly WorkflowRenderScheduleEntryPayload[]
       | WorkflowRenderDispatchPayload
       | WorkflowRenderWorkflowCallPayload
+      | WorkflowRenderWorkflowRunPayload
       | null
     >
   > = {};
@@ -605,6 +632,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     'pull_request_target',
     'workflow_dispatch',
     'workflow_call',
+    'workflow_run',
     'schedule',
   ] as const) {
     const trigger = workflow.on.find((candidate) => candidate.type === triggerType);

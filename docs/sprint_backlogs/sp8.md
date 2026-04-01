@@ -74,6 +74,6 @@ Status: ready
 - Definition of Done: Steps support optional `id` fields, jobs support optional `outputs` maps, validation enforces uniqueness and referential integrity for `steps.<id>` patterns, rendering is deterministic, conformance fixtures cover step IDs and job outputs across runtimes, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Users can assign IDs to steps and declare job outputs referencing those IDs, duplicate step IDs within a job fail at build time, output values containing `steps.<id>` patterns referencing undeclared step IDs fail at build time, other expression forms in output values are accepted without referential validation, blank `id` values and blank output keys and values fail at build time, step `id` renders before `if` in step payload, job `outputs` renders after `runs-on` and before `steps` in job payload, the rendered YAML matches GitHub Actions expected structure, and cross-runtime conformance fixtures are added in the same slice.
 - Story Points: 5
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). This item unlocks the cross-job data-passing pattern that many multi-job workflows depend on. The `steps.<id>` reference validation uses pattern matching, not full expression parsing.
+- Status: done
+- Completed At: 2026-04-01T01:30:00Z
+- Notes/Links: [SPEC.md](../SPEC.md). This item unlocks the cross-job data-passing pattern that many multi-job workflows depend on. The `steps.<id>` reference validation uses pattern matching, not full expression parsing. PR #20 merged into sprint-8 branch.

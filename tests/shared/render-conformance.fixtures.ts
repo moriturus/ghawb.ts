@@ -939,6 +939,55 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'environment_string',
+    defineWorkflow({
+      id: createWorkflowId('environment_string'),
+      name: 'Environment String',
+    })
+      .onPush({ branches: ['main'] })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').environment('production').run('deploy.sh');
+      })
+      .build(),
+    {
+      name: 'Environment String',
+      on: { push: { branches: ['main'] } },
+      jobs: {
+        deploy: {
+          'runs-on': 'ubuntu-latest',
+          environment: 'production',
+          steps: [{ run: 'deploy.sh' }],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
+    'environment_object',
+    defineWorkflow({
+      id: createWorkflowId('environment_object'),
+      name: 'Environment Object',
+    })
+      .onPush({ branches: ['main'] })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .environment({ name: 'production', url: 'https://example.com' })
+          .run('deploy.sh');
+      })
+      .build(),
+    {
+      name: 'Environment Object',
+      on: { push: { branches: ['main'] } },
+      jobs: {
+        deploy: {
+          'runs-on': 'ubuntu-latest',
+          environment: { name: 'production', url: 'https://example.com' },
+          steps: [{ run: 'deploy.sh' }],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -1294,5 +1343,88 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: ['job "test" name must not be empty'],
+  },
+  {
+    name: 'blank_environment_string',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_environment_string'),
+        name: 'Blank Environment String',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').environment('   ').run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: ['job "deploy" environment name must not be empty'],
+  },
+  {
+    name: 'blank_environment_object_name',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_environment_object_name'),
+        name: 'Blank Environment Object Name',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').environment({ name: '   ' }).run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: ['job "deploy" environment name must not be empty'],
+  },
+  {
+    name: 'blank_environment_url',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_environment_url'),
+        name: 'Blank Environment URL',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .environment({ name: 'production', url: '   ' })
+            .run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: ['job "deploy" environment url must not be empty'],
+  },
+  {
+    name: 'reusable_workflow_rejects_environment',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('reusable_with_environment'),
+        name: 'Reusable With Environment',
+      }).onPush();
+      builder.addJob(createJobId('call'), (job) => {
+        (job as unknown as { jobEnvironment: string }).jobEnvironment = 'production';
+        job.usesWorkflow('org/repo/.github/workflows/ci.yml@main');
+      });
+      return builder.build();
+    },
+    expectedIssues: [
+      'job "call" reusable workflow job must not define environment. Only step-based jobs support environment',
+    ],
+  },
+  {
+    name: 'reusable_workflow_rejects_environment_object',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('reusable_with_env_obj'),
+        name: 'Reusable With Environment Object',
+      }).onPush();
+      builder.addJob(createJobId('call'), (job) => {
+        (
+          job as unknown as {
+            jobEnvironment: { name: string; url: string };
+          }
+        ).jobEnvironment = { name: 'staging', url: 'https://staging.example.com' };
+        job.usesWorkflow('org/repo/.github/workflows/ci.yml@main');
+      });
+      return builder.build();
+    },
+    expectedIssues: [
+      'job "call" reusable workflow job must not define environment. Only step-based jobs support environment',
+    ],
   },
 ];

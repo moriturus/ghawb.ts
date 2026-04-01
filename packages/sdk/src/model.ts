@@ -232,9 +232,12 @@ export interface WorkflowJobBase {
   readonly uses?: string;
 }
 
+export type JobEnvironment = string | { readonly name: string; readonly url?: string };
+
 export interface StepsJob extends WorkflowJobBase {
   readonly kind: 'steps';
   readonly runsOn: RunsOnTarget;
+  readonly environment?: JobEnvironment;
   readonly container?: ContainerConfig;
   readonly services?: WorkflowServices;
   readonly steps: readonly WorkflowStep[];

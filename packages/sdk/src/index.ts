@@ -30,6 +30,7 @@ export type {
   ContainerCredentials,
   ContainerPort,
   ContainerPorts,
+  JobEnvironment,
   MatrixAxisValues,
   MatrixExcludeEntry,
   MatrixIncludeEntry,

@@ -122,9 +122,11 @@ export const WORKFLOW_PERMISSION_KEYS = [
 
 export type WorkflowPermissionKey = (typeof WORKFLOW_PERMISSION_KEYS)[number];
 export type WorkflowPermissionLevel = 'read' | 'write' | 'none';
-export type WorkflowPermissions = Readonly<
+export type WorkflowPermissionShorthand = 'read-all' | 'write-all';
+export type WorkflowPermissionMap = Readonly<
   Partial<Record<WorkflowPermissionKey, WorkflowPermissionLevel>>
 >;
+export type WorkflowPermissions = WorkflowPermissionMap | WorkflowPermissionShorthand;
 
 export type RunsOnTarget = string | readonly [string, ...string[]];
 export type MatrixAxisValues = readonly [string, ...string[]];
@@ -176,6 +178,9 @@ export interface WorkflowDefinition {
   readonly name: string;
   readonly on: readonly WorkflowTrigger[];
   readonly permissions?: WorkflowPermissions;
+  readonly defaults?: {
+    readonly run: WorkflowDefaultsRun;
+  };
   readonly env?: WorkflowEnv;
   readonly concurrency?: WorkflowConcurrency;
   readonly jobs: readonly WorkflowJob[];

@@ -144,6 +144,64 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
     }
   ),
   createRenderFixture(
+    'workflow_defaults_and_permissions_shorthand',
+    defineWorkflow({
+      id: createWorkflowId('workflow_defaults_and_permissions_shorthand'),
+      name: 'Workflow Defaults And Permissions Shorthand',
+    })
+      .onPush({
+        branches: ['main'],
+      })
+      .permissions('read-all')
+      .defaultsRun({
+        shell: 'bash',
+        workingDirectory: './',
+      })
+      .addJob(createJobId('build'), (job) => {
+        job
+          .permissions('write-all')
+          .defaultsRun({
+            shell: 'sh',
+            workingDirectory: './packages/sdk',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun run build');
+      })
+      .build(),
+    {
+      name: 'Workflow Defaults And Permissions Shorthand',
+      on: {
+        push: {
+          branches: ['main'],
+        },
+      },
+      permissions: 'read-all',
+      defaults: {
+        run: {
+          shell: 'bash',
+          'working-directory': './',
+        },
+      },
+      jobs: {
+        build: {
+          permissions: 'write-all',
+          defaults: {
+            run: {
+              shell: 'sh',
+              'working-directory': './packages/sdk',
+            },
+          },
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
     'dispatch_and_schedule',
     defineWorkflow({
       id: createWorkflowId('dispatch_and_schedule'),

@@ -47,6 +47,8 @@ export type {
   WorkflowMatrix,
   WorkflowPermissionKey,
   WorkflowPermissionLevel,
+  WorkflowPermissionMap,
+  WorkflowPermissionShorthand,
   WorkflowPermissions,
   WorkflowStrategy,
   WorkflowStep,

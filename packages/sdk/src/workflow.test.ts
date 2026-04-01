@@ -262,6 +262,39 @@ describe('workflow builder', () => {
     });
   });
 
+  it('builds workflows with workflow-level defaults and permissions shorthand', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_defaults_permissions_shorthand'),
+      name: 'Workflow Defaults And Permissions Shorthand',
+    })
+      .onPush()
+      .permissions('read-all')
+      .defaultsRun({
+        shell: 'bash',
+        workingDirectory: './',
+      })
+      .addJob(createJobId('check'), (job) => {
+        job.permissions('write-all').runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow).toMatchObject({
+      permissions: 'read-all',
+      defaults: {
+        run: {
+          shell: 'bash',
+          workingDirectory: './',
+        },
+      },
+      jobs: [
+        {
+          id: 'check',
+          permissions: 'write-all',
+        },
+      ],
+    });
+  });
+
   it('builds workflows with execution environment metadata on jobs and run steps', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('execution_metadata'),
@@ -657,6 +690,36 @@ describe('workflow builder', () => {
     );
   });
 
+  it('rejects invalid workflow-level defaults and mixed permissions shapes', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_workflow_defaults_permissions'),
+      name: 'Invalid Workflow Defaults And Permissions',
+    })
+      .onPush()
+      .permissions({ 'read-all': 'write' } as unknown as import('./index.ts').WorkflowPermissions)
+      .defaultsRun({
+        shell: ' ',
+      })
+      .addJob(createJobId('check'), (job) => {
+        job
+          .permissions({
+            contents: 'read',
+            'write-all': 'none',
+          } as unknown as import('./index.ts').WorkflowPermissions)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'workflow permissions must use either shorthand ("read-all"/"write-all") or an object map, not both',
+        'workflow defaults.run.shell must not be empty',
+        'workflow defaults.run must define shell or working-directory',
+        'job "check" permissions must use either shorthand ("read-all"/"write-all") or an object map, not both',
+      ])
+    );
+  });
+
   it('rejects invalid execution environment metadata values', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid_execution_metadata'),
@@ -742,6 +805,22 @@ describe('workflow builder', () => {
         'job "check" permissions entry "checks" must be one of read, write, none',
       ])
     );
+  });
+
+  it('accepts permissions shorthand values', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('permissions_shorthand'),
+      name: 'Permissions Shorthand',
+    })
+      .onPush()
+      .permissions('read-all')
+      .addJob(createJobId('check'), (job) => {
+        job.permissions('write-all').runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.permissions).toBe('read-all');
+    expect(workflow.jobs[0]?.permissions).toBe('write-all');
   });
 
   it('deep-freezes workflow output including nested arrays and maps', () => {

@@ -393,6 +393,49 @@ describe('workflow renderer', () => {
     expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
   });
 
+  it('renders workflow-level defaults and permissions shorthand deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_defaults_permissions_shorthand'),
+      name: 'Workflow Defaults And Permissions Shorthand',
+    })
+      .onPush()
+      .permissions('read-all')
+      .defaultsRun({
+        shell: 'bash',
+        workingDirectory: './',
+      })
+      .addJob(createJobId('check'), (job) => {
+        job.permissions('write-all').runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: 'Workflow Defaults And Permissions Shorthand',
+      on: {
+        push: null,
+      },
+      permissions: 'read-all',
+      defaults: {
+        run: {
+          shell: 'bash',
+          'working-directory': './',
+        },
+      },
+      jobs: {
+        check: {
+          permissions: 'write-all',
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
   it('renders execution environment metadata deterministically', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('execution_metadata'),
@@ -511,17 +554,9 @@ describe('workflow renderer', () => {
           ],
         },
       ],
-      defaults: {
-        run: {
-          shell: 'bash',
-        },
-      },
+      timeoutMinutes: 15,
     } as WorkflowDefinition & {
-      defaults: {
-        run: {
-          shell: string;
-        };
-      };
+      timeoutMinutes: number;
     };
 
     expect(() =>
@@ -529,7 +564,7 @@ describe('workflow renderer', () => {
         emitterCalls += 1;
         return emitPseudoYaml(payload);
       })
-    ).toThrowError(new WorkflowRenderError('unsupported workflow field "defaults"'));
+    ).toThrowError(new WorkflowRenderError('unsupported workflow field "timeoutMinutes"'));
     expect(emitterCalls).toBe(0);
   });
 
@@ -600,6 +635,42 @@ describe('workflow renderer', () => {
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(
       new WorkflowRenderError('unsupported workflow permissions value "contents: undefined"')
+    );
+  });
+
+  it('fails explicitly before emission when permissions mix shorthand with object-map entries', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('mixed_permissions'),
+      name: 'Mixed Permissions',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      permissions: {
+        contents: 'read',
+        'read-all': 'write',
+      },
+      jobs: [
+        {
+          id: createJobId('check'),
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(
+      new WorkflowRenderError(
+        'unsupported workflow permissions shape: cannot mix shorthand with object-map entries'
+      )
     );
   });
 
@@ -915,6 +986,9 @@ describe('workflow renderer', () => {
       .permissions({
         contents: 'read',
       })
+      .defaultsRun({
+        shell: 'bash',
+      })
       .env({
         CI: 'true',
         NODE_ENV: 'production',
@@ -937,6 +1011,11 @@ describe('workflow renderer', () => {
       permissions: {
         contents: 'read',
       },
+      defaults: {
+        run: {
+          shell: 'bash',
+        },
+      },
       env: {
         CI: 'true',
         NODE_ENV: 'production',
@@ -956,7 +1035,8 @@ describe('workflow renderer', () => {
       },
     });
     const topKeys = Object.keys(payload);
-    expect(topKeys.indexOf('permissions')).toBeLessThan(topKeys.indexOf('env'));
+    expect(topKeys.indexOf('permissions')).toBeLessThan(topKeys.indexOf('defaults'));
+    expect(topKeys.indexOf('defaults')).toBeLessThan(topKeys.indexOf('env'));
     expect(topKeys.indexOf('env')).toBeLessThan(topKeys.indexOf('concurrency'));
   });
 
@@ -1045,6 +1125,7 @@ describe('workflow renderer', () => {
     })
       .onPush()
       .permissions({ contents: 'read' })
+      .defaultsRun({ shell: 'bash' })
       .env({ CI: 'true' })
       .concurrency({ group: 'deploy', cancelInProgress: true })
       .addJob(createJobId('build'), (job) => {
@@ -1062,7 +1143,15 @@ describe('workflow renderer', () => {
     const payload = createWorkflowRenderPayload(workflow);
 
     const topKeys = Object.keys(payload);
-    expect(topKeys).toEqual(['name', 'on', 'permissions', 'env', 'concurrency', 'jobs']);
+    expect(topKeys).toEqual([
+      'name',
+      'on',
+      'permissions',
+      'defaults',
+      'env',
+      'concurrency',
+      'jobs',
+    ]);
 
     const jobKeys = Object.keys(payload.jobs.build!);
     expect(jobKeys).toEqual([

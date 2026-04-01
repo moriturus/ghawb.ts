@@ -913,4 +913,526 @@ describe('workflow renderer', () => {
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(new WorkflowRenderError('unsupported job strategy field "failFast"'));
   });
+
+  it('renders workflow-level env after permissions and before concurrency', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_env'),
+      name: 'Workflow Env',
+    })
+      .onPush()
+      .permissions({
+        contents: 'read',
+      })
+      .env({
+        CI: 'true',
+        NODE_ENV: 'production',
+      })
+      .concurrency({
+        group: 'deploy',
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'Workflow Env',
+      on: {
+        push: null,
+      },
+      permissions: {
+        contents: 'read',
+      },
+      env: {
+        CI: 'true',
+        NODE_ENV: 'production',
+      },
+      concurrency: {
+        group: 'deploy',
+      },
+      jobs: {
+        build: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+      },
+    });
+    const topKeys = Object.keys(payload);
+    expect(topKeys.indexOf('permissions')).toBeLessThan(topKeys.indexOf('env'));
+    expect(topKeys.indexOf('env')).toBeLessThan(topKeys.indexOf('concurrency'));
+  });
+
+  it('renders job-level env after concurrency and before strategy', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_env'),
+      name: 'Job Env',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job
+          .concurrency({
+            group: 'build-${{ github.ref }}',
+          })
+          .env({
+            NODE_ENV: 'test',
+          })
+          .strategyMatrix({
+            os: ['ubuntu-latest', 'windows-latest'],
+          })
+          .runsOn('${{ matrix.os }}')
+          .run('bun run build');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'Job Env',
+      on: {
+        push: null,
+      },
+      jobs: {
+        build: {
+          concurrency: {
+            group: 'build-${{ github.ref }}',
+          },
+          env: {
+            NODE_ENV: 'test',
+          },
+          strategy: {
+            matrix: {
+              os: ['ubuntu-latest', 'windows-latest'],
+            },
+          },
+          'runs-on': '${{ matrix.os }}',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+      },
+    });
+    const jobKeys = Object.keys(payload.jobs.build!);
+    expect(jobKeys.indexOf('concurrency')).toBeLessThan(jobKeys.indexOf('env'));
+    expect(jobKeys.indexOf('env')).toBeLessThan(jobKeys.indexOf('strategy'));
+  });
+
+  it('omits empty env maps from the rendered payload', () => {
+    const workflowWithEmptyEnv = {
+      id: createWorkflowId('empty_env'),
+      name: 'Empty Env',
+      on: [{ type: 'push' as const }],
+      env: {},
+      jobs: [
+        {
+          id: createJobId('build'),
+          env: {},
+          runsOn: 'ubuntu-latest' as const,
+          steps: [{ kind: 'run' as const, run: 'bun run build' }],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    const payload = createWorkflowRenderPayload(workflowWithEmptyEnv);
+
+    expect(payload.env).toBeUndefined();
+    expect(payload.jobs.build!.env).toBeUndefined();
+  });
+
+  it('preserves canonical field ordering when env is present with other features', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('full_env'),
+      name: 'Full Env',
+    })
+      .onPush()
+      .permissions({ contents: 'read' })
+      .env({ CI: 'true' })
+      .concurrency({ group: 'deploy', cancelInProgress: true })
+      .addJob(createJobId('build'), (job) => {
+        job
+          .permissions({ checks: 'write' })
+          .timeoutMinutes(30)
+          .concurrency({ group: 'build' })
+          .env({ NODE_ENV: 'production' })
+          .strategyMatrix({ os: ['ubuntu-latest'] })
+          .runsOn('${{ matrix.os }}')
+          .run('bun run build');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    const topKeys = Object.keys(payload);
+    expect(topKeys).toEqual(['name', 'on', 'permissions', 'env', 'concurrency', 'jobs']);
+
+    const jobKeys = Object.keys(payload.jobs.build!);
+    expect(jobKeys).toEqual([
+      'permissions',
+      'timeout-minutes',
+      'concurrency',
+      'env',
+      'strategy',
+      'runs-on',
+      'steps',
+    ]);
+
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it('renders combined workflow-level and job-level env correctly', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('combined_env'),
+      name: 'Combined Env',
+    })
+      .onPush()
+      .env({
+        CI: 'true',
+      })
+      .addJob(createJobId('lint'), (job) => {
+        job.env({ NODE_ENV: 'test' }).runsOn('ubuntu-latest').run('bun run lint');
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload.env).toEqual({ CI: 'true' });
+    expect(payload.jobs.lint!.env).toEqual({ NODE_ENV: 'test' });
+    expect(payload.jobs.build!.env).toBeUndefined();
+  });
+
+  it('renders pull_request trigger with types deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_types'),
+      name: 'PR Types',
+    })
+      .onPullRequest({
+        branches: ['main'],
+        types: ['opened', 'synchronize', 'reopened'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'PR Types',
+      on: {
+        pull_request: {
+          branches: ['main'],
+          types: ['opened', 'synchronize', 'reopened'],
+        },
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it('renders pull_request types alongside branches and paths', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_full_filter'),
+      name: 'PR Full Filter',
+    })
+      .onPush({
+        branches: ['main'],
+      })
+      .onPullRequest({
+        branches: ['main', 'release/**'],
+        paths: ['packages/**'],
+        types: ['opened', 'labeled', 'closed'],
+      })
+      .addJob(createJobId('check'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run check');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload.on.pull_request).toEqual({
+      branches: ['main', 'release/**'],
+      paths: ['packages/**'],
+      types: ['opened', 'labeled', 'closed'],
+    });
+    expect(Object.keys(payload.on)).toEqual(['push', 'pull_request']);
+  });
+
+  it('renders push trigger with branches-ignore deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('push_branches_ignore'),
+      name: 'Push Branches Ignore',
+    })
+      .onPush({
+        branchesIgnore: ['dependabot/**', 'renovate/**'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'Push Branches Ignore',
+      on: {
+        push: {
+          'branches-ignore': ['dependabot/**', 'renovate/**'],
+        },
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it('renders push trigger with tags deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('push_tags'),
+      name: 'Push Tags',
+    })
+      .onPush({
+        tags: ['v*', 'release-*'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'Push Tags',
+      on: {
+        push: {
+          tags: ['v*', 'release-*'],
+        },
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it('renders trigger payload fields in canonical order with all filter types', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('push_all_negation'),
+      name: 'Push All Negation',
+    })
+      .onPush({
+        branchesIgnore: ['dependabot/**'],
+        pathsIgnore: ['docs/**'],
+        tagsIgnore: ['v*-beta'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const triggerKeys = Object.keys(payload.on.push!);
+
+    expect(triggerKeys).toEqual(['branches-ignore', 'paths-ignore', 'tags-ignore']);
+  });
+
+  it('renders pull_request with branches-ignore and paths-ignore', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_negation_filters'),
+      name: 'PR Negation Filters',
+    })
+      .onPullRequest({
+        branchesIgnore: ['dependabot/**'],
+        pathsIgnore: ['docs/**', '*.md'],
+        types: ['opened', 'synchronize'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'PR Negation Filters',
+      on: {
+        pull_request: {
+          'branches-ignore': ['dependabot/**'],
+          'paths-ignore': ['docs/**', '*.md'],
+          types: ['opened', 'synchronize'],
+        },
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+
+    const triggerKeys = Object.keys(payload.on.pull_request!);
+    expect(triggerKeys).toEqual(['branches-ignore', 'paths-ignore', 'types']);
+  });
+
+  it('renders trigger payload fields in canonical order: branches, paths, types', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_field_order'),
+      name: 'PR Field Order',
+    })
+      .onPullRequest({
+        branches: ['main'],
+        paths: ['src/**'],
+        types: ['opened', 'synchronize'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const triggerKeys = Object.keys(payload.on.pull_request!);
+
+    expect(triggerKeys).toEqual(['branches', 'paths', 'types']);
+  });
+
+  describe('step identifiers and job outputs rendering', () => {
+    it('renders run step id after name and before if in payload', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('render_run_step_id'),
+        name: 'Render Run Step ID',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo building', {
+            name: 'Build',
+            id: 'build',
+            if: 'success()',
+          });
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const stepPayload = payload.jobs.build!.steps[0]!;
+      const stepKeys = Object.keys(stepPayload);
+
+      expect(stepPayload).toEqual({
+        name: 'Build',
+        id: 'build',
+        if: 'success()',
+        run: 'echo building',
+      });
+      expect(stepKeys.indexOf('name')).toBeLessThan(stepKeys.indexOf('id'));
+      expect(stepKeys.indexOf('id')).toBeLessThan(stepKeys.indexOf('if'));
+    });
+
+    it('renders uses step id in payload', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('render_uses_step_id'),
+        name: 'Render Uses Step ID',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').uses('actions/checkout@v4', {
+            name: 'Checkout',
+            id: 'checkout',
+          });
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const stepPayload = payload.jobs.build!.steps[0]!;
+      const stepKeys = Object.keys(stepPayload);
+
+      expect(stepPayload).toEqual({
+        name: 'Checkout',
+        id: 'checkout',
+        uses: 'actions/checkout@v4',
+      });
+      expect(stepKeys.indexOf('name')).toBeLessThan(stepKeys.indexOf('id'));
+    });
+
+    it('does not include id in step payload when id is not set', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('no_step_id_render'),
+        name: 'No Step ID Render',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hello');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const stepPayload = payload.jobs.build!.steps[0]!;
+
+      expect(stepPayload).not.toHaveProperty('id');
+    });
+
+    it('renders job outputs after runs-on and before steps', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('render_job_outputs'),
+        name: 'Render Job Outputs',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .outputs({
+              artifact: '${{ steps.upload.outputs.artifact-url }}',
+            })
+            .run('echo building', { id: 'upload' });
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const jobPayload = payload.jobs.build!;
+      const jobKeys = Object.keys(jobPayload);
+
+      expect(jobPayload.outputs).toEqual({
+        artifact: '${{ steps.upload.outputs.artifact-url }}',
+      });
+      expect(jobKeys.indexOf('runs-on')).toBeLessThan(jobKeys.indexOf('outputs'));
+      expect(jobKeys.indexOf('outputs')).toBeLessThan(jobKeys.indexOf('steps'));
+    });
+  });
 });

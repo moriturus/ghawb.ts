@@ -42,7 +42,12 @@ export class WorkflowRenderError extends Error {
 
 export interface WorkflowRenderTriggerPayload {
   readonly branches?: readonly string[];
+  readonly 'branches-ignore'?: readonly string[];
   readonly paths?: readonly string[];
+  readonly 'paths-ignore'?: readonly string[];
+  readonly tags?: readonly string[];
+  readonly 'tags-ignore'?: readonly string[];
+  readonly types?: readonly string[];
 }
 
 export interface WorkflowRenderScheduleEntryPayload {
@@ -51,6 +56,7 @@ export interface WorkflowRenderScheduleEntryPayload {
 
 export interface WorkflowRenderStepPayload {
   readonly name?: string;
+  readonly id?: string;
   readonly if?: string;
   readonly env?: Readonly<Record<string, string>>;
   readonly shell?: string;
@@ -76,10 +82,12 @@ export interface WorkflowRenderJobPayload {
     readonly group: string;
     readonly 'cancel-in-progress'?: boolean;
   };
+  readonly env?: Readonly<Record<string, string>>;
   readonly strategy?: {
     readonly matrix: Readonly<Record<string, readonly string[]>>;
   };
   readonly 'runs-on': string | readonly string[];
+  readonly outputs?: Readonly<Record<string, string>>;
   readonly steps: readonly WorkflowRenderStepPayload[];
 }
 
@@ -94,6 +102,7 @@ export interface WorkflowRenderPayload {
     >
   >;
   readonly permissions?: WorkflowRenderPermissionsPayload;
+  readonly env?: Readonly<Record<string, string>>;
   readonly concurrency?: {
     readonly group: string;
     readonly 'cancel-in-progress'?: boolean;
@@ -138,11 +147,20 @@ function createTriggerPayload(
     return trigger.cron.map((cron) => ({ cron }));
   }
 
-  assertAllowedKeys(trigger, ['type', 'branches', 'paths'], `trigger "${trigger.type}"`);
+  assertAllowedKeys(
+    trigger,
+    ['type', 'branches', 'branchesIgnore', 'paths', 'pathsIgnore', 'tags', 'tagsIgnore', 'types'],
+    `trigger "${trigger.type}"`
+  );
 
   const payload: WorkflowRenderTriggerPayload = {
     ...(trigger.branches ? { branches: [...trigger.branches] } : {}),
+    ...(trigger.branchesIgnore ? { 'branches-ignore': [...trigger.branchesIgnore] } : {}),
     ...(trigger.paths ? { paths: [...trigger.paths] } : {}),
+    ...(trigger.pathsIgnore ? { 'paths-ignore': [...trigger.pathsIgnore] } : {}),
+    ...(trigger.tags ? { tags: [...trigger.tags] } : {}),
+    ...(trigger.tagsIgnore ? { 'tags-ignore': [...trigger.tagsIgnore] } : {}),
+    ...(trigger.types ? { types: [...trigger.types] } : {}),
   };
 
   return Object.keys(payload).length === 0 ? null : payload;
@@ -152,12 +170,13 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
   if (step.kind === 'run') {
     assertAllowedKeys(
       step,
-      ['kind', 'name', 'env', 'with', 'if', 'run', 'shell', 'workingDirectory'],
+      ['kind', 'id', 'name', 'env', 'with', 'if', 'run', 'shell', 'workingDirectory'],
       `step "${step.kind}"`
     );
 
     return {
       ...(step.name !== undefined ? { name: step.name } : {}),
+      ...(step.id !== undefined ? { id: step.id } : {}),
       ...(step.if !== undefined ? { if: step.if } : {}),
       ...(step.env ? { env: { ...step.env } } : {}),
       ...(step.shell !== undefined ? { shell: step.shell } : {}),
@@ -169,10 +188,15 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
     };
   }
 
-  assertAllowedKeys(step, ['kind', 'name', 'env', 'with', 'if', 'uses'], `step "${step.kind}"`);
+  assertAllowedKeys(
+    step,
+    ['kind', 'id', 'name', 'env', 'with', 'if', 'uses'],
+    `step "${step.kind}"`
+  );
 
   return {
     ...(step.name !== undefined ? { name: step.name } : {}),
+    ...(step.id !== undefined ? { id: step.id } : {}),
     ...(step.if !== undefined ? { if: step.if } : {}),
     ...(step.env ? { env: { ...step.env } } : {}),
     ...(step.with ? { with: { ...step.with } } : {}),
@@ -279,7 +303,7 @@ function createStrategyPayload(strategy: WorkflowStrategy): {
 export function createWorkflowRenderPayload(workflow: WorkflowDefinition): WorkflowRenderPayload {
   assertAllowedKeys(
     workflow,
-    ['id', 'name', 'on', 'permissions', 'concurrency', 'jobs'],
+    ['id', 'name', 'on', 'permissions', 'env', 'concurrency', 'jobs'],
     'workflow'
   );
 
@@ -301,6 +325,8 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   const workflowPermissions = workflow.permissions
     ? createPermissionsPayload(workflow.permissions, 'workflow')
     : undefined;
+  const workflowEnv =
+    workflow.env && Object.keys(workflow.env).length > 0 ? { ...workflow.env } : undefined;
   const workflowConcurrency = workflow.concurrency
     ? createConcurrencyPayload(workflow.concurrency, 'workflow')
     : undefined;
@@ -317,8 +343,10 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
         'timeoutMinutes',
         'defaults',
         'concurrency',
+        'env',
         'strategy',
         'runsOn',
+        'outputs',
         'steps',
       ],
       `job "${job.id}"`
@@ -334,8 +362,12 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       ...(job.concurrency
         ? { concurrency: createConcurrencyPayload(job.concurrency, `job "${job.id}"`) }
         : {}),
+      ...(job.env && Object.keys(job.env).length > 0 ? { env: { ...job.env } } : {}),
       ...(job.strategy ? { strategy: createStrategyPayload(job.strategy) } : {}),
       'runs-on': Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
+      ...(job.outputs && Object.keys(job.outputs).length > 0
+        ? { outputs: { ...job.outputs } }
+        : {}),
       steps: job.steps.map(createStepPayload),
     };
   }
@@ -344,6 +376,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     name: workflow.name,
     on,
     ...(workflowPermissions ? { permissions: workflowPermissions } : {}),
+    ...(workflowEnv ? { env: workflowEnv } : {}),
     ...(workflowConcurrency ? { concurrency: workflowConcurrency } : {}),
     jobs,
   });

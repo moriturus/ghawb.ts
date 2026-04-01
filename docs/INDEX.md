@@ -15,6 +15,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_backlogs/sp5.md](./sprint_backlogs/sp5.md): Sprint 5 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp6.md](./sprint_backlogs/sp6.md): Sprint 6 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp7.md](./sprint_backlogs/sp7.md): Sprint 7 backlog record, planning notes, and committed items.
+- [sprint_backlogs/sp8.md](./sprint_backlogs/sp8.md): Sprint 8 backlog record, planning notes, and committed items.
 - [scrum_master/BOARD.md](./scrum_master/BOARD.md): Scrum Master owned team-improvement follow-ups in priority order.
 - [scrum_master/PLAYBOOK.md](./scrum_master/PLAYBOOK.md): Scrum Master operating guide for sprint start, planning, and closeout improvements.
 - [TEAM.md](./TEAM.md): Scrum team roles and working personas.
@@ -24,12 +25,16 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp3.md](./sprint_reviews/sp3.md): Sprint 3 review summary, CLI and self-hosting demo scope, findings, and Product Owner decision.
 - [sprint_reviews/sp4.md](./sprint_reviews/sp4.md): Sprint 4 review summary, CI recovery and workflow guardrail demo scope, findings, and Product Owner decision.
 - [sprint_reviews/sp6.md](./sprint_reviews/sp6.md): Sprint 6 review summary, SDK increment demo scope, findings, and Product Owner decision.
+- [sprint_reviews/sp7.md](./sprint_reviews/sp7.md): Sprint 7 review summary, repository-contract expansion, cross-runtime conformance, batch CLI demo scope, findings, and Product Owner decision.
+- [sprint_reviews/sp8.md](./sprint_reviews/sp8.md): Sprint 8 review summary, env maps, trigger completeness, step IDs, job outputs demo scope, findings, and Product Owner decision.
 - [sprint_retrospectives/sp1.md](./sprint_retrospectives/sp1.md): Sprint 1 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp2.md](./sprint_retrospectives/sp2.md): Sprint 2 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp3.md](./sprint_retrospectives/sp3.md): Sprint 3 retrospective summary, role reflections, and routed improvement actions.
 - [sprint_retrospectives/sp4.md](./sprint_retrospectives/sp4.md): Sprint 4 retrospective summary, role reflections, and routed improvement actions.
 - [sprint_retrospectives/sp5.md](./sprint_retrospectives/sp5.md): Sprint 5 retrospective summary, role reflections, and routed improvement actions.
 - [sprint_retrospectives/sp6.md](./sprint_retrospectives/sp6.md): Sprint 6 retrospective summary, role reflections, and routed improvement actions.
+- [sprint_retrospectives/sp7.md](./sprint_retrospectives/sp7.md): Sprint 7 retrospective summary, role reflections, and routed improvement actions.
+- [sprint_retrospectives/sp8.md](./sprint_retrospectives/sp8.md): Sprint 8 retrospective summary, role reflections, sub-agent delegation friction, and routed improvement actions.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 
 ## Notes

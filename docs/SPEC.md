@@ -20,17 +20,22 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - `@ghawb/shared` owns branded workflow and job identifiers plus validating factories.
 - `@ghawb/sdk` currently supports a minimal builder-centered workflow model with:
   - workflow name and explicit workflow identifier
-  - `push` and `pull_request` triggers with optional `branches` and `paths`
+  - `push` and `pull_request` triggers with optional `branches`, `branches-ignore`, `paths`, and `paths-ignore` filters, with mutual exclusion enforced between positive and negative variants per trigger
+  - `push` triggers with optional `tags` and `tags-ignore` filters, validated to reject these fields on `pull_request` triggers
+  - `pull_request` triggers with optional `types` filter validated against the fixed allowlist of GitHub Actions pull request activity types (`assigned`, `unassigned`, `labeled`, `unlabeled`, `opened`, `edited`, `closed`, `reopened`, `synchronize`, `converted_to_draft`, `ready_for_review`, `locked`, `unlocked`, `review_requested`, `review_request_removed`, `auto_merge_enabled`, `auto_merge_disabled`); `types` is rejected on all triggers other than `pull_request`
   - `workflow_dispatch` as a manual top-level trigger without additional supported fields such as `inputs` in the current slice
   - `schedule` as a top-level trigger with one or more explicit cron entries and no additional supported fields such as `timezone`
   - top-level and job-level `permissions` maps covering the current GitHub Actions permission keys `actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, and `statuses`
   - job-level execution metadata covering `timeout-minutes`, `defaults.run.shell`, `defaults.run.working-directory`, and run-step `shell` plus `working-directory`
   - workflow-level and job-level `concurrency` objects with required `group` and optional `cancel-in-progress`
+  - workflow-level and job-level `env` maps using `Readonly<Record<string, string>>` for shared environment variables, validated to reject blank keys and omitted when empty
   - job-level `needs` dependencies referencing one or more previously declared job identifiers
   - job-level `strategy.matrix` objects whose axis keys map to non-empty string arrays
   - jobs with `runs-on` in string or string-array form
   - steps using either `uses` or `run`
   - step metadata fields `name`, `env`, `with`, and `if`
+  - optional step `id` field with identifier validation, uniqueness enforcement within a job, and trimming during finalization
+  - job-level `outputs` maps (`Readonly<Record<string, string>>`) with blank key/value rejection and `steps.<id>` referential validation against declared step IDs in the same job; non-step expression forms are accepted without referential validation
 - Validation occurs at `build()` time and fails through explicit exceptions for invalid definitions.
 - Identifier factories reject surrounding whitespace instead of silently normalizing values.
 - Duplicate trigger definitions are rejected during `build()`.
@@ -43,7 +48,6 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - job `needs` preserves declared dependency order, rejects unknown dependency identifiers, rejects duplicate dependency entries, and currently requires each dependency to reference a previously declared job identifier.
 - job `strategy.matrix` currently supports only direct axis-to-string-array mappings, rejects empty axes and malformed values explicitly, and treats broader matrix features such as `include` or `exclude` as unsupported in the current slice.
 - Built workflow objects are deeply frozen, including nested trigger filters, job arrays, step arrays, and step maps such as `env` and `with`.
-- Bun and Node unit/integration coverage run on Vitest, with Bun-run Vitest as the primary repository test authority.
 - Bun-run Vitest remains the primary repository test authority, Node-run Vitest remains the compatibility confirmation path, and a shared cross-runtime render conformance suite exercises representative supported workflow fixtures across Bun, Node, and Deno.
 - Deno remains intentionally scoped to compatibility-oriented coverage outside the shared render conformance fixtures rather than the full repository test surface.
 - The SDK exposes a deterministic renderer that:
@@ -124,7 +128,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - The internal AST is a GitHub Actions semantic model, not a generic YAML AST.
 - Deterministic output is required for a given emitter and configuration.
 - The current renderer boundary is `createWorkflowRenderPayload()` plus `renderWorkflow(workflow, emitter)`.
-- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, `permissions`, `concurrency`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`, `schedule`); canonical permission key order (`actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, `statuses`); top-level concurrency field order `group`, `cancel-in-progress`; declared job order; job-local field order `needs`, `permissions`, `timeout-minutes`, `defaults`, `concurrency`, `strategy`, `runs-on`, `steps`; declared `needs` order within each job; `defaults.run` field order `shell`, `working-directory`; job concurrency field order `group`, `cancel-in-progress`; declared matrix axis order within each job strategy; and declared step order, with run-step execution metadata rendered as `shell` then `working-directory` before `run`.
+- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, `permissions`, `env`, `concurrency`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`, `schedule`); canonical trigger filter key order (`branches`, `branches-ignore`, `paths`, `paths-ignore`, `tags`, `tags-ignore`, `types`); canonical permission key order (`actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, `statuses`); top-level concurrency field order `group`, `cancel-in-progress`; declared job order; job-local field order `needs`, `permissions`, `timeout-minutes`, `defaults`, `concurrency`, `env`, `strategy`, `runs-on`, `outputs`, `steps`; declared `needs` order within each job; `defaults.run` field order `shell`, `working-directory`; job concurrency field order `group`, `cancel-in-progress`; declared matrix axis order within each job strategy; and declared step order, with step-local field order `name`, `id`, `if`, `env`, `shell`, `with`, `working-directory`, then `run` or `uses`.
 
 ## Open Questions
 

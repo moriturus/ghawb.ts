@@ -3,13 +3,44 @@ import type { JobId, WorkflowId } from '@ghawb/shared';
 export type FilteredTriggerType = 'push' | 'pull_request';
 export type TriggerType = FilteredTriggerType | 'workflow_dispatch' | 'schedule';
 
+export const PULL_REQUEST_ACTIVITY_TYPES = [
+  'assigned',
+  'unassigned',
+  'labeled',
+  'unlabeled',
+  'opened',
+  'edited',
+  'closed',
+  'reopened',
+  'synchronize',
+  'converted_to_draft',
+  'ready_for_review',
+  'locked',
+  'unlocked',
+  'review_requested',
+  'review_request_removed',
+  'auto_merge_enabled',
+  'auto_merge_disabled',
+] as const;
+
+export type PullRequestActivityType = (typeof PULL_REQUEST_ACTIVITY_TYPES)[number];
+
 export interface TriggerFilter {
   readonly branches?: readonly string[];
+  readonly branchesIgnore?: readonly string[];
   readonly paths?: readonly string[];
+  readonly pathsIgnore?: readonly string[];
+  readonly tags?: readonly string[];
+  readonly tagsIgnore?: readonly string[];
+}
+
+export interface PullRequestTriggerFilter extends TriggerFilter {
+  readonly types?: readonly PullRequestActivityType[];
 }
 
 export interface FilteredWorkflowTrigger extends TriggerFilter {
   readonly type: FilteredTriggerType;
+  readonly types?: readonly PullRequestActivityType[];
 }
 
 export interface WorkflowDispatchTrigger {
@@ -24,6 +55,7 @@ export interface ScheduleTrigger {
 export type WorkflowTrigger = FilteredWorkflowTrigger | WorkflowDispatchTrigger | ScheduleTrigger;
 
 export interface StepMetadata {
+  readonly id?: string;
   readonly name?: string;
   readonly env?: Readonly<Record<string, string>>;
   readonly with?: Readonly<Record<string, string>>;
@@ -89,6 +121,9 @@ export interface WorkflowConcurrency {
   readonly cancelInProgress?: boolean;
 }
 
+export type WorkflowEnv = Readonly<Record<string, string>>;
+export type WorkflowJobOutputs = Readonly<Record<string, string>>;
+
 export interface WorkflowJob {
   readonly id: JobId;
   readonly needs?: readonly [JobId, ...JobId[]];
@@ -98,8 +133,10 @@ export interface WorkflowJob {
     readonly run: WorkflowDefaultsRun;
   };
   readonly concurrency?: WorkflowConcurrency;
+  readonly env?: WorkflowEnv;
   readonly strategy?: WorkflowStrategy;
   readonly runsOn: RunsOnTarget;
+  readonly outputs?: WorkflowJobOutputs;
   readonly steps: readonly WorkflowStep[];
 }
 
@@ -108,6 +145,7 @@ export interface WorkflowDefinition {
   readonly name: string;
   readonly on: readonly WorkflowTrigger[];
   readonly permissions?: WorkflowPermissions;
+  readonly env?: WorkflowEnv;
   readonly concurrency?: WorkflowConcurrency;
   readonly jobs: readonly WorkflowJob[];
 }

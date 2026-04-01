@@ -2,8 +2,11 @@ import { WorkflowValidationError, type JobId, type WorkflowId } from '@ghawb/sha
 
 import {
   WORKFLOW_PERMISSION_KEYS,
+  PULL_REQUEST_ACTIVITY_TYPES,
   type FilteredTriggerType,
   type MatrixAxisValues,
+  type PullRequestActivityType,
+  type PullRequestTriggerFilter,
   type RunStepMetadata,
   type RunsOnTarget,
   type StepMetadata,
@@ -11,7 +14,9 @@ import {
   type WorkflowConcurrency,
   type WorkflowDefinition,
   type WorkflowDefaultsRun,
+  type WorkflowEnv,
   type WorkflowJob,
+  type WorkflowJobOutputs,
   type WorkflowMatrix,
   type WorkflowPermissionKey,
   type WorkflowPermissionLevel,
@@ -38,10 +43,12 @@ interface WorkflowJobDraft {
     readonly run: WorkflowDefaultsRun;
   };
   readonly concurrency?: WorkflowConcurrency;
+  readonly env?: WorkflowEnv;
   readonly strategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
   readonly runsOn?: string | readonly string[];
+  readonly outputs?: WorkflowJobOutputs;
   readonly steps: readonly WorkflowStepDraft[];
 }
 
@@ -84,7 +91,18 @@ function deepFreeze<T>(value: T): T {
 function cloneFilter(filter: TriggerFilter): TriggerFilter {
   return {
     ...(filter.branches ? { branches: [...filter.branches] } : {}),
+    ...(filter.branchesIgnore ? { branchesIgnore: [...filter.branchesIgnore] } : {}),
     ...(filter.paths ? { paths: [...filter.paths] } : {}),
+    ...(filter.pathsIgnore ? { pathsIgnore: [...filter.pathsIgnore] } : {}),
+    ...(filter.tags ? { tags: [...filter.tags] } : {}),
+    ...(filter.tagsIgnore ? { tagsIgnore: [...filter.tagsIgnore] } : {}),
+  };
+}
+
+function clonePullRequestFilter(filter: PullRequestTriggerFilter): PullRequestTriggerFilter {
+  return {
+    ...cloneFilter(filter),
+    ...(filter.types ? { types: [...filter.types] } : {}),
   };
 }
 
@@ -105,6 +123,7 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
   return {
     type: trigger.type,
     ...cloneFilter(trigger),
+    ...(trigger.types ? { types: [...trigger.types] } : {}),
   };
 }
 
@@ -115,6 +134,7 @@ function isValidCronExpression(value: string): boolean {
 
 function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
   return {
+    ...(metadata.id !== undefined ? { id: metadata.id } : {}),
     ...(metadata.name !== undefined ? { name: metadata.name } : {}),
     ...(metadata.env ? { env: { ...metadata.env } } : {}),
     ...(metadata.with ? { with: { ...metadata.with } } : {}),
@@ -173,6 +193,10 @@ function cloneConcurrency(concurrency: WorkflowConcurrency): WorkflowConcurrency
   };
 }
 
+function cloneEnv(env: WorkflowEnv): WorkflowEnv {
+  return { ...env };
+}
+
 function createValidationIssues(
   workflow: WorkflowBuilder,
   jobs: readonly WorkflowJobDraft[]
@@ -191,6 +215,7 @@ function createValidationIssues(
   const seenTriggerTypes = new Set<string>();
 
   validatePermissions('workflow', workflow.getPermissions(), issues);
+  validateEnv('workflow', workflow.getEnv(), issues);
   validateConcurrency('workflow', workflow.getConcurrency(), issues);
 
   for (const trigger of workflow.triggers) {
@@ -210,6 +235,10 @@ function createValidationIssues(
         issues.push('trigger "workflow_dispatch" does not support paths');
       }
 
+      if ('types' in trigger) {
+        issues.push('trigger "workflow_dispatch" does not support types');
+      }
+
       continue;
     }
 
@@ -220,6 +249,10 @@ function createValidationIssues(
 
       if ('paths' in trigger) {
         issues.push('trigger "schedule" does not support paths');
+      }
+
+      if ('types' in trigger) {
+        issues.push('trigger "schedule" does not support types');
       }
 
       if (trigger.cron.length === 0) {
@@ -246,7 +279,11 @@ function createValidationIssues(
 
     for (const [label, values] of [
       ['branches', trigger.branches],
+      ['branches-ignore', trigger.branchesIgnore],
       ['paths', trigger.paths],
+      ['paths-ignore', trigger.pathsIgnore],
+      ['tags', trigger.tags],
+      ['tags-ignore', trigger.tagsIgnore],
     ] as const) {
       if (values === undefined) {
         continue;
@@ -259,6 +296,46 @@ function createValidationIssues(
 
       if (values.some((value) => value.trim().length === 0)) {
         issues.push(`trigger "${trigger.type}" ${label} must not contain blank values`);
+      }
+    }
+
+    if (trigger.branches !== undefined && trigger.branchesIgnore !== undefined) {
+      issues.push(`trigger "${trigger.type}" must not combine branches and branches-ignore`);
+    }
+
+    if (trigger.paths !== undefined && trigger.pathsIgnore !== undefined) {
+      issues.push(`trigger "${trigger.type}" must not combine paths and paths-ignore`);
+    }
+
+    if (trigger.tags !== undefined && trigger.tagsIgnore !== undefined) {
+      issues.push(`trigger "${trigger.type}" must not combine tags and tags-ignore`);
+    }
+
+    if (trigger.type === 'pull_request') {
+      if (trigger.tags !== undefined) {
+        issues.push('trigger "pull_request" does not support tags');
+      }
+
+      if (trigger.tagsIgnore !== undefined) {
+        issues.push('trigger "pull_request" does not support tags-ignore');
+      }
+    }
+
+    if (trigger.types !== undefined) {
+      if (trigger.type !== 'pull_request') {
+        issues.push(`trigger "${trigger.type}" does not support types`);
+      } else {
+        if (trigger.types.length === 0) {
+          issues.push('trigger "pull_request" types must not be empty');
+        }
+
+        for (const activityType of trigger.types) {
+          if (!PULL_REQUEST_ACTIVITY_TYPES.includes(activityType as PullRequestActivityType)) {
+            issues.push(
+              `trigger "pull_request" types contains unknown activity type "${activityType}"`
+            );
+          }
+        }
       }
     }
   }
@@ -346,6 +423,8 @@ function createValidationIssues(
 
     validateConcurrency(`job "${jobId}"`, job.concurrency, issues);
 
+    validateEnv(`job "${jobId}"`, job.env, issues);
+
     validatePermissions(`job "${jobId}"`, job.permissions, issues);
 
     if (job.strategy !== undefined) {
@@ -394,12 +473,24 @@ function createValidationIssues(
       issues.push(`job "${jobId}" must define at least one step`);
     }
 
+    const stepIds = new Set<string>();
+
     for (const [index, step] of job.steps.entries()) {
       const location = `job "${jobId}" step ${index + 1}`;
       const value = step.kind === 'run' ? step.run : step.uses;
 
       if (value === undefined || value.trim().length === 0) {
         issues.push(`${location} must define a non-empty ${step.kind} value`);
+      }
+
+      if (step.id !== undefined) {
+        if (step.id.trim().length === 0) {
+          issues.push(`${location} id must not be empty`);
+        } else if (stepIds.has(step.id)) {
+          issues.push(`job "${jobId}" contains duplicate step id "${step.id}"`);
+        } else {
+          stepIds.add(step.id);
+        }
       }
 
       if (step.name !== undefined && step.name.trim().length === 0) {
@@ -430,6 +521,31 @@ function createValidationIssues(
 
         if (Object.keys(record).some((key) => key.trim().length === 0)) {
           issues.push(`${location} ${label} must not contain blank keys`);
+        }
+      }
+    }
+
+    if (job.outputs !== undefined) {
+      for (const [key, value] of Object.entries(job.outputs)) {
+        if (key.trim().length === 0) {
+          issues.push(`job "${jobId}" outputs must not contain blank keys`);
+        }
+
+        if (value.trim().length === 0) {
+          issues.push(`job "${jobId}" outputs key "${key}" must not have a blank value`);
+        }
+
+        const stepRefPattern = /steps\.([a-zA-Z_][a-zA-Z0-9_-]*)/g;
+        let match: RegExpExecArray | null;
+
+        while ((match = stepRefPattern.exec(value)) !== null) {
+          const referencedId = match[1] ?? '';
+
+          if (referencedId.length > 0 && !stepIds.has(referencedId)) {
+            issues.push(
+              `job "${jobId}" outputs key "${key}" references undeclared step id "${referencedId}"`
+            );
+          }
         }
       }
     }
@@ -487,8 +603,19 @@ function validateConcurrency(
   }
 }
 
+function validateEnv(owner: string, env: WorkflowEnv | undefined, issues: string[]): void {
+  if (env === undefined) {
+    return;
+  }
+
+  if (Object.keys(env).some((key) => key.trim().length === 0)) {
+    issues.push(`${owner} env must not contain blank keys`);
+  }
+}
+
 function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   const base = {
+    ...(step.id !== undefined ? { id: step.id.trim() } : {}),
     ...(step.name !== undefined ? { name: step.name.trim() } : {}),
     ...(step.env ? { env: { ...step.env } } : {}),
     ...(step.with ? { with: { ...step.with } } : {}),
@@ -568,10 +695,12 @@ class JobBuilder {
     readonly run: WorkflowDefaultsRun;
   };
   private jobConcurrency?: WorkflowConcurrency;
+  private jobEnv?: WorkflowEnv;
   private jobStrategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
   private jobRunsOn?: string | readonly string[];
+  private jobOutputs?: WorkflowJobOutputs;
   private readonly jobSteps: WorkflowStepDraft[] = [];
 
   constructor(id: JobId) {
@@ -605,6 +734,11 @@ class JobBuilder {
     return this;
   }
 
+  env(env: WorkflowEnv): this {
+    this.jobEnv = cloneEnv(env);
+    return this;
+  }
+
   strategyMatrix(matrix: WorkflowMatrix): this {
     this.jobStrategy = {
       matrix: cloneMatrix(matrix),
@@ -614,6 +748,11 @@ class JobBuilder {
 
   runsOn(target: string | readonly string[]): this {
     this.jobRunsOn = Array.isArray(target) ? [...target] : target;
+    return this;
+  }
+
+  outputs(outputs: WorkflowJobOutputs): this {
+    this.jobOutputs = { ...outputs };
     return this;
   }
 
@@ -649,10 +788,12 @@ class JobBuilder {
       ...(this.jobConcurrency !== undefined
         ? { concurrency: cloneConcurrency(this.jobConcurrency) }
         : {}),
+      ...(this.jobEnv !== undefined ? { env: cloneEnv(this.jobEnv) } : {}),
       ...(this.jobStrategy !== undefined
         ? { strategy: { matrix: cloneMatrix(this.jobStrategy.matrix) } }
         : {}),
       ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+      ...(this.jobOutputs !== undefined ? { outputs: { ...this.jobOutputs } } : {}),
       steps: this.jobSteps.map((step) => ({
         kind: step.kind,
         ...(step.run !== undefined ? { run: step.run } : {}),
@@ -672,6 +813,7 @@ export class WorkflowBuilder {
 
   private readonly jobs: WorkflowJobDraft[] = [];
   private permissionsDraft?: WorkflowPermissions;
+  private envDraft?: WorkflowEnv;
   private concurrencyDraft?: WorkflowConcurrency;
 
   constructor(id: WorkflowId, name: string) {
@@ -691,8 +833,12 @@ export class WorkflowBuilder {
     return this.addFilteredTrigger('push', filter);
   }
 
-  onPullRequest(filter: TriggerFilter = {}): this {
-    return this.addFilteredTrigger('pull_request', filter);
+  onPullRequest(filter: PullRequestTriggerFilter = {}): this {
+    this.triggers.push({
+      type: 'pull_request',
+      ...clonePullRequestFilter(filter),
+    });
+    return this;
   }
 
   onWorkflowDispatch(): this {
@@ -717,6 +863,15 @@ export class WorkflowBuilder {
 
   getPermissions(): WorkflowPermissions | undefined {
     return this.permissionsDraft;
+  }
+
+  env(env: WorkflowEnv): this {
+    this.envDraft = cloneEnv(env);
+    return this;
+  }
+
+  getEnv(): WorkflowEnv | undefined {
+    return this.envDraft;
   }
 
   concurrency(concurrency: WorkflowConcurrency): this {
@@ -753,8 +908,14 @@ export class WorkflowBuilder {
         ? { defaults: { run: finalizeDefaultsRun(job.defaults.run) } }
         : {}),
       ...(job.concurrency !== undefined ? { concurrency: cloneConcurrency(job.concurrency) } : {}),
+      ...(job.env !== undefined && Object.keys(job.env).length > 0
+        ? { env: cloneEnv(job.env) }
+        : {}),
       ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
       runsOn: finalizeRunsOn(job.runsOn!),
+      ...(job.outputs !== undefined && Object.keys(job.outputs).length > 0
+        ? { outputs: { ...job.outputs } }
+        : {}),
       steps: job.steps.map(finalizeStep),
     }));
 
@@ -764,6 +925,9 @@ export class WorkflowBuilder {
       on: this.triggers.map(cloneTrigger),
       ...(this.permissionsDraft !== undefined
         ? { permissions: canonicalizePermissions(this.permissionsDraft) }
+        : {}),
+      ...(this.envDraft !== undefined && Object.keys(this.envDraft).length > 0
+        ? { env: cloneEnv(this.envDraft) }
         : {}),
       ...(this.concurrencyDraft !== undefined
         ? { concurrency: cloneConcurrency(this.concurrencyDraft) }

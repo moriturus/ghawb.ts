@@ -62,9 +62,9 @@ Status: ready
 - Definition of Done: Push and pull_request triggers support negation and tag filters, mutual exclusion is validated at build time, rendering is deterministic and canonical, conformance fixtures cover the new filters across runtimes, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Users can declare `branchesIgnore`, `pathsIgnore`, `tags`, and `tagsIgnore` on push and pull_request triggers, combining positive and negative variants on the same filter type fails explicitly (e.g., `branches` + `branchesIgnore` on the same trigger), `tags` and `tagsIgnore` on `pull_request` triggers fail at build time, rendering uses kebab-case (`branches-ignore`, `paths-ignore`, `tags-ignore`), tag filters work on push triggers, and cross-runtime conformance fixtures are added in the same slice.
 - Story Points: 3
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). GitHub Actions enforces mutual exclusion between `branches` and `branches-ignore` on the same trigger; this item must replicate that constraint.
+- Status: done
+- Completed At: 2026-04-01T01:15:00Z
+- Notes/Links: [SPEC.md](../SPEC.md). GitHub Actions enforces mutual exclusion between `branches` and `branches-ignore` on the same trigger; this item must replicate that constraint. PR #19 merged into sprint-8 branch.
 
 ### Item 23: Step identifiers and job output declarations
 

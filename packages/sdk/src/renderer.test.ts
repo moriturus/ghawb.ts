@@ -913,4 +913,200 @@ describe('workflow renderer', () => {
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(new WorkflowRenderError('unsupported job strategy field "failFast"'));
   });
+
+  it('renders workflow-level env after permissions and before concurrency', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_env'),
+      name: 'Workflow Env',
+    })
+      .onPush()
+      .permissions({
+        contents: 'read',
+      })
+      .env({
+        CI: 'true',
+        NODE_ENV: 'production',
+      })
+      .concurrency({
+        group: 'deploy',
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'Workflow Env',
+      on: {
+        push: null,
+      },
+      permissions: {
+        contents: 'read',
+      },
+      env: {
+        CI: 'true',
+        NODE_ENV: 'production',
+      },
+      concurrency: {
+        group: 'deploy',
+      },
+      jobs: {
+        build: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+      },
+    });
+    const topKeys = Object.keys(payload);
+    expect(topKeys.indexOf('permissions')).toBeLessThan(topKeys.indexOf('env'));
+    expect(topKeys.indexOf('env')).toBeLessThan(topKeys.indexOf('concurrency'));
+  });
+
+  it('renders job-level env after concurrency and before strategy', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_env'),
+      name: 'Job Env',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job
+          .concurrency({
+            group: 'build-${{ github.ref }}',
+          })
+          .env({
+            NODE_ENV: 'test',
+          })
+          .strategyMatrix({
+            os: ['ubuntu-latest', 'windows-latest'],
+          })
+          .runsOn('${{ matrix.os }}')
+          .run('bun run build');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'Job Env',
+      on: {
+        push: null,
+      },
+      jobs: {
+        build: {
+          concurrency: {
+            group: 'build-${{ github.ref }}',
+          },
+          env: {
+            NODE_ENV: 'test',
+          },
+          strategy: {
+            matrix: {
+              os: ['ubuntu-latest', 'windows-latest'],
+            },
+          },
+          'runs-on': '${{ matrix.os }}',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+      },
+    });
+    const jobKeys = Object.keys(payload.jobs.build!);
+    expect(jobKeys.indexOf('concurrency')).toBeLessThan(jobKeys.indexOf('env'));
+    expect(jobKeys.indexOf('env')).toBeLessThan(jobKeys.indexOf('strategy'));
+  });
+
+  it('omits empty env maps from the rendered payload', () => {
+    const workflowWithEmptyEnv = {
+      id: createWorkflowId('empty_env'),
+      name: 'Empty Env',
+      on: [{ type: 'push' as const }],
+      env: {},
+      jobs: [
+        {
+          id: createJobId('build'),
+          env: {},
+          runsOn: 'ubuntu-latest' as const,
+          steps: [{ kind: 'run' as const, run: 'bun run build' }],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    const payload = createWorkflowRenderPayload(workflowWithEmptyEnv);
+
+    expect(payload.env).toBeUndefined();
+    expect(payload.jobs.build!.env).toBeUndefined();
+  });
+
+  it('preserves canonical field ordering when env is present with other features', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('full_env'),
+      name: 'Full Env',
+    })
+      .onPush()
+      .permissions({ contents: 'read' })
+      .env({ CI: 'true' })
+      .concurrency({ group: 'deploy', cancelInProgress: true })
+      .addJob(createJobId('build'), (job) => {
+        job
+          .permissions({ checks: 'write' })
+          .timeoutMinutes(30)
+          .concurrency({ group: 'build' })
+          .env({ NODE_ENV: 'production' })
+          .strategyMatrix({ os: ['ubuntu-latest'] })
+          .runsOn('${{ matrix.os }}')
+          .run('bun run build');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    const topKeys = Object.keys(payload);
+    expect(topKeys).toEqual(['name', 'on', 'permissions', 'env', 'concurrency', 'jobs']);
+
+    const jobKeys = Object.keys(payload.jobs.build!);
+    expect(jobKeys).toEqual([
+      'permissions',
+      'timeout-minutes',
+      'concurrency',
+      'env',
+      'strategy',
+      'runs-on',
+      'steps',
+    ]);
+
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it('renders combined workflow-level and job-level env correctly', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('combined_env'),
+      name: 'Combined Env',
+    })
+      .onPush()
+      .env({
+        CI: 'true',
+      })
+      .addJob(createJobId('lint'), (job) => {
+        job.env({ NODE_ENV: 'test' }).runsOn('ubuntu-latest').run('bun run lint');
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload.env).toEqual({ CI: 'true' });
+    expect(payload.jobs.lint!.env).toEqual({ NODE_ENV: 'test' });
+    expect(payload.jobs.build!.env).toBeUndefined();
+  });
 });

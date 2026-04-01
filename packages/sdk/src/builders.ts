@@ -11,6 +11,7 @@ import {
   type WorkflowConcurrency,
   type WorkflowDefinition,
   type WorkflowDefaultsRun,
+  type WorkflowEnv,
   type WorkflowJob,
   type WorkflowMatrix,
   type WorkflowPermissionKey,
@@ -38,6 +39,7 @@ interface WorkflowJobDraft {
     readonly run: WorkflowDefaultsRun;
   };
   readonly concurrency?: WorkflowConcurrency;
+  readonly env?: WorkflowEnv;
   readonly strategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
@@ -173,6 +175,10 @@ function cloneConcurrency(concurrency: WorkflowConcurrency): WorkflowConcurrency
   };
 }
 
+function cloneEnv(env: WorkflowEnv): WorkflowEnv {
+  return { ...env };
+}
+
 function createValidationIssues(
   workflow: WorkflowBuilder,
   jobs: readonly WorkflowJobDraft[]
@@ -191,6 +197,7 @@ function createValidationIssues(
   const seenTriggerTypes = new Set<string>();
 
   validatePermissions('workflow', workflow.getPermissions(), issues);
+  validateEnv('workflow', workflow.getEnv(), issues);
   validateConcurrency('workflow', workflow.getConcurrency(), issues);
 
   for (const trigger of workflow.triggers) {
@@ -346,6 +353,8 @@ function createValidationIssues(
 
     validateConcurrency(`job "${jobId}"`, job.concurrency, issues);
 
+    validateEnv(`job "${jobId}"`, job.env, issues);
+
     validatePermissions(`job "${jobId}"`, job.permissions, issues);
 
     if (job.strategy !== undefined) {
@@ -487,6 +496,16 @@ function validateConcurrency(
   }
 }
 
+function validateEnv(owner: string, env: WorkflowEnv | undefined, issues: string[]): void {
+  if (env === undefined) {
+    return;
+  }
+
+  if (Object.keys(env).some((key) => key.trim().length === 0)) {
+    issues.push(`${owner} env must not contain blank keys`);
+  }
+}
+
 function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   const base = {
     ...(step.name !== undefined ? { name: step.name.trim() } : {}),
@@ -568,6 +587,7 @@ class JobBuilder {
     readonly run: WorkflowDefaultsRun;
   };
   private jobConcurrency?: WorkflowConcurrency;
+  private jobEnv?: WorkflowEnv;
   private jobStrategy?: {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
@@ -602,6 +622,11 @@ class JobBuilder {
 
   concurrency(concurrency: WorkflowConcurrency): this {
     this.jobConcurrency = cloneConcurrency(concurrency);
+    return this;
+  }
+
+  env(env: WorkflowEnv): this {
+    this.jobEnv = cloneEnv(env);
     return this;
   }
 
@@ -649,6 +674,7 @@ class JobBuilder {
       ...(this.jobConcurrency !== undefined
         ? { concurrency: cloneConcurrency(this.jobConcurrency) }
         : {}),
+      ...(this.jobEnv !== undefined ? { env: cloneEnv(this.jobEnv) } : {}),
       ...(this.jobStrategy !== undefined
         ? { strategy: { matrix: cloneMatrix(this.jobStrategy.matrix) } }
         : {}),
@@ -672,6 +698,7 @@ export class WorkflowBuilder {
 
   private readonly jobs: WorkflowJobDraft[] = [];
   private permissionsDraft?: WorkflowPermissions;
+  private envDraft?: WorkflowEnv;
   private concurrencyDraft?: WorkflowConcurrency;
 
   constructor(id: WorkflowId, name: string) {
@@ -719,6 +746,15 @@ export class WorkflowBuilder {
     return this.permissionsDraft;
   }
 
+  env(env: WorkflowEnv): this {
+    this.envDraft = cloneEnv(env);
+    return this;
+  }
+
+  getEnv(): WorkflowEnv | undefined {
+    return this.envDraft;
+  }
+
   concurrency(concurrency: WorkflowConcurrency): this {
     this.concurrencyDraft = cloneConcurrency(concurrency);
     return this;
@@ -753,6 +789,9 @@ export class WorkflowBuilder {
         ? { defaults: { run: finalizeDefaultsRun(job.defaults.run) } }
         : {}),
       ...(job.concurrency !== undefined ? { concurrency: cloneConcurrency(job.concurrency) } : {}),
+      ...(job.env !== undefined && Object.keys(job.env).length > 0
+        ? { env: cloneEnv(job.env) }
+        : {}),
       ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
       runsOn: finalizeRunsOn(job.runsOn!),
       steps: job.steps.map(finalizeStep),
@@ -764,6 +803,9 @@ export class WorkflowBuilder {
       on: this.triggers.map(cloneTrigger),
       ...(this.permissionsDraft !== undefined
         ? { permissions: canonicalizePermissions(this.permissionsDraft) }
+        : {}),
+      ...(this.envDraft !== undefined && Object.keys(this.envDraft).length > 0
+        ? { env: cloneEnv(this.envDraft) }
         : {}),
       ...(this.concurrencyDraft !== undefined
         ? { concurrency: cloneConcurrency(this.concurrencyDraft) }

@@ -76,6 +76,7 @@ export interface WorkflowRenderJobPayload {
     readonly group: string;
     readonly 'cancel-in-progress'?: boolean;
   };
+  readonly env?: Readonly<Record<string, string>>;
   readonly strategy?: {
     readonly matrix: Readonly<Record<string, readonly string[]>>;
   };
@@ -94,6 +95,7 @@ export interface WorkflowRenderPayload {
     >
   >;
   readonly permissions?: WorkflowRenderPermissionsPayload;
+  readonly env?: Readonly<Record<string, string>>;
   readonly concurrency?: {
     readonly group: string;
     readonly 'cancel-in-progress'?: boolean;
@@ -279,7 +281,7 @@ function createStrategyPayload(strategy: WorkflowStrategy): {
 export function createWorkflowRenderPayload(workflow: WorkflowDefinition): WorkflowRenderPayload {
   assertAllowedKeys(
     workflow,
-    ['id', 'name', 'on', 'permissions', 'concurrency', 'jobs'],
+    ['id', 'name', 'on', 'permissions', 'env', 'concurrency', 'jobs'],
     'workflow'
   );
 
@@ -301,6 +303,8 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   const workflowPermissions = workflow.permissions
     ? createPermissionsPayload(workflow.permissions, 'workflow')
     : undefined;
+  const workflowEnv =
+    workflow.env && Object.keys(workflow.env).length > 0 ? { ...workflow.env } : undefined;
   const workflowConcurrency = workflow.concurrency
     ? createConcurrencyPayload(workflow.concurrency, 'workflow')
     : undefined;
@@ -317,6 +321,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
         'timeoutMinutes',
         'defaults',
         'concurrency',
+        'env',
         'strategy',
         'runsOn',
         'steps',
@@ -334,6 +339,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       ...(job.concurrency
         ? { concurrency: createConcurrencyPayload(job.concurrency, `job "${job.id}"`) }
         : {}),
+      ...(job.env && Object.keys(job.env).length > 0 ? { env: { ...job.env } } : {}),
       ...(job.strategy ? { strategy: createStrategyPayload(job.strategy) } : {}),
       'runs-on': Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
       steps: job.steps.map(createStepPayload),
@@ -344,6 +350,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     name: workflow.name,
     on,
     ...(workflowPermissions ? { permissions: workflowPermissions } : {}),
+    ...(workflowEnv ? { env: workflowEnv } : {}),
     ...(workflowConcurrency ? { concurrency: workflowConcurrency } : {}),
     jobs,
   });

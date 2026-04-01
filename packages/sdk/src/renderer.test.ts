@@ -1334,4 +1334,105 @@ describe('workflow renderer', () => {
 
     expect(triggerKeys).toEqual(['branches', 'paths', 'types']);
   });
+
+  describe('step identifiers and job outputs rendering', () => {
+    it('renders run step id after name and before if in payload', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('render_run_step_id'),
+        name: 'Render Run Step ID',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo building', {
+            name: 'Build',
+            id: 'build',
+            if: 'success()',
+          });
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const stepPayload = payload.jobs.build!.steps[0]!;
+      const stepKeys = Object.keys(stepPayload);
+
+      expect(stepPayload).toEqual({
+        name: 'Build',
+        id: 'build',
+        if: 'success()',
+        run: 'echo building',
+      });
+      expect(stepKeys.indexOf('name')).toBeLessThan(stepKeys.indexOf('id'));
+      expect(stepKeys.indexOf('id')).toBeLessThan(stepKeys.indexOf('if'));
+    });
+
+    it('renders uses step id in payload', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('render_uses_step_id'),
+        name: 'Render Uses Step ID',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').uses('actions/checkout@v4', {
+            name: 'Checkout',
+            id: 'checkout',
+          });
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const stepPayload = payload.jobs.build!.steps[0]!;
+      const stepKeys = Object.keys(stepPayload);
+
+      expect(stepPayload).toEqual({
+        name: 'Checkout',
+        id: 'checkout',
+        uses: 'actions/checkout@v4',
+      });
+      expect(stepKeys.indexOf('name')).toBeLessThan(stepKeys.indexOf('id'));
+    });
+
+    it('does not include id in step payload when id is not set', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('no_step_id_render'),
+        name: 'No Step ID Render',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hello');
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const stepPayload = payload.jobs.build!.steps[0]!;
+
+      expect(stepPayload).not.toHaveProperty('id');
+    });
+
+    it('renders job outputs after runs-on and before steps', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('render_job_outputs'),
+        name: 'Render Job Outputs',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .outputs({
+              artifact: '${{ steps.upload.outputs.artifact-url }}',
+            })
+            .run('echo building', { id: 'upload' });
+        })
+        .build();
+
+      const payload = createWorkflowRenderPayload(workflow);
+      const jobPayload = payload.jobs.build!;
+      const jobKeys = Object.keys(jobPayload);
+
+      expect(jobPayload.outputs).toEqual({
+        artifact: '${{ steps.upload.outputs.artifact-url }}',
+      });
+      expect(jobKeys.indexOf('runs-on')).toBeLessThan(jobKeys.indexOf('outputs'));
+      expect(jobKeys.indexOf('outputs')).toBeLessThan(jobKeys.indexOf('steps'));
+    });
+  });
 });

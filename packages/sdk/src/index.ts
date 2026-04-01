@@ -36,6 +36,7 @@ export type {
   WorkflowDefaultsRun,
   WorkflowEnv,
   WorkflowJob,
+  WorkflowJobOutputs,
   WorkflowMatrix,
   WorkflowPermissionKey,
   WorkflowPermissionLevel,

@@ -425,6 +425,42 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'step_ids_and_job_outputs',
+    defineWorkflow({
+      id: createWorkflowId('step_ids_and_job_outputs'),
+      name: 'Step IDs and Job Outputs',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .outputs({
+            artifact: '${{ steps.upload.outputs.artifact-url }}',
+          })
+          .run('echo building', { id: 'build-step' })
+          .uses('actions/upload-artifact@v4', { id: 'upload', with: { path: 'dist' } });
+      })
+      .build(),
+    {
+      name: 'Step IDs and Job Outputs',
+      on: {
+        push: null,
+      },
+      jobs: {
+        build: {
+          'runs-on': 'ubuntu-latest',
+          outputs: {
+            artifact: '${{ steps.upload.outputs.artifact-url }}',
+          },
+          steps: [
+            { id: 'build-step', run: 'echo building' },
+            { id: 'upload', with: { path: 'dist' }, uses: 'actions/upload-artifact@v4' },
+          ],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -502,5 +538,39 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: ['trigger "push" must not combine branches and branches-ignore'],
+  },
+  {
+    name: 'step_id_duplicate_rejected',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('dup_step_id'),
+        name: 'Dup Step ID',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .run('echo first', { id: 'same-id' })
+            .run('echo second', { id: 'same-id' });
+        })
+        .build(),
+    expectedIssues: ['job "test" contains duplicate step id "same-id"'],
+  },
+  {
+    name: 'job_output_undeclared_step_ref',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('bad_output_ref'),
+        name: 'Bad Output Ref',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .outputs({ result: '${{ steps.missing.outputs.value }}' })
+            .run('echo hi');
+        })
+        .build(),
+    expectedIssues: ['job "build" outputs key "result" references undeclared step id "missing"'],
   },
 ];

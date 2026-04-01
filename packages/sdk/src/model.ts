@@ -55,6 +55,7 @@ export interface ScheduleTrigger {
 export type WorkflowTrigger = FilteredWorkflowTrigger | WorkflowDispatchTrigger | ScheduleTrigger;
 
 export interface StepMetadata {
+  readonly id?: string;
   readonly name?: string;
   readonly env?: Readonly<Record<string, string>>;
   readonly with?: Readonly<Record<string, string>>;
@@ -121,6 +122,7 @@ export interface WorkflowConcurrency {
 }
 
 export type WorkflowEnv = Readonly<Record<string, string>>;
+export type WorkflowJobOutputs = Readonly<Record<string, string>>;
 
 export interface WorkflowJob {
   readonly id: JobId;
@@ -134,6 +136,7 @@ export interface WorkflowJob {
   readonly env?: WorkflowEnv;
   readonly strategy?: WorkflowStrategy;
   readonly runsOn: RunsOnTarget;
+  readonly outputs?: WorkflowJobOutputs;
   readonly steps: readonly WorkflowStep[];
 }
 

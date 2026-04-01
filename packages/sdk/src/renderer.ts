@@ -56,6 +56,7 @@ export interface WorkflowRenderScheduleEntryPayload {
 
 export interface WorkflowRenderStepPayload {
   readonly name?: string;
+  readonly id?: string;
   readonly if?: string;
   readonly env?: Readonly<Record<string, string>>;
   readonly shell?: string;
@@ -86,6 +87,7 @@ export interface WorkflowRenderJobPayload {
     readonly matrix: Readonly<Record<string, readonly string[]>>;
   };
   readonly 'runs-on': string | readonly string[];
+  readonly outputs?: Readonly<Record<string, string>>;
   readonly steps: readonly WorkflowRenderStepPayload[];
 }
 
@@ -168,12 +170,13 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
   if (step.kind === 'run') {
     assertAllowedKeys(
       step,
-      ['kind', 'name', 'env', 'with', 'if', 'run', 'shell', 'workingDirectory'],
+      ['kind', 'id', 'name', 'env', 'with', 'if', 'run', 'shell', 'workingDirectory'],
       `step "${step.kind}"`
     );
 
     return {
       ...(step.name !== undefined ? { name: step.name } : {}),
+      ...(step.id !== undefined ? { id: step.id } : {}),
       ...(step.if !== undefined ? { if: step.if } : {}),
       ...(step.env ? { env: { ...step.env } } : {}),
       ...(step.shell !== undefined ? { shell: step.shell } : {}),
@@ -185,10 +188,15 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
     };
   }
 
-  assertAllowedKeys(step, ['kind', 'name', 'env', 'with', 'if', 'uses'], `step "${step.kind}"`);
+  assertAllowedKeys(
+    step,
+    ['kind', 'id', 'name', 'env', 'with', 'if', 'uses'],
+    `step "${step.kind}"`
+  );
 
   return {
     ...(step.name !== undefined ? { name: step.name } : {}),
+    ...(step.id !== undefined ? { id: step.id } : {}),
     ...(step.if !== undefined ? { if: step.if } : {}),
     ...(step.env ? { env: { ...step.env } } : {}),
     ...(step.with ? { with: { ...step.with } } : {}),
@@ -338,6 +346,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
         'env',
         'strategy',
         'runsOn',
+        'outputs',
         'steps',
       ],
       `job "${job.id}"`
@@ -356,6 +365,9 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       ...(job.env && Object.keys(job.env).length > 0 ? { env: { ...job.env } } : {}),
       ...(job.strategy ? { strategy: createStrategyPayload(job.strategy) } : {}),
       'runs-on': Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
+      ...(job.outputs && Object.keys(job.outputs).length > 0
+        ? { outputs: { ...job.outputs } }
+        : {}),
       steps: job.steps.map(createStepPayload),
     };
   }

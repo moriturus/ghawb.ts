@@ -16,6 +16,7 @@ import {
   type WorkflowDefaultsRun,
   type WorkflowEnv,
   type WorkflowJob,
+  type WorkflowJobOutputs,
   type WorkflowMatrix,
   type WorkflowPermissionKey,
   type WorkflowPermissionLevel,
@@ -47,6 +48,7 @@ interface WorkflowJobDraft {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
   readonly runsOn?: string | readonly string[];
+  readonly outputs?: WorkflowJobOutputs;
   readonly steps: readonly WorkflowStepDraft[];
 }
 
@@ -132,6 +134,7 @@ function isValidCronExpression(value: string): boolean {
 
 function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
   return {
+    ...(metadata.id !== undefined ? { id: metadata.id } : {}),
     ...(metadata.name !== undefined ? { name: metadata.name } : {}),
     ...(metadata.env ? { env: { ...metadata.env } } : {}),
     ...(metadata.with ? { with: { ...metadata.with } } : {}),
@@ -470,12 +473,24 @@ function createValidationIssues(
       issues.push(`job "${jobId}" must define at least one step`);
     }
 
+    const stepIds = new Set<string>();
+
     for (const [index, step] of job.steps.entries()) {
       const location = `job "${jobId}" step ${index + 1}`;
       const value = step.kind === 'run' ? step.run : step.uses;
 
       if (value === undefined || value.trim().length === 0) {
         issues.push(`${location} must define a non-empty ${step.kind} value`);
+      }
+
+      if (step.id !== undefined) {
+        if (step.id.trim().length === 0) {
+          issues.push(`${location} id must not be empty`);
+        } else if (stepIds.has(step.id)) {
+          issues.push(`job "${jobId}" contains duplicate step id "${step.id}"`);
+        } else {
+          stepIds.add(step.id);
+        }
       }
 
       if (step.name !== undefined && step.name.trim().length === 0) {
@@ -506,6 +521,31 @@ function createValidationIssues(
 
         if (Object.keys(record).some((key) => key.trim().length === 0)) {
           issues.push(`${location} ${label} must not contain blank keys`);
+        }
+      }
+    }
+
+    if (job.outputs !== undefined) {
+      for (const [key, value] of Object.entries(job.outputs)) {
+        if (key.trim().length === 0) {
+          issues.push(`job "${jobId}" outputs must not contain blank keys`);
+        }
+
+        if (value.trim().length === 0) {
+          issues.push(`job "${jobId}" outputs key "${key}" must not have a blank value`);
+        }
+
+        const stepRefPattern = /steps\.([a-zA-Z_][a-zA-Z0-9_-]*)/g;
+        let match: RegExpExecArray | null;
+
+        while ((match = stepRefPattern.exec(value)) !== null) {
+          const referencedId = match[1] ?? '';
+
+          if (referencedId.length > 0 && !stepIds.has(referencedId)) {
+            issues.push(
+              `job "${jobId}" outputs key "${key}" references undeclared step id "${referencedId}"`
+            );
+          }
         }
       }
     }
@@ -575,6 +615,7 @@ function validateEnv(owner: string, env: WorkflowEnv | undefined, issues: string
 
 function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   const base = {
+    ...(step.id !== undefined ? { id: step.id.trim() } : {}),
     ...(step.name !== undefined ? { name: step.name.trim() } : {}),
     ...(step.env ? { env: { ...step.env } } : {}),
     ...(step.with ? { with: { ...step.with } } : {}),
@@ -659,6 +700,7 @@ class JobBuilder {
     readonly matrix: Readonly<Record<string, readonly unknown[] | unknown>>;
   };
   private jobRunsOn?: string | readonly string[];
+  private jobOutputs?: WorkflowJobOutputs;
   private readonly jobSteps: WorkflowStepDraft[] = [];
 
   constructor(id: JobId) {
@@ -709,6 +751,11 @@ class JobBuilder {
     return this;
   }
 
+  outputs(outputs: WorkflowJobOutputs): this {
+    this.jobOutputs = { ...outputs };
+    return this;
+  }
+
   run(command: string, metadata: RunStepMetadata = {}): this {
     this.jobSteps.push({
       kind: 'run',
@@ -746,6 +793,7 @@ class JobBuilder {
         ? { strategy: { matrix: cloneMatrix(this.jobStrategy.matrix) } }
         : {}),
       ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+      ...(this.jobOutputs !== undefined ? { outputs: { ...this.jobOutputs } } : {}),
       steps: this.jobSteps.map((step) => ({
         kind: step.kind,
         ...(step.run !== undefined ? { run: step.run } : {}),
@@ -865,6 +913,9 @@ export class WorkflowBuilder {
         : {}),
       ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
       runsOn: finalizeRunsOn(job.runsOn!),
+      ...(job.outputs !== undefined && Object.keys(job.outputs).length > 0
+        ? { outputs: { ...job.outputs } }
+        : {}),
       steps: job.steps.map(finalizeStep),
     }));
 

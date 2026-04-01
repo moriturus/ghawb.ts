@@ -1109,4 +1109,92 @@ describe('workflow renderer', () => {
     expect(payload.jobs.lint!.env).toEqual({ NODE_ENV: 'test' });
     expect(payload.jobs.build!.env).toBeUndefined();
   });
+
+  it('renders pull_request trigger with types deterministically', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_types'),
+      name: 'PR Types',
+    })
+      .onPullRequest({
+        branches: ['main'],
+        types: ['opened', 'synchronize', 'reopened'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload).toEqual({
+      name: 'PR Types',
+      on: {
+        pull_request: {
+          branches: ['main'],
+          types: ['opened', 'synchronize', 'reopened'],
+        },
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it('renders pull_request types alongside branches and paths', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_full_filter'),
+      name: 'PR Full Filter',
+    })
+      .onPush({
+        branches: ['main'],
+      })
+      .onPullRequest({
+        branches: ['main', 'release/**'],
+        paths: ['packages/**'],
+        types: ['opened', 'labeled', 'closed'],
+      })
+      .addJob(createJobId('check'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run check');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(payload.on.pull_request).toEqual({
+      branches: ['main', 'release/**'],
+      paths: ['packages/**'],
+      types: ['opened', 'labeled', 'closed'],
+    });
+    expect(Object.keys(payload.on)).toEqual(['push', 'pull_request']);
+  });
+
+  it('renders trigger payload fields in canonical order: branches, paths, types', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_field_order'),
+      name: 'PR Field Order',
+    })
+      .onPullRequest({
+        branches: ['main'],
+        paths: ['src/**'],
+        types: ['opened', 'synchronize'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const triggerKeys = Object.keys(payload.on.pull_request!);
+
+    expect(triggerKeys).toEqual(['branches', 'paths', 'types']);
+  });
 });

@@ -3,13 +3,40 @@ import type { JobId, WorkflowId } from '@ghawb/shared';
 export type FilteredTriggerType = 'push' | 'pull_request';
 export type TriggerType = FilteredTriggerType | 'workflow_dispatch' | 'schedule';
 
+export const PULL_REQUEST_ACTIVITY_TYPES = [
+  'assigned',
+  'unassigned',
+  'labeled',
+  'unlabeled',
+  'opened',
+  'edited',
+  'closed',
+  'reopened',
+  'synchronize',
+  'converted_to_draft',
+  'ready_for_review',
+  'locked',
+  'unlocked',
+  'review_requested',
+  'review_request_removed',
+  'auto_merge_enabled',
+  'auto_merge_disabled',
+] as const;
+
+export type PullRequestActivityType = (typeof PULL_REQUEST_ACTIVITY_TYPES)[number];
+
 export interface TriggerFilter {
   readonly branches?: readonly string[];
   readonly paths?: readonly string[];
 }
 
+export interface PullRequestTriggerFilter extends TriggerFilter {
+  readonly types?: readonly PullRequestActivityType[];
+}
+
 export interface FilteredWorkflowTrigger extends TriggerFilter {
   readonly type: FilteredTriggerType;
+  readonly types?: readonly PullRequestActivityType[];
 }
 
 export interface WorkflowDispatchTrigger {

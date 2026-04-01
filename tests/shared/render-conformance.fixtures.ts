@@ -353,6 +353,42 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'pr_types_with_branches_and_paths',
+    defineWorkflow({
+      id: createWorkflowId('pr_types_with_branches_and_paths'),
+      name: 'PR Types With Branches And Paths',
+    })
+      .onPullRequest({
+        branches: ['main'],
+        paths: ['packages/**'],
+        types: ['opened', 'synchronize', 'labeled'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build(),
+    {
+      name: 'PR Types With Branches And Paths',
+      on: {
+        pull_request: {
+          branches: ['main'],
+          paths: ['packages/**'],
+          types: ['opened', 'synchronize', 'labeled'],
+        },
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -393,6 +429,25 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     expectedIssues: [
       'workflow env must not contain blank keys',
       'job "build" env must not contain blank keys',
+    ],
+  },
+  {
+    name: 'unknown_pr_activity_types',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('unknown_pr_activity_types'),
+        name: 'Unknown PR Activity Types',
+      })
+        .onPullRequest({
+          types: ['opened', 'merged' as never, 'approved' as never],
+        })
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('bun test');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "pull_request" types contains unknown activity type "merged"',
+      'trigger "pull_request" types contains unknown activity type "approved"',
     ],
   },
 ];

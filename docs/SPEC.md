@@ -21,6 +21,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - `@ghawb/sdk` currently supports a minimal builder-centered workflow model with:
   - workflow name and explicit workflow identifier
   - `push` and `pull_request` triggers with optional `branches` and `paths`
+  - `pull_request` triggers with optional `types` filter validated against the fixed allowlist of GitHub Actions pull request activity types (`assigned`, `unassigned`, `labeled`, `unlabeled`, `opened`, `edited`, `closed`, `reopened`, `synchronize`, `converted_to_draft`, `ready_for_review`, `locked`, `unlocked`, `review_requested`, `review_request_removed`, `auto_merge_enabled`, `auto_merge_disabled`); `types` is rejected on all triggers other than `pull_request`
   - `workflow_dispatch` as a manual top-level trigger without additional supported fields such as `inputs` in the current slice
   - `schedule` as a top-level trigger with one or more explicit cron entries and no additional supported fields such as `timezone`
   - top-level and job-level `permissions` maps covering the current GitHub Actions permission keys `actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, and `statuses`

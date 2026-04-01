@@ -952,6 +952,226 @@ describe('workflow builder', () => {
     }).toThrow(TypeError);
   });
 
+  it('preserves pull_request types in the built model', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_types'),
+      name: 'PR Types',
+    })
+      .onPullRequest({
+        types: ['opened', 'synchronize', 'reopened'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'pull_request',
+        types: ['opened', 'synchronize', 'reopened'],
+      },
+    ]);
+  });
+
+  it('preserves pull_request types alongside branches and paths', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_types_with_filters'),
+      name: 'PR Types With Filters',
+    })
+      .onPullRequest({
+        branches: ['main', 'release/**'],
+        paths: ['packages/**'],
+        types: ['opened', 'labeled'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'pull_request',
+        branches: ['main', 'release/**'],
+        paths: ['packages/**'],
+        types: ['opened', 'labeled'],
+      },
+    ]);
+  });
+
+  it('rejects unknown pull_request activity type names at build time', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_pr_types'),
+      name: 'Invalid PR Types',
+    })
+      .onPullRequest({
+        types: ['opened', 'merged' as never, 'closed', 'drafted' as never],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "pull_request" types contains unknown activity type "merged"',
+        'trigger "pull_request" types contains unknown activity type "drafted"',
+      ])
+    );
+  });
+
+  it('rejects empty pull_request types array', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('empty_pr_types'),
+      name: 'Empty PR Types',
+    })
+      .onPullRequest({
+        types: [] as unknown as readonly ['opened'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['trigger "pull_request" types must not be empty'])
+    );
+  });
+
+  it('rejects types on push trigger', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('push_with_types'),
+      name: 'Push With Types',
+    }).addJob(createJobId('test'), (job) => {
+      job.runsOn('ubuntu-latest').run('bun test');
+    });
+
+    (
+      builder.triggers as unknown as Array<{
+        type: 'push';
+        branches?: readonly string[];
+        types?: readonly string[];
+      }>
+    ).push({
+      type: 'push',
+      branches: ['main'],
+      types: ['opened'],
+    });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['trigger "push" does not support types'])
+    );
+  });
+
+  it('rejects types on workflow_dispatch trigger', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_with_types'),
+      name: 'Dispatch With Types',
+    }).addJob(createJobId('test'), (job) => {
+      job.runsOn('ubuntu-latest').run('bun test');
+    });
+
+    (
+      builder.triggers as unknown as Array<{
+        type: 'workflow_dispatch';
+        types?: readonly string[];
+      }>
+    ).push({
+      type: 'workflow_dispatch',
+      types: ['opened'],
+    });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['trigger "workflow_dispatch" does not support types'])
+    );
+  });
+
+  it('rejects types on schedule trigger', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('schedule_with_types'),
+      name: 'Schedule With Types',
+    }).addJob(createJobId('test'), (job) => {
+      job.runsOn('ubuntu-latest').run('bun test');
+    });
+
+    (
+      builder.triggers as unknown as Array<{
+        type: 'schedule';
+        cron: readonly string[];
+        types?: readonly string[];
+      }>
+    ).push({
+      type: 'schedule',
+      cron: ['0 0 * * *'],
+      types: ['opened'],
+    });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['trigger "schedule" does not support types'])
+    );
+  });
+
+  it('composes pull_request types with branches, paths, and other features', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('pr_types_compose'),
+      name: 'PR Types Compose',
+    })
+      .onPush({
+        branches: ['main'],
+      })
+      .onPullRequest({
+        branches: ['main'],
+        paths: ['src/**'],
+        types: ['opened', 'synchronize'],
+      })
+      .permissions({
+        contents: 'read',
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow).toMatchObject({
+      on: [
+        {
+          type: 'push',
+          branches: ['main'],
+        },
+        {
+          type: 'pull_request',
+          branches: ['main'],
+          paths: ['src/**'],
+          types: ['opened', 'synchronize'],
+        },
+      ],
+      permissions: { contents: 'read' },
+    });
+  });
+
+  it('deep-freezes built trigger types array', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('frozen_pr_types'),
+      name: 'Frozen PR Types',
+    })
+      .onPullRequest({
+        types: ['opened', 'closed'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const prTrigger = workflow.on[0]! as {
+      type: 'pull_request';
+      types: readonly string[];
+    };
+
+    expect(Object.isFrozen(prTrigger)).toBe(true);
+    expect(Object.isFrozen(prTrigger.types)).toBe(true);
+
+    expect(() => {
+      (prTrigger.types as string[]).push('labeled');
+    }).toThrow(TypeError);
+  });
+
   it('composes env with permissions and concurrency', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('env_compose'),

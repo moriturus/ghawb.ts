@@ -8,6 +8,7 @@ export {
   type WorkflowId,
 } from '@ghawb/shared';
 export { defineWorkflow, WorkflowBuilder } from './builders.ts';
+export { PULL_REQUEST_ACTIVITY_TYPES } from './model.ts';
 export {
   createWorkflowRenderPayload,
   renderWorkflow,
@@ -21,6 +22,8 @@ export {
 } from './renderer.ts';
 export type {
   MatrixAxisValues,
+  PullRequestActivityType,
+  PullRequestTriggerFilter,
   RunStepMetadata,
   RunStep,
   RunsOnTarget as RunsOn,

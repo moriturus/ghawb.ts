@@ -659,6 +659,34 @@ describe('workflow builder', () => {
     );
   });
 
+  it('rejects matrix axis names that do not match the identifier format', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_matrix_axis_format'),
+      name: 'Invalid Matrix Axis Format',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .strategyMatrix({
+            '1os': ['ubuntu-latest'],
+            'bad/name': ['node'],
+            'axis name': ['x'],
+            軸: ['y'],
+          } as unknown as import('./index.ts').WorkflowMatrix)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "test" strategy.matrix axis "1os" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'job "test" strategy.matrix axis "bad/name" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'job "test" strategy.matrix axis "axis name" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'job "test" strategy.matrix axis "軸" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+      ])
+    );
+  });
+
   it('rejects invalid workflow and job permissions entries', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid_permissions'),
@@ -1683,18 +1711,21 @@ describe('workflow builder', () => {
       expect(workflow.jobs[0]!.steps[0]).not.toHaveProperty('id');
     });
 
-    it('trims step IDs during finalization', () => {
-      const workflow = defineWorkflow({
+    it('rejects step IDs with surrounding whitespace', () => {
+      const builder = defineWorkflow({
         id: createWorkflowId('trim_step_id'),
         name: 'Trim Step ID',
       })
         .onPush()
         .addJob(createJobId('build'), (job) => {
           job.runsOn('ubuntu-latest').run('echo hello', { id: '  build-step  ' });
-        })
-        .build();
+        });
 
-      expect(workflow.jobs[0]!.steps[0]!.id).toBe('build-step');
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "build" step 1 id must not contain surrounding whitespace',
+        ])
+      );
     });
 
     it('rejects blank step IDs', () => {
@@ -1727,6 +1758,31 @@ describe('workflow builder', () => {
 
       expect(() => builder.build()).toThrowError(
         new WorkflowValidationError(['job "test" contains duplicate step id "build"'])
+      );
+    });
+
+    it('rejects step IDs that do not match the identifier format', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('invalid_step_id_format'),
+        name: 'Invalid Step ID Format',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .run('echo first', { id: '1start' })
+            .run('echo second', { id: 'bad/id' })
+            .run('echo third', { id: 'step name' })
+            .run('echo fourth', { id: 'ステップ' });
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "test" step 1 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+          'job "test" step 2 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+          'job "test" step 3 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+          'job "test" step 4 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        ])
       );
     });
 
@@ -2267,6 +2323,31 @@ describe('workflow builder', () => {
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
         'trigger "workflow_dispatch" input "name" type "invalid" is not a valid input type',
+      ])
+    );
+  });
+
+  it('rejects workflow_dispatch input names that do not match the identifier format', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('dispatch_bad_input_names'),
+      name: 'Dispatch Bad Input Names',
+    })
+      .onWorkflowDispatch({
+        '1start': { description: 'digit-leading' },
+        'bad/name': { description: 'slash' },
+        'input name': { description: 'space' },
+        入力: { description: 'unicode' },
+      } as unknown as import('./index.ts').WorkflowDispatchInputs)
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" input "1start" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'trigger "workflow_dispatch" input "bad/name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'trigger "workflow_dispatch" input "input name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'trigger "workflow_dispatch" input "入力" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
       ])
     );
   });

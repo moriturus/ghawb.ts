@@ -1,4 +1,10 @@
-import { WorkflowValidationError, type JobId, type WorkflowId } from '@ghawb/shared';
+import {
+  IDENTIFIER_FORMAT_SOURCE,
+  WorkflowValidationError,
+  matchesIdentifierFormat,
+  type JobId,
+  type WorkflowId,
+} from '@ghawb/shared';
 
 import {
   WORKFLOW_PERMISSION_KEYS,
@@ -307,6 +313,13 @@ function createValidationIssues(
             continue;
           }
 
+          validateIdentifierLike(
+            `trigger "workflow_dispatch" input "${inputName}"`,
+            inputName,
+            issues,
+            'name'
+          );
+
           if (input.required !== undefined && typeof input.required !== 'boolean') {
             issues.push(
               `trigger "workflow_dispatch" input "${inputName}" required must be a boolean`
@@ -564,6 +577,8 @@ function createValidationIssues(
           continue;
         }
 
+        validateIdentifierLike(`job "${jobId}" strategy.matrix axis "${axis}"`, axis, issues);
+
         if (axis === 'include' || axis === 'exclude') {
           issues.push(`job "${jobId}" strategy.matrix does not support axis "${axis}"`);
         }
@@ -668,6 +683,10 @@ function createValidationIssues(
       if (step.id !== undefined) {
         if (step.id.trim().length === 0) {
           issues.push(`${location} id must not be empty`);
+        } else if (step.id !== step.id.trim()) {
+          issues.push(`${location} id must not contain surrounding whitespace`);
+        } else if (!matchesIdentifierFormat(step.id)) {
+          issues.push(`${location} id must match ${IDENTIFIER_FORMAT_SOURCE}`);
         } else if (stepIds.has(step.id)) {
           issues.push(`job "${jobId}" contains duplicate step id "${step.id}"`);
         } else {
@@ -820,9 +839,20 @@ function validateEnv(owner: string, env: WorkflowEnv | undefined, issues: string
   }
 }
 
+function validateIdentifierLike(
+  location: string,
+  value: string,
+  issues: string[],
+  label?: string
+): void {
+  if (!matchesIdentifierFormat(value)) {
+    issues.push(`${location}${label ? ` ${label}` : ''} must match ${IDENTIFIER_FORMAT_SOURCE}`);
+  }
+}
+
 function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   const base = {
-    ...(step.id !== undefined ? { id: step.id.trim() } : {}),
+    ...(step.id !== undefined ? { id: step.id } : {}),
     ...(step.name !== undefined ? { name: step.name.trim() } : {}),
     ...(step.env ? { env: { ...step.env } } : {}),
     ...(step.with ? { with: { ...step.with } } : {}),

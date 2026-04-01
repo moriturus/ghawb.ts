@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { InvalidIdentifierError, createJobId, createWorkflowId } from './index.ts';
+import {
+  IDENTIFIER_FORMAT_SOURCE,
+  InvalidIdentifierError,
+  createJobId,
+  createWorkflowId,
+  matchesIdentifierFormat,
+} from './index.ts';
 
 describe('identifier factories', () => {
   it('preserves valid values without normalization', () => {
@@ -9,6 +15,10 @@ describe('identifier factories', () => {
 
   it('accepts hyphenated values', () => {
     expect(createJobId('build-linux')).toBe('build-linux');
+  });
+
+  it('accepts leading underscores', () => {
+    expect(createWorkflowId('_release_ci')).toBe('_release_ci');
   });
 
   it('rejects empty values', () => {
@@ -21,5 +31,20 @@ describe('identifier factories', () => {
 
   it('rejects invalid characters', () => {
     expect(() => createJobId('build/linux')).toThrow(InvalidIdentifierError);
+  });
+
+  it('rejects leading digits', () => {
+    expect(() => createJobId('1build')).toThrowError(
+      new InvalidIdentifierError('job', '1build', `value must match /${IDENTIFIER_FORMAT_SOURCE}/`)
+    );
+  });
+
+  it('rejects unicode characters', () => {
+    expect(() => createWorkflowId('リリース')).toThrow(InvalidIdentifierError);
+  });
+
+  it('exposes the shared identifier format matcher', () => {
+    expect(matchesIdentifierFormat('step_id')).toBe(true);
+    expect(matchesIdentifierFormat('1step')).toBe(false);
   });
 });

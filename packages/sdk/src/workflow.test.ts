@@ -425,6 +425,21 @@ describe('workflow builder', () => {
     );
   });
 
+  it('rejects jobs without steps', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('job_without_steps'),
+      name: 'Job Without Steps',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['job "build" must define at least one step'])
+    );
+  });
+
   it('rejects duplicate trigger definitions', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('duplicate_triggers'),
@@ -629,6 +644,36 @@ describe('workflow builder', () => {
     );
   });
 
+  it('rejects blank string runs-on, empty runs-on arrays, and empty needs arrays', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_runs_on_and_needs_shapes'),
+      name: 'Invalid Runs On And Needs Shapes',
+    })
+      .onPush()
+      .addJob(createJobId('blanktarget'), (job) => {
+        job.runsOn(' ').run('bun test');
+      })
+      .addJob(createJobId('emptytarget'), (job) => {
+        job.runsOn([] as unknown as readonly [string, ...string[]]).run('bun test');
+      })
+      .addJob(createJobId('emptyneeds'), (job) => {
+        job
+          .needs(
+            [] as unknown as readonly [import('./index.ts').JobId, ...import('./index.ts').JobId[]]
+          )
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "blanktarget" runs-on must not be empty',
+        'job "emptytarget" runs-on array must not be empty',
+        'job "emptyneeds" needs must not be empty',
+      ])
+    );
+  });
+
   it('rejects empty or malformed strategy matrices', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid_matrix'),
@@ -655,6 +700,35 @@ describe('workflow builder', () => {
         'job "test" strategy.matrix axis "os" must not be empty',
         'job "test" strategy.matrix axis "node" must not contain blank values',
         'job "test" strategy.matrix axis "runtime" must contain only strings',
+      ])
+    );
+  });
+
+  it('rejects strategy matrices without axes and with non-array axis values', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_matrix_shapes'),
+      name: 'Invalid Matrix Shapes',
+    })
+      .onPush()
+      .addJob(createJobId('empty'), (job) => {
+        job
+          .strategyMatrix({} as import('./index.ts').WorkflowMatrix)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      })
+      .addJob(createJobId('nonarray'), (job) => {
+        job
+          .strategyMatrix({
+            os: 'ubuntu-latest',
+          } as unknown as import('./index.ts').WorkflowMatrix)
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "empty" strategy.matrix must define at least one axis',
+        'job "nonarray" strategy.matrix axis "os" must be an array',
       ])
     );
   });
@@ -748,6 +822,27 @@ describe('workflow builder', () => {
     );
   });
 
+  it('rejects blank workflow-level defaults.run.working-directory', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_workflow_defaults_working_directory'),
+      name: 'Invalid Workflow Defaults Working Directory',
+    })
+      .onPush()
+      .defaultsRun({
+        workingDirectory: ' ',
+      })
+      .addJob(createJobId('check'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'workflow defaults.run.working-directory must not be empty',
+        'workflow defaults.run must define shell or working-directory',
+      ])
+    );
+  });
+
   it('rejects invalid execution environment metadata values', () => {
     const builder = defineWorkflow({
       id: createWorkflowId('invalid_execution_metadata'),
@@ -775,6 +870,43 @@ describe('workflow builder', () => {
         'job "check" defaults.run.working-directory must not be empty',
         'job "check" step 1 shell must not be empty',
         'job "check" step 1 working-directory must not be empty',
+      ])
+    );
+  });
+
+  it('rejects empty job defaults.run and blank working-directory', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('empty_job_defaults_run'),
+      name: 'Empty Job Defaults Run',
+    })
+      .onPush()
+      .addJob(createJobId('check'), (job) => {
+        job
+          .defaultsRun({
+            workingDirectory: ' ',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['job "check" defaults.run.working-directory must not be empty'])
+    );
+  });
+
+  it('rejects a job defaults.run object with neither shell nor working-directory', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('missing_job_defaults_run_fields'),
+      name: 'Missing Job Defaults Run Fields',
+    })
+      .onPush()
+      .addJob(createJobId('check'), (job) => {
+        job.defaultsRun({}).runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "check" defaults.run must define shell or working-directory',
       ])
     );
   });
@@ -2075,6 +2207,94 @@ describe('workflow builder', () => {
           'job "test" strategy.max-parallel must be a positive integer',
           'job "test" strategy.matrix include entry 1 key "count" must be a string value',
           'job "test" strategy.matrix exclude entry 1 references undeclared axis "runtime"',
+        ])
+      );
+    });
+
+    it('rejects exclude entries with blank keys and non-string values', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('strategy_bad_exclude_entry'),
+        name: 'Strategy Bad Exclude Entry',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest'],
+            })
+            .strategyExclude([
+              { '': 'ubuntu-latest', os: 1 } as unknown as import('./index.ts').MatrixExcludeEntry,
+            ])
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "test" strategy.matrix exclude entry 1 must not contain blank keys',
+          'job "test" strategy.matrix exclude entry 1 references undeclared axis ""',
+          'job "test" strategy.matrix exclude entry 1 key "os" must be a string value',
+        ])
+      );
+    });
+
+    it('rejects include and exclude entries that are not record objects', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('strategy_non_object_entries'),
+        name: 'Strategy Non Object Entries',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest'],
+            })
+            .strategyInclude([{ os: 'ubuntu-latest' }])
+            .strategyExclude([{ os: 'ubuntu-latest' }])
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        });
+
+      (
+        builder as unknown as {
+          jobs: Array<{ strategy: { include: unknown[]; exclude: unknown[] } }>;
+        }
+      ).jobs[0]!.strategy.include = [null];
+      (
+        builder as unknown as {
+          jobs: Array<{ strategy: { include: unknown[]; exclude: unknown[] } }>;
+        }
+      ).jobs[0]!.strategy.exclude = [null];
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "test" strategy.matrix include entry 1 must be a record object',
+          'job "test" strategy.matrix exclude entry 1 must be a record object',
+        ])
+      );
+    });
+
+    it('rejects include entries with blank keys', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('strategy_bad_include_key'),
+        name: 'Strategy Bad Include Key',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest'],
+            })
+            .strategyInclude([
+              { '': 'ubuntu-latest' } as unknown as import('./index.ts').MatrixIncludeEntry,
+            ])
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "test" strategy.matrix include entry 1 must not contain blank keys',
         ])
       );
     });

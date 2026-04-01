@@ -883,6 +883,40 @@ describe('workflow renderer', () => {
     ).toThrowError(new WorkflowRenderError('unsupported workflow concurrency value "group:  "'));
   });
 
+  it('fails explicitly before emission when job concurrency cancelInProgress is not a boolean', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('invalid_job_concurrency_cancel'),
+      name: 'Invalid Job Concurrency Cancel',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      jobs: [
+        {
+          id: createJobId('check'),
+          concurrency: {
+            group: 'check',
+            cancelInProgress: 'yes',
+          },
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(
+      new WorkflowRenderError('unsupported job "check" concurrency value "cancelInProgress: yes"')
+    );
+  });
+
   it('fails explicitly before emission when execution metadata leaves defaults.run empty', () => {
     const unsupportedWorkflow = {
       id: createWorkflowId('empty_defaults_run'),

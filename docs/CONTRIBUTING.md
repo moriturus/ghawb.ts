@@ -21,7 +21,10 @@ Run verification from the repository root on a branch whose worktree is clean an
 
 1. `bun run verify:workflows`
 2. `bun run check`
-3. `bun run test:vitest:node`
+3. `bun run coverage`
+4. `bun run test:vitest:node`
+
+Coverage can be run separately with `bun run coverage`. This command measures `packages/sdk/src/` with Vitest's v8 provider, emits text plus lcov output, and writes the lcov artifact to `coverage/lcov.info`.
 
 This command fails if the worktree is not clean, including untracked files. It is a contributor-facing verification shortcut, not a replacement for hosted CI proof when a backlog item explicitly requires hosted confirmation.
 
@@ -38,4 +41,5 @@ This command fails if the worktree is not clean, including untracked files. It i
 - `bun run verify:workflows`: validate workflow-source placement and generated-workflow drift
 - `bun run verify:pre-push`: run the local pre-push verification path that matches the current hosted CI sequence
 - `bun run check`: run format, lint, type-check, Bun Vitest, and Deno smoke checks
+- `bun run coverage`: measure `packages/sdk/src/` coverage with Vitest v8 and emit `coverage/lcov.info`
 - `ghawb render-batch --input <workflow.ts> --output <workflow.yml> ...`: render multiple declared workflow modules without repository scanning

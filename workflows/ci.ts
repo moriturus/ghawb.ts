@@ -40,6 +40,16 @@ export default defineWorkflow({
       .run('bun run check', {
         name: 'Run Bun Checks',
       })
+      .run('bun run coverage', {
+        name: 'Run SDK Coverage',
+      })
+      .uses('actions/upload-artifact@v4', {
+        name: 'Upload Coverage Report',
+        with: {
+          name: 'coverage-lcov',
+          path: 'coverage/lcov.info',
+        },
+      })
       .run('bun run test:vitest:node', {
         name: 'Run Node Compatibility Tests',
       });

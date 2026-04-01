@@ -389,6 +389,42 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'push_tags_with_negation_filters',
+    defineWorkflow({
+      id: createWorkflowId('push_tags_with_negation_filters'),
+      name: 'Push Tags With Negation Filters',
+    })
+      .onPush({
+        branchesIgnore: ['dependabot/**'],
+        pathsIgnore: ['docs/**'],
+        tags: ['v*', 'release-*'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build(),
+    {
+      name: 'Push Tags With Negation Filters',
+      on: {
+        push: {
+          'branches-ignore': ['dependabot/**'],
+          'paths-ignore': ['docs/**'],
+          tags: ['v*', 'release-*'],
+        },
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -449,5 +485,22 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
       'trigger "pull_request" types contains unknown activity type "merged"',
       'trigger "pull_request" types contains unknown activity type "approved"',
     ],
+  },
+  {
+    name: 'branches_mutual_exclusion',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('branches_mutual_exclusion'),
+        name: 'Branches Mutual Exclusion',
+      })
+        .onPush({
+          branches: ['main'],
+          branchesIgnore: ['dependabot/**'],
+        })
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('bun test');
+        })
+        .build(),
+    expectedIssues: ['trigger "push" must not combine branches and branches-ignore'],
   },
 ];

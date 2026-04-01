@@ -10,6 +10,7 @@ import {
   WORKFLOW_PERMISSION_KEYS,
   PULL_REQUEST_ACTIVITY_TYPES,
   WORKFLOW_DISPATCH_INPUT_TYPES,
+  type ContainerConfig,
   type FilteredTriggerType,
   type MatrixAxisValues,
   type MatrixExcludeEntry,
@@ -44,6 +45,7 @@ import {
   type WorkflowPermissionMap,
   type WorkflowPermissionShorthand,
   type WorkflowPermissions,
+  type WorkflowServices,
   type WorkflowStrategy,
   type WorkflowStep,
   type WorkflowTrigger,
@@ -81,6 +83,8 @@ interface StepsJobDraft extends WorkflowJobDraftBase {
     readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   readonly runsOn?: string | readonly string[];
+  readonly container?: ContainerConfig;
+  readonly services?: WorkflowServices;
   readonly outputs?: WorkflowJobOutputs;
   readonly steps: readonly WorkflowStepDraft[];
 }
@@ -92,6 +96,8 @@ interface ReusableWorkflowJobDraft extends WorkflowJobDraftBase {
   readonly uses?: string;
   readonly steps: readonly WorkflowStepDraft[];
   readonly runsOn?: string | readonly string[];
+  readonly container?: ContainerConfig;
+  readonly services?: WorkflowServices;
 }
 
 type WorkflowJobDraft = StepsJobDraft | ReusableWorkflowJobDraft;
@@ -323,6 +329,23 @@ function cloneEnv(env: WorkflowEnv): WorkflowEnv {
   return { ...env };
 }
 
+function cloneContainerConfig(config: ContainerConfig): ContainerConfig {
+  return {
+    image: config.image,
+    ...(config.credentials ? { credentials: { ...config.credentials } } : {}),
+    ...(config.env ? { env: { ...config.env } } : {}),
+    ...(config.ports ? { ports: [...config.ports] } : {}),
+    ...(config.volumes ? { volumes: [...config.volumes] } : {}),
+    ...(config.options !== undefined ? { options: config.options } : {}),
+  };
+}
+
+function cloneServices(services: WorkflowServices): WorkflowServices {
+  return Object.fromEntries(
+    Object.entries(services).map(([key, value]) => [key, cloneContainerConfig(value)])
+  );
+}
+
 function createValidationIssues(
   workflow: WorkflowBuilder,
   jobs: readonly WorkflowJobDraft[]
@@ -335,7 +358,9 @@ function createValidationIssues(
   }
 
   if (workflow.triggers.length === 0) {
-    issues.push('workflow must define at least one trigger');
+    issues.push(
+      'workflow must define at least one trigger. Expected: at least one trigger (e.g. push, pull_request, workflow_dispatch)'
+    );
   }
 
   const seenTriggerTypes = new Set<string>();
@@ -356,7 +381,9 @@ function createValidationIssues(
       (run.shell === undefined || run.shell.trim().length === 0) &&
       (run.workingDirectory === undefined || run.workingDirectory.trim().length === 0)
     ) {
-      issues.push('workflow defaults.run must define shell or working-directory');
+      issues.push(
+        'workflow defaults.run must define shell or working-directory. Expected: at least one of shell or working-directory'
+      );
     }
   }
   validateEnv('workflow', workflow.getEnv(), issues);
@@ -372,15 +399,15 @@ function createValidationIssues(
 
     if (trigger.type === 'workflow_dispatch') {
       if ('branches' in trigger) {
-        issues.push('trigger "workflow_dispatch" does not support branches');
+        issues.push('trigger "workflow_dispatch" does not support branches. Supported: inputs');
       }
 
       if ('paths' in trigger) {
-        issues.push('trigger "workflow_dispatch" does not support paths');
+        issues.push('trigger "workflow_dispatch" does not support paths. Supported: inputs');
       }
 
       if ('types' in trigger) {
-        issues.push('trigger "workflow_dispatch" does not support types');
+        issues.push('trigger "workflow_dispatch" does not support types. Supported: inputs');
       }
 
       if (trigger.inputs !== undefined) {
@@ -399,31 +426,31 @@ function createValidationIssues(
 
           if (input.required !== undefined && typeof input.required !== 'boolean') {
             issues.push(
-              `trigger "workflow_dispatch" input "${inputName}" required must be a boolean`
+              `trigger "workflow_dispatch" input "${inputName}" required must be a boolean. Expected: true or false`
             );
           }
 
           if (input.type !== undefined) {
             if (!WORKFLOW_DISPATCH_INPUT_TYPES.includes(input.type as WorkflowDispatchInputType)) {
               issues.push(
-                `trigger "workflow_dispatch" input "${inputName}" type "${input.type}" is not a valid input type`
+                `trigger "workflow_dispatch" input "${inputName}" type "${input.type}" is not a valid input type. Expected: one of "string", "boolean", "choice", "number", "environment"`
               );
             }
 
             if (input.type === 'choice') {
               if (input.options === undefined || input.options.length === 0) {
                 issues.push(
-                  `trigger "workflow_dispatch" input "${inputName}" type "choice" requires non-empty options`
+                  `trigger "workflow_dispatch" input "${inputName}" type "choice" requires non-empty options. Expected: a non-empty array of string options`
                 );
               }
             } else if (input.options !== undefined) {
               issues.push(
-                `trigger "workflow_dispatch" input "${inputName}" options is only valid when type is "choice"`
+                `trigger "workflow_dispatch" input "${inputName}" options is only valid when type is "choice". Remove options or set type to "choice"`
               );
             }
           } else if (input.options !== undefined) {
             issues.push(
-              `trigger "workflow_dispatch" input "${inputName}" options is only valid when type is "choice"`
+              `trigger "workflow_dispatch" input "${inputName}" options is only valid when type is "choice". Remove options or set type to "choice"`
             );
           }
         }
@@ -434,15 +461,21 @@ function createValidationIssues(
 
     if (trigger.type === 'workflow_call') {
       if ('branches' in trigger) {
-        issues.push('trigger "workflow_call" does not support branches');
+        issues.push(
+          'trigger "workflow_call" does not support branches. Supported: inputs, outputs, secrets'
+        );
       }
 
       if ('paths' in trigger) {
-        issues.push('trigger "workflow_call" does not support paths');
+        issues.push(
+          'trigger "workflow_call" does not support paths. Supported: inputs, outputs, secrets'
+        );
       }
 
       if ('types' in trigger) {
-        issues.push('trigger "workflow_call" does not support types');
+        issues.push(
+          'trigger "workflow_call" does not support types. Supported: inputs, outputs, secrets'
+        );
       }
 
       if (trigger.inputs !== undefined) {
@@ -460,25 +493,29 @@ function createValidationIssues(
           );
 
           if (input.required !== undefined && typeof input.required !== 'boolean') {
-            issues.push(`trigger "workflow_call" input "${inputName}" required must be a boolean`);
+            issues.push(
+              `trigger "workflow_call" input "${inputName}" required must be a boolean. Expected: true or false`
+            );
           }
 
           if (input.type !== undefined) {
             if (!WORKFLOW_DISPATCH_INPUT_TYPES.includes(input.type as WorkflowDispatchInputType)) {
               issues.push(
-                `trigger "workflow_call" input "${inputName}" type "${input.type}" is not a valid input type`
+                `trigger "workflow_call" input "${inputName}" type "${input.type}" is not a valid input type. Expected: one of "string", "boolean", "choice", "number", "environment"`
               );
             }
 
             if (input.type === 'choice') {
               issues.push(
-                `trigger "workflow_call" input "${inputName}" type "choice" is not supported`
+                `trigger "workflow_call" input "${inputName}" type "choice" is not supported. Expected: one of "string", "boolean", "number", "environment"`
               );
             }
           }
 
           if ('options' in (input as object)) {
-            issues.push(`trigger "workflow_call" input "${inputName}" options is not supported`);
+            issues.push(
+              `trigger "workflow_call" input "${inputName}" options is not supported. Remove the options field`
+            );
           }
         }
       }
@@ -521,7 +558,7 @@ function createValidationIssues(
 
           if (secret.required !== undefined && typeof secret.required !== 'boolean') {
             issues.push(
-              `trigger "workflow_call" secret "${secretName}" required must be a boolean`
+              `trigger "workflow_call" secret "${secretName}" required must be a boolean. Expected: true or false`
             );
           }
         }
@@ -532,19 +569,21 @@ function createValidationIssues(
 
     if (trigger.type === 'schedule') {
       if ('branches' in trigger) {
-        issues.push('trigger "schedule" does not support branches');
+        issues.push('trigger "schedule" does not support branches. Supported: cron');
       }
 
       if ('paths' in trigger) {
-        issues.push('trigger "schedule" does not support paths');
+        issues.push('trigger "schedule" does not support paths. Supported: cron');
       }
 
       if ('types' in trigger) {
-        issues.push('trigger "schedule" does not support types');
+        issues.push('trigger "schedule" does not support types. Supported: cron');
       }
 
       if (trigger.cron.length === 0) {
-        issues.push('trigger "schedule" must define at least one cron entry');
+        issues.push(
+          'trigger "schedule" must define at least one cron entry. Expected: at least one cron expression'
+        );
         continue;
       }
 
@@ -558,7 +597,9 @@ function createValidationIssues(
         }
 
         if (!isValidCronExpression(cron)) {
-          issues.push(`trigger "schedule" cron entry "${cron}" must have exactly 5 fields`);
+          issues.push(
+            `trigger "schedule" cron entry "${cron}" must have exactly 5 fields. Expected: "minute hour day month weekday" (e.g. "0 12 * * 1-5")`
+          );
         }
       }
 
@@ -588,30 +629,42 @@ function createValidationIssues(
     }
 
     if (trigger.branches !== undefined && trigger.branchesIgnore !== undefined) {
-      issues.push(`trigger "${trigger.type}" must not combine branches and branches-ignore`);
+      issues.push(
+        `trigger "${trigger.type}" must not combine branches and branches-ignore. Use one or the other, not both`
+      );
     }
 
     if (trigger.paths !== undefined && trigger.pathsIgnore !== undefined) {
-      issues.push(`trigger "${trigger.type}" must not combine paths and paths-ignore`);
+      issues.push(
+        `trigger "${trigger.type}" must not combine paths and paths-ignore. Use one or the other, not both`
+      );
     }
 
     if (trigger.tags !== undefined && trigger.tagsIgnore !== undefined) {
-      issues.push(`trigger "${trigger.type}" must not combine tags and tags-ignore`);
+      issues.push(
+        `trigger "${trigger.type}" must not combine tags and tags-ignore. Use one or the other, not both`
+      );
     }
 
     if (trigger.type === 'pull_request') {
       if (trigger.tags !== undefined) {
-        issues.push('trigger "pull_request" does not support tags');
+        issues.push(
+          'trigger "pull_request" does not support tags. Supported: branches, branches-ignore, paths, paths-ignore, types'
+        );
       }
 
       if (trigger.tagsIgnore !== undefined) {
-        issues.push('trigger "pull_request" does not support tags-ignore');
+        issues.push(
+          'trigger "pull_request" does not support tags-ignore. Supported: branches, branches-ignore, paths, paths-ignore, types'
+        );
       }
     }
 
     if (trigger.types !== undefined) {
       if (trigger.type !== 'pull_request') {
-        issues.push(`trigger "${trigger.type}" does not support types`);
+        issues.push(
+          `trigger "${trigger.type}" does not support types. Supported: branches, branches-ignore, paths, paths-ignore, tags, tags-ignore`
+        );
       } else {
         if (trigger.types.length === 0) {
           issues.push('trigger "pull_request" types must not be empty');
@@ -620,7 +673,7 @@ function createValidationIssues(
         for (const activityType of trigger.types) {
           if (!PULL_REQUEST_ACTIVITY_TYPES.includes(activityType as PullRequestActivityType)) {
             issues.push(
-              `trigger "pull_request" types contains unknown activity type "${activityType}"`
+              `trigger "pull_request" types contains unknown activity type "${activityType}". Expected: one of ${PULL_REQUEST_ACTIVITY_TYPES.map((t) => `"${t}"`).join(', ')}`
             );
           }
         }
@@ -629,7 +682,7 @@ function createValidationIssues(
   }
 
   if (jobs.length === 0) {
-    issues.push('workflow must define at least one job');
+    issues.push('workflow must define at least one job. Expected: at least one job definition');
   }
 
   const seenJobIds = new Set<string>();
@@ -679,7 +732,7 @@ function createValidationIssues(
 
     if (job.continueOnError !== undefined) {
       if (typeof job.continueOnError !== 'boolean') {
-        issues.push(`job "${jobId}" continue-on-error must be a boolean`);
+        issues.push(`job "${jobId}" continue-on-error must be a boolean. Expected: true or false`);
       }
     }
 
@@ -687,17 +740,23 @@ function createValidationIssues(
 
     if (job.kind === 'reusable-workflow') {
       if (job.uses === undefined) {
-        issues.push(`job "${jobId}" reusable workflow job must define uses`);
+        issues.push(
+          `job "${jobId}" reusable workflow job must define uses. Expected: a reusable workflow reference (e.g. "org/repo/.github/workflows/ci.yml@main")`
+        );
       } else if (job.uses.trim().length === 0) {
         issues.push(`job "${jobId}" reusable workflow uses must not be empty`);
       }
 
       if (job.runsOn !== undefined) {
-        issues.push(`job "${jobId}" reusable workflow job must not define runs-on`);
+        issues.push(
+          `job "${jobId}" reusable workflow job must not define runs-on. Only step-based jobs support runs-on`
+        );
       }
 
       if (job.steps.length > 0) {
-        issues.push(`job "${jobId}" reusable workflow job must not define inline steps`);
+        issues.push(
+          `job "${jobId}" reusable workflow job must not define inline steps. Only step-based jobs support inline steps`
+        );
       }
 
       if (job.with !== undefined && Object.keys(job.with).some((key) => key.trim().length === 0)) {
@@ -716,18 +775,33 @@ function createValidationIssues(
         }
       }
 
+      if (job.container !== undefined) {
+        issues.push(
+          `job "${jobId}" reusable workflow job must not define container. Only step-based jobs support container`
+        );
+      }
+      if (job.services !== undefined) {
+        issues.push(
+          `job "${jobId}" reusable workflow job must not define services. Only step-based jobs support services`
+        );
+      }
+
       continue;
     }
 
     if (job.runsOn === undefined) {
-      issues.push(`job "${jobId}" must define runs-on`);
+      issues.push(
+        `job "${jobId}" must define runs-on. Expected: a runner label string or array of labels`
+      );
     } else if (typeof job.runsOn === 'string') {
       if (job.runsOn.trim().length === 0) {
-        issues.push(`job "${jobId}" runs-on must not be empty`);
+        issues.push(`job "${jobId}" runs-on must not be empty. Expected: a non-blank runner label`);
       }
     } else {
       if (job.runsOn.length === 0) {
-        issues.push(`job "${jobId}" runs-on array must not be empty`);
+        issues.push(
+          `job "${jobId}" runs-on array must not be empty. Expected: at least one runner label`
+        );
       }
 
       if (job.runsOn.some((target) => target.trim().length === 0)) {
@@ -737,7 +811,9 @@ function createValidationIssues(
 
     if (job.timeoutMinutes !== undefined) {
       if (!Number.isInteger(job.timeoutMinutes) || job.timeoutMinutes <= 0) {
-        issues.push(`job "${jobId}" timeout-minutes must be a positive integer`);
+        issues.push(
+          `job "${jobId}" timeout-minutes must be a positive integer. Expected: a whole number greater than 0`
+        );
       }
     }
 
@@ -753,7 +829,9 @@ function createValidationIssues(
       }
 
       if (run.shell === undefined && run.workingDirectory === undefined) {
-        issues.push(`job "${jobId}" defaults.run must define shell or working-directory`);
+        issues.push(
+          `job "${jobId}" defaults.run must define shell or working-directory. Expected: at least one of shell or working-directory`
+        );
       }
     }
 
@@ -763,19 +841,23 @@ function createValidationIssues(
 
     if (job.strategy !== undefined) {
       if (job.strategy.failFast !== undefined && typeof job.strategy.failFast !== 'boolean') {
-        issues.push(`job "${jobId}" strategy.fail-fast must be a boolean`);
+        issues.push(`job "${jobId}" strategy.fail-fast must be a boolean. Expected: true or false`);
       }
 
       if (job.strategy.maxParallel !== undefined) {
         if (!Number.isInteger(job.strategy.maxParallel) || job.strategy.maxParallel <= 0) {
-          issues.push(`job "${jobId}" strategy.max-parallel must be a positive integer`);
+          issues.push(
+            `job "${jobId}" strategy.max-parallel must be a positive integer. Expected: a whole number greater than 0`
+          );
         }
       }
 
       const matrixEntries = Object.entries(job.strategy.matrix);
 
       if (matrixEntries.length === 0) {
-        issues.push(`job "${jobId}" strategy.matrix must define at least one axis`);
+        issues.push(
+          `job "${jobId}" strategy.matrix must define at least one axis. Expected: at least one axis name mapped to a string array`
+        );
       }
 
       const declaredAxisKeys = new Set<string>();
@@ -789,13 +871,17 @@ function createValidationIssues(
         validateIdentifierLike(`job "${jobId}" strategy.matrix axis "${axis}"`, axis, issues);
 
         if (axis === 'include' || axis === 'exclude') {
-          issues.push(`job "${jobId}" strategy.matrix does not support axis "${axis}"`);
+          issues.push(
+            `job "${jobId}" strategy.matrix does not support axis "${axis}". Expected: axes matching /^[a-zA-Z_][a-zA-Z0-9_-]*$/ (include and exclude are reserved)`
+          );
         }
 
         declaredAxisKeys.add(axis);
 
         if (!Array.isArray(values)) {
-          issues.push(`job "${jobId}" strategy.matrix axis "${axis}" must be an array`);
+          issues.push(
+            `job "${jobId}" strategy.matrix axis "${axis}" must be an array. Expected: an array of strings`
+          );
           continue;
         }
 
@@ -806,7 +892,9 @@ function createValidationIssues(
 
         for (const value of values) {
           if (typeof value !== 'string') {
-            issues.push(`job "${jobId}" strategy.matrix axis "${axis}" must contain only strings`);
+            issues.push(
+              `job "${jobId}" strategy.matrix axis "${axis}" must contain only strings. Expected: every element to be a string`
+            );
             continue;
           }
 
@@ -822,7 +910,7 @@ function createValidationIssues(
         for (const [entryIndex, entry] of job.strategy.include.entries()) {
           if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
             issues.push(
-              `job "${jobId}" strategy.matrix include entry ${entryIndex + 1} must be a record object`
+              `job "${jobId}" strategy.matrix include entry ${entryIndex + 1} must be a record object. Expected: a plain object with string keys`
             );
             continue;
           }
@@ -836,7 +924,7 @@ function createValidationIssues(
 
             if (typeof value !== 'string') {
               issues.push(
-                `job "${jobId}" strategy.matrix include entry ${entryIndex + 1} key "${key}" must be a string value`
+                `job "${jobId}" strategy.matrix include entry ${entryIndex + 1} key "${key}" must be a string value. Expected: a string value`
               );
             }
           }
@@ -847,7 +935,7 @@ function createValidationIssues(
         for (const [entryIndex, entry] of job.strategy.exclude.entries()) {
           if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
             issues.push(
-              `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} must be a record object`
+              `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} must be a record object. Expected: a plain object with string keys`
             );
             continue;
           }
@@ -867,7 +955,7 @@ function createValidationIssues(
 
             if (typeof value !== 'string') {
               issues.push(
-                `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} key "${key}" must be a string value`
+                `job "${jobId}" strategy.matrix exclude entry ${entryIndex + 1} key "${key}" must be a string value. Expected: a string value`
               );
             }
           }
@@ -875,8 +963,26 @@ function createValidationIssues(
       }
     }
 
+    if (job.container !== undefined) {
+      validateContainerConfig(`job "${jobId}" container`, job.container, issues);
+    }
+
+    if (job.services !== undefined) {
+      for (const [serviceName, serviceConfig] of Object.entries(job.services)) {
+        validateIdentifierLike(
+          `job "${jobId}" service "${serviceName}"`,
+          serviceName,
+          issues,
+          'name'
+        );
+        validateContainerConfig(`job "${jobId}" service "${serviceName}"`, serviceConfig, issues);
+      }
+    }
+
     if (job.steps.length === 0) {
-      issues.push(`job "${jobId}" must define at least one step`);
+      issues.push(
+        `job "${jobId}" must define at least one step. Expected: at least one run or uses step`
+      );
     }
 
     const stepIds = new Set<string>();
@@ -893,9 +999,13 @@ function createValidationIssues(
         if (step.id.trim().length === 0) {
           issues.push(`${location} id must not be empty`);
         } else if (step.id !== step.id.trim()) {
-          issues.push(`${location} id must not contain surrounding whitespace`);
+          issues.push(
+            `${location} id must not contain surrounding whitespace. Expected: no leading or trailing spaces`
+          );
         } else if (!matchesIdentifierFormat(step.id)) {
-          issues.push(`${location} id must match ${IDENTIFIER_FORMAT_SOURCE}`);
+          issues.push(
+            `${location} id must match ${IDENTIFIER_FORMAT_SOURCE}. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens`
+          );
         } else if (stepIds.has(step.id)) {
           issues.push(`job "${jobId}" contains duplicate step id "${step.id}"`);
         } else {
@@ -922,12 +1032,14 @@ function createValidationIssues(
       }
 
       if (step.continueOnError !== undefined && typeof step.continueOnError !== 'boolean') {
-        issues.push(`${location} continue-on-error must be a boolean`);
+        issues.push(`${location} continue-on-error must be a boolean. Expected: true or false`);
       }
 
       if (step.timeoutMinutes !== undefined) {
         if (!Number.isInteger(step.timeoutMinutes) || step.timeoutMinutes <= 0) {
-          issues.push(`${location} timeout-minutes must be a positive integer`);
+          issues.push(
+            `${location} timeout-minutes must be a positive integer. Expected: a whole number greater than 0`
+          );
         }
       }
 
@@ -1000,7 +1112,9 @@ function validatePermissions(
 
   for (const key of Object.keys(permissions)) {
     if (!WORKFLOW_PERMISSION_KEYS.includes(key as WorkflowPermissionKey)) {
-      issues.push(`${owner} permissions contains unsupported key "${key}"`);
+      issues.push(
+        `${owner} permissions contains unsupported key "${key}". Expected: one of ${WORKFLOW_PERMISSION_KEYS.join(', ')}`
+      );
       continue;
     }
 
@@ -1034,7 +1148,9 @@ function validateConcurrency(
     concurrency.cancelInProgress !== undefined &&
     typeof concurrency.cancelInProgress !== 'boolean'
   ) {
-    issues.push(`${owner} concurrency cancel-in-progress must be a boolean`);
+    issues.push(
+      `${owner} concurrency cancel-in-progress must be a boolean. Expected: true or false`
+    );
   }
 }
 
@@ -1048,6 +1164,59 @@ function validateEnv(owner: string, env: WorkflowEnv | undefined, issues: string
   }
 }
 
+function validateContainerConfig(owner: string, config: ContainerConfig, issues: string[]): void {
+  if (typeof config.image !== 'string' || config.image.trim().length === 0) {
+    issues.push(`${owner} image must be a non-blank string`);
+  }
+
+  if (config.credentials !== undefined) {
+    if (
+      typeof config.credentials.username !== 'string' ||
+      config.credentials.username.trim().length === 0
+    ) {
+      issues.push(`${owner} credentials username must be a non-blank string`);
+    }
+    if (
+      typeof config.credentials.password !== 'string' ||
+      config.credentials.password.trim().length === 0
+    ) {
+      issues.push(`${owner} credentials password must be a non-blank string`);
+    }
+  }
+
+  validateEnv(`${owner}`, config.env, issues);
+
+  if (config.ports !== undefined) {
+    for (const port of config.ports) {
+      if (typeof port === 'number') {
+        if (!Number.isInteger(port) || port <= 0) {
+          issues.push(
+            `${owner} ports must contain positive integers. Expected: whole numbers greater than 0`
+          );
+        }
+      } else if (typeof port === 'string') {
+        if (port.trim().length === 0) {
+          issues.push(`${owner} ports must not contain blank strings`);
+        }
+      }
+    }
+  }
+
+  if (config.volumes !== undefined) {
+    for (const volume of config.volumes) {
+      if (volume.trim().length === 0) {
+        issues.push(`${owner} volumes must not contain blank strings`);
+      }
+    }
+  }
+
+  if (config.options !== undefined) {
+    if (typeof config.options !== 'string' || config.options.trim().length === 0) {
+      issues.push(`${owner} options must be a non-blank string`);
+    }
+  }
+}
+
 function validateIdentifierLike(
   location: string,
   value: string,
@@ -1055,7 +1224,9 @@ function validateIdentifierLike(
   label?: string
 ): void {
   if (!matchesIdentifierFormat(value)) {
-    issues.push(`${location}${label ? ` ${label}` : ''} must match ${IDENTIFIER_FORMAT_SOURCE}`);
+    issues.push(
+      `${location}${label ? ` ${label}` : ''} must match ${IDENTIFIER_FORMAT_SOURCE}. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens`
+    );
   }
 }
 
@@ -1188,6 +1359,8 @@ class JobBuilder {
     readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   private jobRunsOn?: string | readonly string[];
+  private jobContainer?: ContainerConfig;
+  private jobServices?: WorkflowServices;
   private jobOutputs?: WorkflowJobOutputs;
   private jobKind: 'steps' | 'reusable-workflow' = 'steps';
   private jobUses?: string;
@@ -1286,6 +1459,16 @@ class JobBuilder {
     return this;
   }
 
+  container(config: ContainerConfig): this {
+    this.jobContainer = cloneContainerConfig(config);
+    return this;
+  }
+
+  services(services: WorkflowServices): this {
+    this.jobServices = cloneServices(services);
+    return this;
+  }
+
   outputs(outputs: WorkflowJobOutputs): this {
     this.jobOutputs = { ...outputs };
     return this;
@@ -1353,6 +1536,10 @@ class JobBuilder {
             }
           : {}),
         ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+        ...(this.jobContainer !== undefined
+          ? { container: cloneContainerConfig(this.jobContainer) }
+          : {}),
+        ...(this.jobServices !== undefined ? { services: cloneServices(this.jobServices) } : {}),
         steps: this.jobSteps.map((step) => ({
           kind: step.kind,
           ...(step.run !== undefined ? { run: step.run } : {}),
@@ -1405,6 +1592,10 @@ class JobBuilder {
           }
         : {}),
       ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+      ...(this.jobContainer !== undefined
+        ? { container: cloneContainerConfig(this.jobContainer) }
+        : {}),
+      ...(this.jobServices !== undefined ? { services: cloneServices(this.jobServices) } : {}),
       ...(this.jobOutputs !== undefined ? { outputs: { ...this.jobOutputs } } : {}),
       steps: this.jobSteps.map((step) => ({
         kind: step.kind,
@@ -1586,6 +1777,8 @@ export class WorkflowBuilder {
           : {}),
         ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
         runsOn: finalizeRunsOn(job.runsOn!),
+        ...(job.container !== undefined ? { container: cloneContainerConfig(job.container) } : {}),
+        ...(job.services !== undefined ? { services: cloneServices(job.services) } : {}),
         ...(job.outputs !== undefined && Object.keys(job.outputs).length > 0
           ? { outputs: { ...job.outputs } }
           : {}),

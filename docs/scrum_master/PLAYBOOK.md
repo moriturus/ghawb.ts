@@ -33,6 +33,7 @@ Restate the team's standing working agreements before sprint execution begins.
 - Confirm that item pull requests will target the sprint branch and that the sprint will close through one final sprint-branch-to-`main` pull request.
 - Confirm which Developer persona is expected to carry the primary implementation responsibility for the current top item.
 - Confirm how sub-agents or multi-agent collaboration will be used first for the current sprint, and which persona owns each delegated slice.
+- Confirm that sprint execution does not stop merely because a response turn ended, a status report was sent, or a progress summary was provided. Execution continues to the next ready item unless a documented stop condition is met.
 
 ### 1. Confirm documentation update rules
 
@@ -108,6 +109,18 @@ Prefer:
 - explicit code-review completion by a non-implementing persona
 - explicit evidence expected at closeout
 
+### 3. Plan external proof requirements
+
+Before accepting a backlog item as ready, identify any external proof the Definition of Done requires.
+
+Resolve:
+
+- whether hosted proof must come from push runs, pull-request runs, deployment artifacts, or other external sources
+- which sprint phase (item-level or sprint-level closeout) must produce the external proof
+- whether the external proof is blocking or advisory for closeout
+
+Record the external proof plan in the sprint backlog item's notes so closeout does not depend on ad-hoc Product Owner exceptions.
+
 ## Sprint Closeout Protocol
 
 Run this protocol before sprint review starts.
@@ -122,6 +135,8 @@ Check:
 - the sprint branch reflects the intended integrated sprint state
 - the sprint closeout pull request from the sprint branch to `main` exists or is ready to open
 - any final hosted proof expected for the sprint branch merge is identified explicitly
+- the verification target is explicitly identified: either a clean branch verification (all changes committed, verification commands run against the branch HEAD) or a scoped file-set verification (specific changed files verified while unrelated worktree changes are acknowledged)
+- if scoped verification is used, the scope boundary is documented in the sprint review notes
 
 ### 1. Pre-review consistency check
 
@@ -175,6 +190,32 @@ Check:
 - the sprint backlog summary status is synced when the sprint state changed
 - the documentation index is synced when sprint review or retrospective docs were added
 - the resulting documentation changes are committed with a Conventional Commit message
+- the review or retrospective note includes an evidence provenance statement: either "evidence from clean committed snapshot at [commit/branch]" or "evidence from scoped dirty-worktree state — [description of uncommitted scope]"
+
+### 5. Closeout waiting behavior when hosted proof is pending
+
+When local implementation, review, and documentation are all complete but hosted proof (CI, deployment, etc.) is still pending on the sprint-level PR:
+
+Decision tree:
+
+1. **Wait**: If hosted proof is expected within a reasonable time window (e.g., CI pipeline < 30 minutes), keep the sprint in progress and wait for the proof to arrive before declaring closeout complete.
+2. **Report pending handoff**: If hosted proof requires external action or an extended wait beyond the current session, report the sprint as "closeout pending — awaiting hosted proof" with an explicit list of remaining evidence, and schedule or document a follow-up check.
+3. **Record and proceed**: If the repository or Product Owner explicitly opts out of hosted proof for the current sprint, record the decision and rationale in the sprint review notes and proceed with closeout.
+
+Do not declare closeout complete while hosted proof is still pending unless an explicit opt-out is recorded.
+
+### 6. Sprint-document synchronization checklist
+
+Before declaring the sprint ceremony complete, confirm all sprint-level documents are synchronized:
+
+- [ ] Sprint backlog file under `docs/sprint_backlogs/` — all items have final status and completion dates
+- [ ] Sprint review note under `docs/sprint_reviews/` — exists or intentionally deferred with reason
+- [ ] Sprint retrospective note under `docs/sprint_retrospectives/` — exists or intentionally deferred with reason
+- [ ] `docs/INDEX.md` — updated with any new docs created during the sprint
+- [ ] `docs/PRODUCT_BACKLOG.md` — reflects current state after sprint items delivered
+- [ ] `docs/scrum_master/BOARD.md` — any resolved items moved to closed
+
+If any synchronization step is deferred, record the reason in the sprint review or retrospective note.
 
 ## Escalation Rules
 

@@ -1,5 +1,6 @@
 import {
   WORKFLOW_PERMISSION_KEYS,
+  type ContainerConfig,
   type TriggerType,
   type WorkflowDefinition,
   type WorkflowCallInput,
@@ -11,6 +12,7 @@ import {
   type WorkflowPermissionLevel,
   type WorkflowPermissionShorthand,
   type WorkflowPermissions,
+  type WorkflowServices,
   type WorkflowStep,
   type WorkflowStrategy,
   type WorkflowTrigger,
@@ -103,6 +105,20 @@ export interface WorkflowRenderStepPayload {
 
 export type WorkflowRenderPermissionsPayload = WorkflowPermissions;
 
+export interface WorkflowRenderContainerCredentialsPayload {
+  readonly username: string;
+  readonly password: string;
+}
+
+export interface WorkflowRenderContainerPayload {
+  readonly image: string;
+  readonly credentials?: WorkflowRenderContainerCredentialsPayload;
+  readonly env?: Readonly<Record<string, string>>;
+  readonly ports?: readonly (number | string)[];
+  readonly volumes?: readonly string[];
+  readonly options?: string;
+}
+
 export interface WorkflowRenderJobPayloadBase {
   readonly if?: string;
   readonly needs?: readonly string[];
@@ -128,6 +144,8 @@ export interface WorkflowRenderJobPayloadBase {
     >;
   };
   readonly 'runs-on'?: string | readonly string[];
+  readonly container?: WorkflowRenderContainerPayload;
+  readonly services?: Readonly<Record<string, WorkflowRenderContainerPayload>>;
   readonly outputs?: Readonly<Record<string, string>>;
   readonly steps?: readonly WorkflowRenderStepPayload[];
   readonly secrets?: 'inherit' | Readonly<Record<string, string>>;
@@ -137,6 +155,8 @@ export interface WorkflowRenderJobPayloadBase {
 
 export interface WorkflowRenderStepsJobPayload extends WorkflowRenderJobPayloadBase {
   readonly 'runs-on': string | readonly string[];
+  readonly container?: WorkflowRenderContainerPayload;
+  readonly services?: Readonly<Record<string, WorkflowRenderContainerPayload>>;
   readonly steps: readonly WorkflowRenderStepPayload[];
 }
 
@@ -403,7 +423,9 @@ function createDefaultsRunPayload(defaultsRun: {
   assertAllowedKeys(defaultsRun, ['shell', 'workingDirectory'], 'defaults.run');
 
   if (defaultsRun.shell === undefined && defaultsRun.workingDirectory === undefined) {
-    throw new WorkflowRenderError('defaults.run must define shell or working-directory');
+    throw new WorkflowRenderError(
+      'defaults.run must define shell or working-directory. Expected: at least one of shell or working-directory'
+    );
   }
 
   return {
@@ -428,7 +450,7 @@ function createConcurrencyPayload(
 
   if (typeof concurrency.group !== 'string' || concurrency.group.trim().length === 0) {
     throw new WorkflowRenderError(
-      `unsupported ${label} concurrency value "group: ${concurrency.group}"`
+      `unsupported ${label} concurrency value "group: ${concurrency.group}". Expected: a non-blank string`
     );
   }
 
@@ -455,7 +477,9 @@ function createPermissionsPayload(
 ): WorkflowRenderPermissionsPayload {
   if (typeof permissions === 'string') {
     if (!isPermissionsShorthand(permissions)) {
-      throw new WorkflowRenderError(`unsupported ${label} permissions shorthand "${permissions}"`);
+      throw new WorkflowRenderError(
+        `unsupported ${label} permissions shorthand "${permissions}". Expected: "read-all" or "write-all"`
+      );
     }
 
     return permissions;
@@ -469,7 +493,9 @@ function createPermissionsPayload(
 
   for (const key of Object.keys(permissions)) {
     if (!WORKFLOW_PERMISSION_KEYS.includes(key as WorkflowPermissionKey)) {
-      throw new WorkflowRenderError(`unsupported ${label} permissions key "${key}"`);
+      throw new WorkflowRenderError(
+        `unsupported ${label} permissions key "${key}". Expected: one of ${WORKFLOW_PERMISSION_KEYS.join(', ')}`
+      );
     }
 
     const permissionKey = key as WorkflowPermissionKey;
@@ -477,7 +503,7 @@ function createPermissionsPayload(
 
     if (value === undefined || !WORKFLOW_PERMISSION_ALLOWED_LEVELS[permissionKey].includes(value)) {
       throw new WorkflowRenderError(
-        `unsupported ${label} permissions value "${permissionKey}: ${value}"`
+        `unsupported ${label} permissions value "${permissionKey}: ${value}". Expected: one of ${WORKFLOW_PERMISSION_ALLOWED_LEVELS[permissionKey].join(', ')}`
       );
     }
   }
@@ -520,6 +546,36 @@ function createStrategyPayload(strategy: WorkflowStrategy): {
     ...(strategy.maxParallel !== undefined ? { 'max-parallel': strategy.maxParallel } : {}),
     matrix: matrixPayload,
   };
+}
+
+function createContainerPayload(container: ContainerConfig): WorkflowRenderContainerPayload {
+  return {
+    image: container.image,
+    ...(container.credentials
+      ? {
+          credentials: {
+            username: container.credentials.username,
+            password: container.credentials.password,
+          },
+        }
+      : {}),
+    ...(container.env && Object.keys(container.env).length > 0
+      ? { env: { ...container.env } }
+      : {}),
+    ...(container.ports && container.ports.length > 0 ? { ports: [...container.ports] } : {}),
+    ...(container.volumes && container.volumes.length > 0
+      ? { volumes: [...container.volumes] }
+      : {}),
+    ...(container.options !== undefined ? { options: container.options } : {}),
+  };
+}
+
+function createServicesPayload(
+  services: WorkflowServices
+): Readonly<Record<string, WorkflowRenderContainerPayload>> {
+  return Object.fromEntries(
+    Object.entries(services).map(([key, value]) => [key, createContainerPayload(value)])
+  );
 }
 
 export function createWorkflowRenderPayload(workflow: WorkflowDefinition): WorkflowRenderPayload {
@@ -607,6 +663,8 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
         'env',
         'strategy',
         'runsOn',
+        'container',
+        'services',
         'outputs',
         'steps',
       ],
@@ -628,6 +686,10 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       ...(job.env && Object.keys(job.env).length > 0 ? { env: { ...job.env } } : {}),
       ...(job.strategy ? { strategy: createStrategyPayload(job.strategy) } : {}),
       'runs-on': Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
+      ...(job.container ? { container: createContainerPayload(job.container) } : {}),
+      ...(job.services && Object.keys(job.services).length > 0
+        ? { services: createServicesPayload(job.services) }
+        : {}),
       ...(job.outputs && Object.keys(job.outputs).length > 0
         ? { outputs: { ...job.outputs } }
         : {}),

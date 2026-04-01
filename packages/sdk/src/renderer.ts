@@ -84,7 +84,9 @@ export interface WorkflowRenderStepPayload {
 export type WorkflowRenderPermissionsPayload = WorkflowPermissions;
 
 export interface WorkflowRenderJobPayload {
+  readonly if?: string;
   readonly needs?: readonly string[];
+  readonly 'continue-on-error'?: boolean;
   readonly permissions?: WorkflowRenderPermissionsPayload;
   readonly 'timeout-minutes'?: number;
   readonly defaults?: {
@@ -426,7 +428,9 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       job,
       [
         'id',
+        'if',
         'needs',
+        'continueOnError',
         'permissions',
         'timeoutMinutes',
         'defaults',
@@ -441,7 +445,9 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     );
 
     jobs[String(job.id)] = {
+      ...(job.if !== undefined ? { if: job.if } : {}),
       ...(job.needs ? { needs: [...job.needs] } : {}),
+      ...(job.continueOnError !== undefined ? { 'continue-on-error': job.continueOnError } : {}),
       ...(job.permissions
         ? { permissions: createPermissionsPayload(job.permissions, `job "${job.id}"`) }
         : {}),

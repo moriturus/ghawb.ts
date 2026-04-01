@@ -19,6 +19,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_backlogs/sp9.md](./sprint_backlogs/sp9.md): Sprint 9 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp10.md](./sprint_backlogs/sp10.md): Sprint 10 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp11.md](./sprint_backlogs/sp11.md): Sprint 11 backlog record, planning notes, and committed items.
+- [sprint_backlogs/sp12.md](./sprint_backlogs/sp12.md): Sprint 12 backlog record, planning notes, and committed items.
 - [scrum_master/BOARD.md](./scrum_master/BOARD.md): Scrum Master owned team-improvement follow-ups in priority order.
 - [scrum_master/PLAYBOOK.md](./scrum_master/PLAYBOOK.md): Scrum Master operating guide for sprint start, planning, and closeout improvements.
 - [TEAM.md](./TEAM.md): Scrum team roles and working personas.

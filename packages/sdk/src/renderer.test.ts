@@ -914,6 +914,68 @@ describe('workflow renderer', () => {
     ).toThrowError(new WorkflowRenderError('defaults.run must define shell or working-directory'));
   });
 
+  it('fails explicitly before emission when workflow-level defaults.run is empty', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('empty_workflow_defaults_run'),
+      name: 'Empty Workflow Defaults Run',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      defaults: {
+        run: {},
+      },
+      jobs: [
+        {
+          id: createJobId('check'),
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(new WorkflowRenderError('defaults.run must define shell or working-directory'));
+  });
+
+  it('fails explicitly before emission when permissions shorthand is invalid', () => {
+    const unsupportedWorkflow = {
+      id: createWorkflowId('invalid_permissions_shorthand'),
+      name: 'Invalid Permissions Shorthand',
+      on: [
+        {
+          type: 'push',
+        },
+      ],
+      permissions: 'admin-all',
+      jobs: [
+        {
+          id: createJobId('check'),
+          runsOn: 'ubuntu-latest',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(() =>
+      renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
+    ).toThrowError(
+      new WorkflowRenderError('unsupported workflow permissions shorthand "admin-all"')
+    );
+  });
+
   it('fails explicitly before emission when uses steps receive run-only execution metadata', () => {
     const unsupportedWorkflow = {
       id: createWorkflowId('uses_step_shell'),

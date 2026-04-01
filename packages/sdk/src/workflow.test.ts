@@ -823,6 +823,24 @@ describe('workflow builder', () => {
     expect(workflow.jobs[0]?.permissions).toBe('write-all');
   });
 
+  it('rejects invalid permissions shorthand strings', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_permissions_shorthand'),
+      name: 'Invalid Permissions Shorthand',
+    })
+      .onPush()
+      .permissions('admin-all' as unknown as import('./index.ts').WorkflowPermissions)
+      .addJob(createJobId('check'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'workflow permissions must be "read-all", "write-all", or an object map',
+      ])
+    );
+  });
+
   it('deep-freezes workflow output including nested arrays and maps', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('immutable'),

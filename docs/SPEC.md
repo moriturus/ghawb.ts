@@ -34,6 +34,8 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - jobs with `runs-on` in string or string-array form
   - steps using either `uses` or `run`
   - step metadata fields `name`, `env`, `with`, and `if`
+  - optional step `id` field with identifier validation, uniqueness enforcement within a job, and trimming during finalization
+  - job-level `outputs` maps (`Readonly<Record<string, string>>`) with blank key/value rejection and `steps.<id>` referential validation against declared step IDs in the same job; non-step expression forms are accepted without referential validation
 - Validation occurs at `build()` time and fails through explicit exceptions for invalid definitions.
 - Identifier factories reject surrounding whitespace instead of silently normalizing values.
 - Duplicate trigger definitions are rejected during `build()`.
@@ -126,7 +128,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - The internal AST is a GitHub Actions semantic model, not a generic YAML AST.
 - Deterministic output is required for a given emitter and configuration.
 - The current renderer boundary is `createWorkflowRenderPayload()` plus `renderWorkflow(workflow, emitter)`.
-- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, `permissions`, `env`, `concurrency`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`, `schedule`); canonical permission key order (`actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, `statuses`); top-level concurrency field order `group`, `cancel-in-progress`; declared job order; job-local field order `needs`, `permissions`, `timeout-minutes`, `defaults`, `concurrency`, `env`, `strategy`, `runs-on`, `steps`; declared `needs` order within each job; `defaults.run` field order `shell`, `working-directory`; job concurrency field order `group`, `cancel-in-progress`; declared matrix axis order within each job strategy; and declared step order, with run-step execution metadata rendered as `shell` then `working-directory` before `run`.
+- The intermediate payload uses deterministic structural ordering: top-level `name`, `on`, `permissions`, `env`, `concurrency`, and `jobs`; canonical trigger key order (`push`, `pull_request`, `workflow_dispatch`, `schedule`); canonical trigger filter key order (`branches`, `branches-ignore`, `paths`, `paths-ignore`, `tags`, `tags-ignore`, `types`); canonical permission key order (`actions`, `artifact-metadata`, `attestations`, `checks`, `contents`, `deployments`, `discussions`, `id-token`, `issues`, `models`, `packages`, `pages`, `pull-requests`, `security-events`, `statuses`); top-level concurrency field order `group`, `cancel-in-progress`; declared job order; job-local field order `needs`, `permissions`, `timeout-minutes`, `defaults`, `concurrency`, `env`, `strategy`, `runs-on`, `outputs`, `steps`; declared `needs` order within each job; `defaults.run` field order `shell`, `working-directory`; job concurrency field order `group`, `cancel-in-progress`; declared matrix axis order within each job strategy; and declared step order, with step-local field order `name`, `id`, `if`, `env`, `shell`, `with`, `working-directory`, then `run` or `uses`.
 
 ## Open Questions
 

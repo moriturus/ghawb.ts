@@ -1514,4 +1514,341 @@ describe('workflow builder', () => {
       ],
     });
   });
+
+  describe('step identifiers and job outputs', () => {
+    it('builds a run step with an id', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('step_id_run'),
+        name: 'Step ID Run',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo building', { id: 'build-step' });
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.steps[0]).toMatchObject({
+        kind: 'run',
+        id: 'build-step',
+        run: 'echo building',
+      });
+    });
+
+    it('builds a uses step with an id', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('step_id_uses'),
+        name: 'Step ID Uses',
+      })
+        .onPush()
+        .addJob(createJobId('checkout'), (job) => {
+          job.runsOn('ubuntu-latest').uses('actions/checkout@v4', { id: 'checkout-step' });
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.steps[0]).toMatchObject({
+        kind: 'uses',
+        id: 'checkout-step',
+        uses: 'actions/checkout@v4',
+      });
+    });
+
+    it('builds multiple steps with unique IDs', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('multi_step_ids'),
+        name: 'Multi Step IDs',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .run('echo step1', { id: 'step1' })
+            .run('echo step2', { id: 'step2' })
+            .uses('actions/checkout@v4', { id: 'checkout' });
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.steps[0]!.id).toBe('step1');
+      expect(workflow.jobs[0]!.steps[1]!.id).toBe('step2');
+      expect(workflow.jobs[0]!.steps[2]!.id).toBe('checkout');
+    });
+
+    it('builds steps without IDs (backwards compatible)', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('no_step_ids'),
+        name: 'No Step IDs',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hello');
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.steps[0]).not.toHaveProperty('id');
+    });
+
+    it('trims step IDs during finalization', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('trim_step_id'),
+        name: 'Trim Step ID',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hello', { id: '  build-step  ' });
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.steps[0]!.id).toBe('build-step');
+    });
+
+    it('rejects blank step IDs', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('blank_step_id'),
+        name: 'Blank Step ID',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hello', { id: '  ' });
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError(['job "build" step 1 id must not be empty'])
+      );
+    });
+
+    it('rejects duplicate step IDs in the same job', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('dup_step_ids'),
+        name: 'Dup Step IDs',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .run('echo first', { id: 'build' })
+            .run('echo second', { id: 'build' });
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError(['job "test" contains duplicate step id "build"'])
+      );
+    });
+
+    it('allows the same step ID in different jobs', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('cross_job_ids'),
+        name: 'Cross Job IDs',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo building', { id: 'setup' });
+        })
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo testing', { id: 'setup' });
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.steps[0]!.id).toBe('setup');
+      expect(workflow.jobs[1]!.steps[0]!.id).toBe('setup');
+    });
+
+    it('builds a job with outputs referencing declared step IDs', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('job_outputs'),
+        name: 'Job Outputs',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .outputs({
+              result: '${{ steps.upload.outputs.artifact-url }}',
+            })
+            .run('echo building', { id: 'upload' });
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.outputs).toEqual({
+        result: '${{ steps.upload.outputs.artifact-url }}',
+      });
+    });
+
+    it('omits empty outputs map from built workflow', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('empty_outputs'),
+        name: 'Empty Outputs',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').outputs({}).run('echo hello');
+        })
+        .build();
+
+      expect(workflow.jobs[0]).not.toHaveProperty('outputs');
+    });
+
+    it('rejects blank output keys', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('blank_output_key'),
+        name: 'Blank Output Key',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').outputs({ '': 'value' }).run('echo hello');
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError(['job "build" outputs must not contain blank keys'])
+      );
+    });
+
+    it('rejects blank output values', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('blank_output_value'),
+        name: 'Blank Output Value',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').outputs({ key: '  ' }).run('echo hello');
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError(['job "build" outputs key "key" must not have a blank value'])
+      );
+    });
+
+    it('rejects output referencing undeclared step ID', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('undeclared_step_ref'),
+        name: 'Undeclared Step Ref',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .outputs({ result: '${{ steps.missing.outputs.value }}' })
+            .run('echo hello');
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "build" outputs key "result" references undeclared step id "missing"',
+        ])
+      );
+    });
+
+    it('accepts output referencing a declared step ID', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('declared_step_ref'),
+        name: 'Declared Step Ref',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .outputs({ result: '${{ steps.upload.outputs.value }}' })
+            .run('echo building', { id: 'upload' });
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.outputs).toEqual({
+        result: '${{ steps.upload.outputs.value }}',
+      });
+    });
+
+    it('accepts output with non-step expressions', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('non_step_expr'),
+        name: 'Non Step Expr',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .outputs({
+              dep_result: '${{ needs.build.outputs.result }}',
+              env_val: '${{ env.FOO }}',
+            })
+            .run('echo hello');
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.outputs).toEqual({
+        dep_result: '${{ needs.build.outputs.result }}',
+        env_val: '${{ env.FOO }}',
+      });
+    });
+
+    it('reports only invalid step references when value has multiple', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('multi_step_ref'),
+        name: 'Multi Step Ref',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .outputs({
+              combined: '${{ steps.valid.outputs.a }}-${{ steps.invalid.outputs.b }}',
+            })
+            .run('echo hello', { id: 'valid' });
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "build" outputs key "combined" references undeclared step id "invalid"',
+        ])
+      );
+    });
+
+    it('accepts output with no step references at all', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('no_step_ref'),
+        name: 'No Step Ref',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').outputs({ result: 'literal-value' }).run('echo hello');
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.outputs).toEqual({ result: 'literal-value' });
+    });
+
+    it('deep-freezes built workflow step IDs', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('frozen_step_ids'),
+        name: 'Frozen Step IDs',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hello', { id: 'build-step' });
+        })
+        .build();
+
+      expect(Object.isFrozen(workflow.jobs[0]!.steps[0]!)).toBe(true);
+      expect(() => {
+        (workflow.jobs[0]!.steps[0] as unknown as Record<string, unknown>).id = 'hacked';
+      }).toThrow(TypeError);
+    });
+
+    it('deep-freezes built job outputs', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('frozen_outputs'),
+        name: 'Frozen Outputs',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .outputs({ result: '${{ steps.upload.outputs.value }}' })
+            .run('echo building', { id: 'upload' });
+        })
+        .build();
+
+      expect(Object.isFrozen(workflow.jobs[0]!.outputs)).toBe(true);
+      expect(() => {
+        (workflow.jobs[0]!.outputs as Record<string, string>).result = 'hacked';
+      }).toThrow(TypeError);
+    });
+  });
 });

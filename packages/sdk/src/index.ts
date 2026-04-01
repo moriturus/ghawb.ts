@@ -10,8 +10,10 @@ export {
 export { defineWorkflow, WorkflowBuilder } from './builders.ts';
 export {
   PULL_REQUEST_ACTIVITY_TYPES,
+  SIMPLE_EVENT_ACTIVITY_TYPES,
   WORKFLOW_DISPATCH_INPUT_TYPES,
   WORKFLOW_RUN_ACTIVITY_TYPES,
+  isSimpleEventType,
 } from './model.ts';
 export {
   createWorkflowRenderPayload,
@@ -44,6 +46,8 @@ export type {
   RunStepMetadata,
   RunStep,
   RunsOnTarget as RunsOn,
+  SimpleEventTrigger,
+  SimpleEventType,
   StepMetadata,
   TriggerFilter,
   TriggerType as WorkflowTriggerName,

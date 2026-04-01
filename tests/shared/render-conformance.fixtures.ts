@@ -1067,6 +1067,88 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'simple_event_with_types',
+    defineWorkflow({
+      id: createWorkflowId('simple_event_with_types'),
+      name: 'Issue Handler',
+    })
+      .onEvent('issues', { types: ['opened', 'closed'] })
+      .addJob(createJobId('handle'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo "issue event"');
+      })
+      .build(),
+    {
+      name: 'Issue Handler',
+      on: { issues: { types: ['opened', 'closed'] } },
+      jobs: {
+        handle: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'echo "issue event"' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'simple_event_bare',
+    defineWorkflow({
+      id: createWorkflowId('simple_event_bare'),
+      name: 'Fork Handler',
+    })
+      .onEvent('fork')
+      .addJob(createJobId('notify'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo "forked"');
+      })
+      .build(),
+    {
+      name: 'Fork Handler',
+      on: { fork: null },
+      jobs: {
+        notify: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'echo "forked"' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'repository_dispatch_with_types',
+    defineWorkflow({
+      id: createWorkflowId('repository_dispatch_with_types'),
+      name: 'Dispatch Handler',
+    })
+      .onEvent('repository_dispatch', { types: ['deploy', 'rollback'] })
+      .addJob(createJobId('handle'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo "dispatched"');
+      })
+      .build(),
+    {
+      name: 'Dispatch Handler',
+      on: { repository_dispatch: { types: ['deploy', 'rollback'] } },
+      jobs: {
+        handle: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'echo "dispatched"' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'multi_trigger_with_simple_events',
+    defineWorkflow({
+      id: createWorkflowId('multi_trigger'),
+      name: 'Multi Trigger',
+    })
+      .onPush({ branches: ['main'] })
+      .onEvent('release', { types: ['published'] })
+      .onEvent('create')
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('npm build');
+      })
+      .build(),
+    {
+      name: 'Multi Trigger',
+      on: {
+        push: { branches: ['main'] },
+        create: null,
+        release: { types: ['published'] },
+      },
+      jobs: {
+        build: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'npm build' }] },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -1716,5 +1798,141 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         .build();
     },
     expectedIssues: ['trigger "workflow_run" types must not be empty'],
+  },
+  {
+    name: 'simple_event_unknown_activity_type',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('simple_bad_type'),
+        name: 'Simple Bad Type',
+      })
+        .onEvent('issues', { types: ['invalid' as 'opened'] })
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "issue event"');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "issues" types contains unknown activity type "invalid". Expected: one of "opened", "edited", "deleted", "transferred", "pinned", "unpinned", "closed", "reopened", "assigned", "unassigned", "labeled", "unlabeled", "locked", "unlocked", "milestoned", "demilestoned"',
+    ],
+  },
+  {
+    name: 'simple_event_rejects_branches',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('simple_branches'),
+        name: 'Simple Branches',
+      });
+      builder.triggers.push(
+        Object.assign({ type: 'issues' as const }, { branches: ['main'] }) as unknown as ReturnType<
+          typeof builder.triggers.pop
+        > &
+          object
+      );
+      return builder
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "issue event"');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "issues" does not support branches'],
+  },
+  {
+    name: 'bare_event_rejects_types',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('bare_event_types'),
+        name: 'Bare Event Types',
+      });
+      builder.triggers.push({
+        type: 'fork' as const,
+        types: ['created'],
+      } as unknown as ReturnType<typeof builder.triggers.pop> & object);
+      return builder
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "forked"');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "fork" does not support types'],
+  },
+  {
+    name: 'repository_dispatch_blank_type',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('dispatch_blank'),
+        name: 'Dispatch Blank',
+      })
+        .onEvent('repository_dispatch', { types: ['deploy', '  '] })
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "dispatched"');
+        })
+        .build(),
+    expectedIssues: ['trigger "repository_dispatch" types must not contain blank values'],
+  },
+  {
+    name: 'simple_event_rejects_all_filter_fields',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('simple_all_filters'),
+        name: 'Simple All Filters',
+      });
+      builder.triggers.push(
+        Object.assign(
+          { type: 'issues' as const },
+          {
+            branchesIgnore: ['dev'],
+            paths: ['src/**'],
+            pathsIgnore: ['docs/**'],
+            tags: ['v1'],
+            tagsIgnore: ['v0.*'],
+          }
+        ) as unknown as ReturnType<typeof builder.triggers.pop> & object
+      );
+      return builder
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "issue event"');
+        })
+        .build();
+    },
+    expectedIssues: [
+      'trigger "issues" does not support branches-ignore',
+      'trigger "issues" does not support paths',
+      'trigger "issues" does not support paths-ignore',
+      'trigger "issues" does not support tags',
+      'trigger "issues" does not support tags-ignore',
+    ],
+  },
+  {
+    name: 'repository_dispatch_empty_types',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('dispatch_empty_types'),
+        name: 'Dispatch Empty Types',
+      })
+        .onEvent('repository_dispatch', { types: [] as unknown as [string] })
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "dispatched"');
+        })
+        .build(),
+    expectedIssues: ['trigger "repository_dispatch" types must not be empty'],
+  },
+  {
+    name: 'simple_event_empty_types',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('simple_empty_types'),
+        name: 'Simple Empty Types',
+      });
+      builder.triggers.push({
+        type: 'issues' as const,
+        types: [],
+      });
+      return builder
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "issue event"');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "issues" types must not be empty'],
   },
 ];

@@ -1,6 +1,9 @@
 import {
   WORKFLOW_PERMISSION_KEYS,
+  isSimpleEventType,
   type ContainerConfig,
+  type FilteredWorkflowTrigger,
+  type SimpleEventTrigger,
   type TriggerType,
   type WorkflowDefinition,
   type WorkflowCallInput,
@@ -365,20 +368,34 @@ function createTriggerPayload(
     };
   }
 
+  if (isSimpleEventType(trigger.type)) {
+    const simpleTrigger = trigger as SimpleEventTrigger;
+    assertAllowedKeys(trigger, ['type', 'types'], `trigger "${trigger.type}"`);
+
+    if (simpleTrigger.types && simpleTrigger.types.length > 0) {
+      return { types: [...simpleTrigger.types] };
+    }
+
+    return null;
+  }
+
   assertAllowedKeys(
     trigger,
     ['type', 'branches', 'branchesIgnore', 'paths', 'pathsIgnore', 'tags', 'tagsIgnore', 'types'],
     `trigger "${trigger.type}"`
   );
 
+  const filteredTrigger = trigger as FilteredWorkflowTrigger;
   const payload: WorkflowRenderTriggerPayload = {
-    ...(trigger.branches ? { branches: [...trigger.branches] } : {}),
-    ...(trigger.branchesIgnore ? { 'branches-ignore': [...trigger.branchesIgnore] } : {}),
-    ...(trigger.paths ? { paths: [...trigger.paths] } : {}),
-    ...(trigger.pathsIgnore ? { 'paths-ignore': [...trigger.pathsIgnore] } : {}),
-    ...(trigger.tags ? { tags: [...trigger.tags] } : {}),
-    ...(trigger.tagsIgnore ? { 'tags-ignore': [...trigger.tagsIgnore] } : {}),
-    ...(trigger.types ? { types: [...trigger.types] } : {}),
+    ...(filteredTrigger.branches ? { branches: [...filteredTrigger.branches] } : {}),
+    ...(filteredTrigger.branchesIgnore
+      ? { 'branches-ignore': [...filteredTrigger.branchesIgnore] }
+      : {}),
+    ...(filteredTrigger.paths ? { paths: [...filteredTrigger.paths] } : {}),
+    ...(filteredTrigger.pathsIgnore ? { 'paths-ignore': [...filteredTrigger.pathsIgnore] } : {}),
+    ...(filteredTrigger.tags ? { tags: [...filteredTrigger.tags] } : {}),
+    ...(filteredTrigger.tagsIgnore ? { 'tags-ignore': [...filteredTrigger.tagsIgnore] } : {}),
+    ...(filteredTrigger.types ? { types: [...filteredTrigger.types] } : {}),
   };
 
   return Object.keys(payload).length === 0 ? null : payload;
@@ -634,6 +651,29 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     'workflow_call',
     'workflow_run',
     'schedule',
+    'check_run',
+    'check_suite',
+    'create',
+    'delete',
+    'deployment',
+    'deployment_status',
+    'discussion',
+    'discussion_comment',
+    'fork',
+    'gollum',
+    'issue_comment',
+    'issues',
+    'label',
+    'member',
+    'merge_group',
+    'milestone',
+    'page_build',
+    'public',
+    'registry_package',
+    'release',
+    'repository_dispatch',
+    'status',
+    'watch',
   ] as const) {
     const trigger = workflow.on.find((candidate) => candidate.type === triggerType);
 

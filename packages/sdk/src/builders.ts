@@ -11,8 +11,11 @@ import {
   PULL_REQUEST_ACTIVITY_TYPES,
   WORKFLOW_DISPATCH_INPUT_TYPES,
   WORKFLOW_RUN_ACTIVITY_TYPES,
+  SIMPLE_EVENT_ACTIVITY_TYPES,
+  isSimpleEventType,
   type ContainerConfig,
   type FilteredTriggerType,
+  type FilteredWorkflowTrigger,
   type MatrixAxisValues,
   type MatrixExcludeEntry,
   type MatrixIncludeEntry,
@@ -20,6 +23,8 @@ import {
   type PullRequestTriggerFilter,
   type RunStepMetadata,
   type RunsOnTarget,
+  type SimpleEventTrigger,
+  type SimpleEventType,
   type StepMetadata,
   type TriggerFilter,
   type WorkflowConcurrency,
@@ -201,11 +206,19 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
     };
   }
 
+  if (isSimpleEventType(trigger.type)) {
+    const simpleTrigger = trigger as SimpleEventTrigger;
+    return {
+      type: trigger.type,
+      ...(simpleTrigger.types ? { types: [...simpleTrigger.types] } : {}),
+    } as WorkflowTrigger;
+  }
+
   return {
     type: trigger.type,
-    ...cloneFilter(trigger),
+    ...cloneFilter(trigger as FilteredWorkflowTrigger),
     ...(trigger.types ? { types: [...trigger.types] } : {}),
-  };
+  } as WorkflowTrigger;
 }
 
 function cloneDispatchInputs(inputs: WorkflowDispatchInputs): WorkflowDispatchInputs {
@@ -701,74 +714,139 @@ function createValidationIssues(
       continue;
     }
 
+    if (isSimpleEventType(trigger.type)) {
+      const simpleTrigger = trigger as SimpleEventTrigger;
+
+      for (const field of [
+        'branches',
+        'branchesIgnore',
+        'paths',
+        'pathsIgnore',
+        'tags',
+        'tagsIgnore',
+      ] as const) {
+        if ((trigger as unknown as Record<string, unknown>)[field] !== undefined) {
+          const label =
+            field === 'branchesIgnore'
+              ? 'branches-ignore'
+              : field === 'pathsIgnore'
+                ? 'paths-ignore'
+                : field === 'tagsIgnore'
+                  ? 'tags-ignore'
+                  : field;
+          issues.push(`trigger "${trigger.type}" does not support ${label}`);
+        }
+      }
+
+      if (simpleTrigger.types !== undefined) {
+        if (trigger.type === 'repository_dispatch') {
+          if (simpleTrigger.types.length === 0) {
+            issues.push('trigger "repository_dispatch" types must not be empty');
+          } else {
+            for (const t of simpleTrigger.types) {
+              if (t.trim().length === 0) {
+                issues.push('trigger "repository_dispatch" types must not contain blank values');
+                break;
+              }
+            }
+          }
+        } else {
+          const allowedTypes = SIMPLE_EVENT_ACTIVITY_TYPES[trigger.type as SimpleEventType];
+
+          if (allowedTypes !== undefined) {
+            if (simpleTrigger.types.length === 0) {
+              issues.push(`trigger "${trigger.type}" types must not be empty`);
+            } else {
+              for (const activityType of simpleTrigger.types) {
+                if (!allowedTypes.includes(activityType)) {
+                  issues.push(
+                    `trigger "${trigger.type}" types contains unknown activity type "${activityType}". Expected: one of ${allowedTypes.map((t) => `"${t}"`).join(', ')}`
+                  );
+                }
+              }
+            }
+          } else {
+            issues.push(`trigger "${trigger.type}" does not support types`);
+          }
+        }
+      }
+
+      continue;
+    }
+
+    const filteredTrigger = trigger as FilteredWorkflowTrigger;
+
     for (const [label, values] of [
-      ['branches', trigger.branches],
-      ['branches-ignore', trigger.branchesIgnore],
-      ['paths', trigger.paths],
-      ['paths-ignore', trigger.pathsIgnore],
-      ['tags', trigger.tags],
-      ['tags-ignore', trigger.tagsIgnore],
+      ['branches', filteredTrigger.branches],
+      ['branches-ignore', filteredTrigger.branchesIgnore],
+      ['paths', filteredTrigger.paths],
+      ['paths-ignore', filteredTrigger.pathsIgnore],
+      ['tags', filteredTrigger.tags],
+      ['tags-ignore', filteredTrigger.tagsIgnore],
     ] as const) {
       if (values === undefined) {
         continue;
       }
 
       if (values.length === 0) {
-        issues.push(`trigger "${trigger.type}" ${label} must not be empty`);
+        issues.push(`trigger "${filteredTrigger.type}" ${label} must not be empty`);
         continue;
       }
 
       if (values.some((value) => value.trim().length === 0)) {
-        issues.push(`trigger "${trigger.type}" ${label} must not contain blank values`);
+        issues.push(`trigger "${filteredTrigger.type}" ${label} must not contain blank values`);
       }
     }
 
-    if (trigger.branches !== undefined && trigger.branchesIgnore !== undefined) {
+    if (filteredTrigger.branches !== undefined && filteredTrigger.branchesIgnore !== undefined) {
       issues.push(
-        `trigger "${trigger.type}" must not combine branches and branches-ignore. Use one or the other, not both`
+        `trigger "${filteredTrigger.type}" must not combine branches and branches-ignore. Use one or the other, not both`
       );
     }
 
-    if (trigger.paths !== undefined && trigger.pathsIgnore !== undefined) {
+    if (filteredTrigger.paths !== undefined && filteredTrigger.pathsIgnore !== undefined) {
       issues.push(
-        `trigger "${trigger.type}" must not combine paths and paths-ignore. Use one or the other, not both`
+        `trigger "${filteredTrigger.type}" must not combine paths and paths-ignore. Use one or the other, not both`
       );
     }
 
-    if (trigger.tags !== undefined && trigger.tagsIgnore !== undefined) {
+    if (filteredTrigger.tags !== undefined && filteredTrigger.tagsIgnore !== undefined) {
       issues.push(
-        `trigger "${trigger.type}" must not combine tags and tags-ignore. Use one or the other, not both`
+        `trigger "${filteredTrigger.type}" must not combine tags and tags-ignore. Use one or the other, not both`
       );
     }
 
-    if (trigger.type === 'pull_request' || trigger.type === 'pull_request_target') {
-      if (trigger.tags !== undefined) {
+    if (filteredTrigger.type === 'pull_request' || filteredTrigger.type === 'pull_request_target') {
+      if (filteredTrigger.tags !== undefined) {
         issues.push(
-          `trigger "${trigger.type}" does not support tags. Supported: branches, branches-ignore, paths, paths-ignore, types`
+          `trigger "${filteredTrigger.type}" does not support tags. Supported: branches, branches-ignore, paths, paths-ignore, types`
         );
       }
 
-      if (trigger.tagsIgnore !== undefined) {
+      if (filteredTrigger.tagsIgnore !== undefined) {
         issues.push(
-          `trigger "${trigger.type}" does not support tags-ignore. Supported: branches, branches-ignore, paths, paths-ignore, types`
+          `trigger "${filteredTrigger.type}" does not support tags-ignore. Supported: branches, branches-ignore, paths, paths-ignore, types`
         );
       }
     }
 
-    if (trigger.types !== undefined) {
-      if (trigger.type !== 'pull_request' && trigger.type !== 'pull_request_target') {
+    if (filteredTrigger.types !== undefined) {
+      if (
+        filteredTrigger.type !== 'pull_request' &&
+        filteredTrigger.type !== 'pull_request_target'
+      ) {
         issues.push(
-          `trigger "${trigger.type}" does not support types. Supported: branches, branches-ignore, paths, paths-ignore, tags, tags-ignore`
+          `trigger "${filteredTrigger.type}" does not support types. Supported: branches, branches-ignore, paths, paths-ignore, tags, tags-ignore`
         );
       } else {
-        if (trigger.types.length === 0) {
-          issues.push(`trigger "${trigger.type}" types must not be empty`);
+        if (filteredTrigger.types.length === 0) {
+          issues.push(`trigger "${filteredTrigger.type}" types must not be empty`);
         }
 
-        for (const activityType of trigger.types) {
+        for (const activityType of filteredTrigger.types) {
           if (!PULL_REQUEST_ACTIVITY_TYPES.includes(activityType as PullRequestActivityType)) {
             issues.push(
-              `trigger "${trigger.type}" types contains unknown activity type "${activityType}". Expected: one of ${PULL_REQUEST_ACTIVITY_TYPES.map((t) => `"${t}"`).join(', ')}`
+              `trigger "${filteredTrigger.type}" types contains unknown activity type "${activityType}". Expected: one of ${PULL_REQUEST_ACTIVITY_TYPES.map((t) => `"${t}"`).join(', ')}`
             );
           }
         }
@@ -1875,6 +1953,14 @@ export class WorkflowBuilder {
       type: 'schedule',
       cron: (Array.isArray(cron) ? [...cron] : [cron]) as [string, ...string[]],
     });
+    return this;
+  }
+
+  onEvent(type: SimpleEventType, config: Readonly<{ types?: readonly string[] }> = {}): this {
+    this.triggers.push({
+      type,
+      ...(config.types ? { types: [...config.types] } : {}),
+    } as SimpleEventTrigger);
     return this;
   }
 

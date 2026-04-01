@@ -64,6 +64,8 @@ export interface WorkflowRenderStepPayload {
   readonly run?: string;
   readonly uses?: string;
   readonly 'working-directory'?: string;
+  readonly 'continue-on-error'?: boolean;
+  readonly 'timeout-minutes'?: number;
 }
 
 export type WorkflowRenderPermissionsPayload = WorkflowPermissions;
@@ -174,7 +176,19 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
   if (step.kind === 'run') {
     assertAllowedKeys(
       step,
-      ['kind', 'id', 'name', 'env', 'with', 'if', 'run', 'shell', 'workingDirectory'],
+      [
+        'kind',
+        'id',
+        'name',
+        'env',
+        'with',
+        'if',
+        'run',
+        'shell',
+        'workingDirectory',
+        'continueOnError',
+        'timeoutMinutes',
+      ],
       `step "${step.kind}"`
     );
 
@@ -188,13 +202,15 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
       ...(step.workingDirectory !== undefined
         ? { 'working-directory': step.workingDirectory }
         : {}),
+      ...(step.continueOnError !== undefined ? { 'continue-on-error': step.continueOnError } : {}),
+      ...(step.timeoutMinutes !== undefined ? { 'timeout-minutes': step.timeoutMinutes } : {}),
       run: step.run,
     };
   }
 
   assertAllowedKeys(
     step,
-    ['kind', 'id', 'name', 'env', 'with', 'if', 'uses'],
+    ['kind', 'id', 'name', 'env', 'with', 'if', 'uses', 'continueOnError', 'timeoutMinutes'],
     `step "${step.kind}"`
   );
 
@@ -204,6 +220,8 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
     ...(step.if !== undefined ? { if: step.if } : {}),
     ...(step.env ? { env: { ...step.env } } : {}),
     ...(step.with ? { with: { ...step.with } } : {}),
+    ...(step.continueOnError !== undefined ? { 'continue-on-error': step.continueOnError } : {}),
+    ...(step.timeoutMinutes !== undefined ? { 'timeout-minutes': step.timeoutMinutes } : {}),
     uses: step.uses,
   };
 }

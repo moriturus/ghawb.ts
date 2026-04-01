@@ -60,6 +60,8 @@ export interface StepMetadata {
   readonly env?: Readonly<Record<string, string>>;
   readonly with?: Readonly<Record<string, string>>;
   readonly if?: string;
+  readonly continueOnError?: boolean;
+  readonly timeoutMinutes?: number;
 }
 
 export interface RunStepMetadata extends StepMetadata {

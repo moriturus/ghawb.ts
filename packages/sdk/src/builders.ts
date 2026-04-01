@@ -145,6 +145,10 @@ function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
     ...(metadata.env ? { env: { ...metadata.env } } : {}),
     ...(metadata.with ? { with: { ...metadata.with } } : {}),
     ...(metadata.if !== undefined ? { if: metadata.if } : {}),
+    ...(metadata.continueOnError !== undefined
+      ? { continueOnError: metadata.continueOnError }
+      : {}),
+    ...(metadata.timeoutMinutes !== undefined ? { timeoutMinutes: metadata.timeoutMinutes } : {}),
   };
 }
 
@@ -587,6 +591,16 @@ function createValidationIssues(
         }
       }
 
+      if (step.continueOnError !== undefined && typeof step.continueOnError !== 'boolean') {
+        issues.push(`${location} continue-on-error must be a boolean`);
+      }
+
+      if (step.timeoutMinutes !== undefined) {
+        if (!Number.isInteger(step.timeoutMinutes) || step.timeoutMinutes <= 0) {
+          issues.push(`${location} timeout-minutes must be a positive integer`);
+        }
+      }
+
       for (const [label, record] of [
         ['env', step.env],
         ['with', step.with],
@@ -696,6 +710,8 @@ function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
     ...(step.env ? { env: { ...step.env } } : {}),
     ...(step.with ? { with: { ...step.with } } : {}),
     ...(step.if !== undefined ? { if: step.if.trim() } : {}),
+    ...(step.continueOnError !== undefined ? { continueOnError: step.continueOnError } : {}),
+    ...(step.timeoutMinutes !== undefined ? { timeoutMinutes: step.timeoutMinutes } : {}),
   };
 
   if (step.kind === 'run') {

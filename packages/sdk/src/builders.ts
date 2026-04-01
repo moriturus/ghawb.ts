@@ -10,8 +10,12 @@ import {
   WORKFLOW_PERMISSION_KEYS,
   PULL_REQUEST_ACTIVITY_TYPES,
   WORKFLOW_DISPATCH_INPUT_TYPES,
+  WORKFLOW_RUN_ACTIVITY_TYPES,
+  SIMPLE_EVENT_ACTIVITY_TYPES,
+  isSimpleEventType,
   type ContainerConfig,
   type FilteredTriggerType,
+  type FilteredWorkflowTrigger,
   type MatrixAxisValues,
   type MatrixExcludeEntry,
   type MatrixIncludeEntry,
@@ -19,6 +23,9 @@ import {
   type PullRequestTriggerFilter,
   type RunStepMetadata,
   type RunsOnTarget,
+  type RunsOnValue,
+  type SimpleEventTrigger,
+  type SimpleEventType,
   type StepMetadata,
   type TriggerFilter,
   type WorkflowConcurrency,
@@ -37,6 +44,7 @@ import {
   type ReusableWorkflowJobSecrets,
   type ReusableWorkflowJob,
   type StepsJob,
+  type JobEnvironment,
   type WorkflowJob,
   type WorkflowJobOutputs,
   type WorkflowMatrix,
@@ -45,6 +53,8 @@ import {
   type WorkflowPermissionMap,
   type WorkflowPermissionShorthand,
   type WorkflowPermissions,
+  type WorkflowRunActivityType,
+  type WorkflowRunTrigger,
   type WorkflowServices,
   type WorkflowStrategy,
   type WorkflowStep,
@@ -61,6 +71,7 @@ interface WorkflowStepDraft extends StepMetadata {
 
 interface WorkflowJobDraftBase {
   readonly id: JobId;
+  readonly name?: string;
   readonly if?: string;
   readonly needs?: readonly JobId[];
   readonly continueOnError?: boolean;
@@ -83,6 +94,7 @@ interface StepsJobDraft extends WorkflowJobDraftBase {
     readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   readonly runsOn?: string | readonly string[];
+  readonly environment?: string | { readonly name: string; readonly url?: string };
   readonly container?: ContainerConfig;
   readonly services?: WorkflowServices;
   readonly outputs?: WorkflowJobOutputs;
@@ -96,6 +108,7 @@ interface ReusableWorkflowJobDraft extends WorkflowJobDraftBase {
   readonly uses?: string;
   readonly steps: readonly WorkflowStepDraft[];
   readonly runsOn?: string | readonly string[];
+  readonly environment?: string | { readonly name: string; readonly url?: string };
   readonly container?: ContainerConfig;
   readonly services?: WorkflowServices;
 }
@@ -184,11 +197,29 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
     };
   }
 
+  if (trigger.type === 'workflow_run') {
+    return {
+      type: 'workflow_run',
+      workflows: [...trigger.workflows] as [string, ...string[]],
+      ...(trigger.types ? { types: [...trigger.types] } : {}),
+      ...(trigger.branches ? { branches: [...trigger.branches] } : {}),
+      ...(trigger.branchesIgnore ? { branchesIgnore: [...trigger.branchesIgnore] } : {}),
+    };
+  }
+
+  if (isSimpleEventType(trigger.type)) {
+    const simpleTrigger = trigger as SimpleEventTrigger;
+    return {
+      type: trigger.type,
+      ...(simpleTrigger.types ? { types: [...simpleTrigger.types] } : {}),
+    } as WorkflowTrigger;
+  }
+
   return {
     type: trigger.type,
-    ...cloneFilter(trigger),
+    ...cloneFilter(trigger as FilteredWorkflowTrigger),
     ...(trigger.types ? { types: [...trigger.types] } : {}),
-  };
+  } as WorkflowTrigger;
 }
 
 function cloneDispatchInputs(inputs: WorkflowDispatchInputs): WorkflowDispatchInputs {
@@ -355,6 +386,10 @@ function createValidationIssues(
 
   if (workflow.name.trim().length === 0) {
     issues.push('workflow name must not be empty');
+  }
+
+  if (workflow.getRunName() !== undefined && workflow.getRunName()!.trim().length === 0) {
+    issues.push('workflow run-name must not be empty');
   }
 
   if (workflow.triggers.length === 0) {
@@ -567,6 +602,80 @@ function createValidationIssues(
       continue;
     }
 
+    if (trigger.type === 'workflow_run') {
+      if ('paths' in trigger) {
+        issues.push(
+          'trigger "workflow_run" does not support paths. Supported: workflows, types, branches, branches-ignore'
+        );
+      }
+
+      if ('pathsIgnore' in trigger) {
+        issues.push(
+          'trigger "workflow_run" does not support paths-ignore. Supported: workflows, types, branches, branches-ignore'
+        );
+      }
+
+      if ('tags' in trigger) {
+        issues.push(
+          'trigger "workflow_run" does not support tags. Supported: workflows, types, branches, branches-ignore'
+        );
+      }
+
+      if ('tagsIgnore' in trigger) {
+        issues.push(
+          'trigger "workflow_run" does not support tags-ignore. Supported: workflows, types, branches, branches-ignore'
+        );
+      }
+
+      const wfTrigger = trigger as WorkflowRunTrigger;
+
+      if (wfTrigger.workflows.length === 0) {
+        issues.push('trigger "workflow_run" workflows must not be empty');
+      } else {
+        for (const wf of wfTrigger.workflows) {
+          if (wf.trim().length === 0) {
+            issues.push('trigger "workflow_run" workflows must not contain blank values');
+            break;
+          }
+        }
+      }
+
+      if (wfTrigger.branches !== undefined && wfTrigger.branchesIgnore !== undefined) {
+        issues.push(
+          'trigger "workflow_run" must not combine branches and branches-ignore. Use one or the other, not both'
+        );
+      }
+
+      for (const [field, values] of [
+        ['branches', wfTrigger.branches],
+        ['branches-ignore', wfTrigger.branchesIgnore],
+      ] as const) {
+        if (values !== undefined) {
+          if (values.length === 0) {
+            issues.push(`trigger "workflow_run" ${field} must not be empty`);
+          } else if (values.some((v) => v.trim().length === 0)) {
+            issues.push(`trigger "workflow_run" ${field} must not contain blank values`);
+          }
+        }
+      }
+
+      if (wfTrigger.types !== undefined) {
+        if (wfTrigger.types.length === 0) {
+          issues.push('trigger "workflow_run" types must not be empty');
+        } else {
+          for (const activityType of wfTrigger.types) {
+            if (!WORKFLOW_RUN_ACTIVITY_TYPES.includes(activityType as WorkflowRunActivityType)) {
+              issues.push(
+                `trigger "workflow_run" types contains unknown activity type "${activityType}". Expected: one of ${WORKFLOW_RUN_ACTIVITY_TYPES.map((t) => `"${t}"`).join(', ')}`
+              );
+            }
+          }
+        }
+      }
+
+      continue;
+    }
+
     if (trigger.type === 'schedule') {
       if ('branches' in trigger) {
         issues.push('trigger "schedule" does not support branches. Supported: cron');
@@ -606,74 +715,139 @@ function createValidationIssues(
       continue;
     }
 
+    if (isSimpleEventType(trigger.type)) {
+      const simpleTrigger = trigger as SimpleEventTrigger;
+
+      for (const field of [
+        'branches',
+        'branchesIgnore',
+        'paths',
+        'pathsIgnore',
+        'tags',
+        'tagsIgnore',
+      ] as const) {
+        if ((trigger as unknown as Record<string, unknown>)[field] !== undefined) {
+          const label =
+            field === 'branchesIgnore'
+              ? 'branches-ignore'
+              : field === 'pathsIgnore'
+                ? 'paths-ignore'
+                : field === 'tagsIgnore'
+                  ? 'tags-ignore'
+                  : field;
+          issues.push(`trigger "${trigger.type}" does not support ${label}`);
+        }
+      }
+
+      if (simpleTrigger.types !== undefined) {
+        if (trigger.type === 'repository_dispatch') {
+          if (simpleTrigger.types.length === 0) {
+            issues.push('trigger "repository_dispatch" types must not be empty');
+          } else {
+            for (const t of simpleTrigger.types) {
+              if (t.trim().length === 0) {
+                issues.push('trigger "repository_dispatch" types must not contain blank values');
+                break;
+              }
+            }
+          }
+        } else {
+          const allowedTypes = SIMPLE_EVENT_ACTIVITY_TYPES[trigger.type as SimpleEventType];
+
+          if (allowedTypes !== undefined) {
+            if (simpleTrigger.types.length === 0) {
+              issues.push(`trigger "${trigger.type}" types must not be empty`);
+            } else {
+              for (const activityType of simpleTrigger.types) {
+                if (!allowedTypes.includes(activityType)) {
+                  issues.push(
+                    `trigger "${trigger.type}" types contains unknown activity type "${activityType}". Expected: one of ${allowedTypes.map((t) => `"${t}"`).join(', ')}`
+                  );
+                }
+              }
+            }
+          } else {
+            issues.push(`trigger "${trigger.type}" does not support types`);
+          }
+        }
+      }
+
+      continue;
+    }
+
+    const filteredTrigger = trigger as FilteredWorkflowTrigger;
+
     for (const [label, values] of [
-      ['branches', trigger.branches],
-      ['branches-ignore', trigger.branchesIgnore],
-      ['paths', trigger.paths],
-      ['paths-ignore', trigger.pathsIgnore],
-      ['tags', trigger.tags],
-      ['tags-ignore', trigger.tagsIgnore],
+      ['branches', filteredTrigger.branches],
+      ['branches-ignore', filteredTrigger.branchesIgnore],
+      ['paths', filteredTrigger.paths],
+      ['paths-ignore', filteredTrigger.pathsIgnore],
+      ['tags', filteredTrigger.tags],
+      ['tags-ignore', filteredTrigger.tagsIgnore],
     ] as const) {
       if (values === undefined) {
         continue;
       }
 
       if (values.length === 0) {
-        issues.push(`trigger "${trigger.type}" ${label} must not be empty`);
+        issues.push(`trigger "${filteredTrigger.type}" ${label} must not be empty`);
         continue;
       }
 
       if (values.some((value) => value.trim().length === 0)) {
-        issues.push(`trigger "${trigger.type}" ${label} must not contain blank values`);
+        issues.push(`trigger "${filteredTrigger.type}" ${label} must not contain blank values`);
       }
     }
 
-    if (trigger.branches !== undefined && trigger.branchesIgnore !== undefined) {
+    if (filteredTrigger.branches !== undefined && filteredTrigger.branchesIgnore !== undefined) {
       issues.push(
-        `trigger "${trigger.type}" must not combine branches and branches-ignore. Use one or the other, not both`
+        `trigger "${filteredTrigger.type}" must not combine branches and branches-ignore. Use one or the other, not both`
       );
     }
 
-    if (trigger.paths !== undefined && trigger.pathsIgnore !== undefined) {
+    if (filteredTrigger.paths !== undefined && filteredTrigger.pathsIgnore !== undefined) {
       issues.push(
-        `trigger "${trigger.type}" must not combine paths and paths-ignore. Use one or the other, not both`
+        `trigger "${filteredTrigger.type}" must not combine paths and paths-ignore. Use one or the other, not both`
       );
     }
 
-    if (trigger.tags !== undefined && trigger.tagsIgnore !== undefined) {
+    if (filteredTrigger.tags !== undefined && filteredTrigger.tagsIgnore !== undefined) {
       issues.push(
-        `trigger "${trigger.type}" must not combine tags and tags-ignore. Use one or the other, not both`
+        `trigger "${filteredTrigger.type}" must not combine tags and tags-ignore. Use one or the other, not both`
       );
     }
 
-    if (trigger.type === 'pull_request') {
-      if (trigger.tags !== undefined) {
+    if (filteredTrigger.type === 'pull_request' || filteredTrigger.type === 'pull_request_target') {
+      if (filteredTrigger.tags !== undefined) {
         issues.push(
-          'trigger "pull_request" does not support tags. Supported: branches, branches-ignore, paths, paths-ignore, types'
+          `trigger "${filteredTrigger.type}" does not support tags. Supported: branches, branches-ignore, paths, paths-ignore, types`
         );
       }
 
-      if (trigger.tagsIgnore !== undefined) {
+      if (filteredTrigger.tagsIgnore !== undefined) {
         issues.push(
-          'trigger "pull_request" does not support tags-ignore. Supported: branches, branches-ignore, paths, paths-ignore, types'
+          `trigger "${filteredTrigger.type}" does not support tags-ignore. Supported: branches, branches-ignore, paths, paths-ignore, types`
         );
       }
     }
 
-    if (trigger.types !== undefined) {
-      if (trigger.type !== 'pull_request') {
+    if (filteredTrigger.types !== undefined) {
+      if (
+        filteredTrigger.type !== 'pull_request' &&
+        filteredTrigger.type !== 'pull_request_target'
+      ) {
         issues.push(
-          `trigger "${trigger.type}" does not support types. Supported: branches, branches-ignore, paths, paths-ignore, tags, tags-ignore`
+          `trigger "${filteredTrigger.type}" does not support types. Supported: branches, branches-ignore, paths, paths-ignore, tags, tags-ignore`
         );
       } else {
-        if (trigger.types.length === 0) {
-          issues.push('trigger "pull_request" types must not be empty');
+        if (filteredTrigger.types.length === 0) {
+          issues.push(`trigger "${filteredTrigger.type}" types must not be empty`);
         }
 
-        for (const activityType of trigger.types) {
+        for (const activityType of filteredTrigger.types) {
           if (!PULL_REQUEST_ACTIVITY_TYPES.includes(activityType as PullRequestActivityType)) {
             issues.push(
-              `trigger "pull_request" types contains unknown activity type "${activityType}". Expected: one of ${PULL_REQUEST_ACTIVITY_TYPES.map((t) => `"${t}"`).join(', ')}`
+              `trigger "${filteredTrigger.type}" types contains unknown activity type "${activityType}". Expected: one of ${PULL_REQUEST_ACTIVITY_TYPES.map((t) => `"${t}"`).join(', ')}`
             );
           }
         }
@@ -694,6 +868,10 @@ function createValidationIssues(
       issues.push(`duplicate job id "${jobId}"`);
     } else {
       seenJobIds.add(jobId);
+    }
+
+    if (job.name !== undefined && job.name.trim().length === 0) {
+      issues.push(`job "${jobId}" name must not be empty`);
     }
 
     if (job.needs !== undefined) {
@@ -786,6 +964,12 @@ function createValidationIssues(
         );
       }
 
+      if (job.environment !== undefined) {
+        issues.push(
+          `job "${jobId}" reusable workflow job must not define environment. Only step-based jobs support environment`
+        );
+      }
+
       continue;
     }
 
@@ -806,6 +990,21 @@ function createValidationIssues(
 
       if (job.runsOn.some((target) => target.trim().length === 0)) {
         issues.push(`job "${jobId}" runs-on array must not contain blank values`);
+      }
+    }
+
+    if (job.environment !== undefined) {
+      if (typeof job.environment === 'string') {
+        if (job.environment.trim().length === 0) {
+          issues.push(`job "${jobId}" environment name must not be empty`);
+        }
+      } else {
+        if (job.environment.name.trim().length === 0) {
+          issues.push(`job "${jobId}" environment name must not be empty`);
+        }
+        if (job.environment.url !== undefined && job.environment.url.trim().length === 0) {
+          issues.push(`job "${jobId}" environment url must not be empty`);
+        }
       }
     }
 
@@ -1268,6 +1467,16 @@ function finalizeRunsOn(runsOn: string | readonly string[]): RunsOnTarget {
   return runsOn.map((target) => target.trim()) as [string, ...string[]];
 }
 
+function finalizeEnvironment(
+  env: string | { readonly name: string; readonly url?: string }
+): JobEnvironment {
+  if (typeof env === 'string') return env.trim();
+  return {
+    name: env.name.trim(),
+    ...(env.url !== undefined ? { url: env.url.trim() } : {}),
+  };
+}
+
 function finalizeNeeds(needs: readonly JobId[]): readonly [JobId, ...JobId[]] {
   return [...needs] as [JobId, ...JobId[]];
 }
@@ -1341,6 +1550,7 @@ function finalizeReusableWorkflowJobSecrets(
 class JobBuilder {
   readonly id: JobId;
 
+  private jobName?: string;
   private jobIf?: string;
   private jobNeeds?: readonly JobId[];
   private jobContinueOnError?: boolean;
@@ -1359,6 +1569,7 @@ class JobBuilder {
     readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   private jobRunsOn?: string | readonly string[];
+  private jobEnvironment?: string | { readonly name: string; readonly url?: string };
   private jobContainer?: ContainerConfig;
   private jobServices?: WorkflowServices;
   private jobOutputs?: WorkflowJobOutputs;
@@ -1370,6 +1581,11 @@ class JobBuilder {
 
   constructor(id: JobId) {
     this.id = id;
+  }
+
+  displayName(name: string): this {
+    this.jobName = name;
+    return this;
   }
 
   ifCondition(expression: string): this {
@@ -1454,8 +1670,13 @@ class JobBuilder {
     return this;
   }
 
-  runsOn(target: string | readonly string[]): this {
+  runsOn(target: RunsOnValue | readonly RunsOnValue[]): this {
     this.jobRunsOn = Array.isArray(target) ? [...target] : target;
+    return this;
+  }
+
+  environment(environment: string | { readonly name: string; readonly url?: string }): this {
+    this.jobEnvironment = typeof environment === 'string' ? environment : { ...environment };
     return this;
   }
 
@@ -1520,6 +1741,7 @@ class JobBuilder {
       return {
         kind: 'reusable-workflow',
         id: this.id,
+        ...(this.jobName !== undefined ? { name: this.jobName } : {}),
         ...(this.jobIf !== undefined ? { if: this.jobIf } : {}),
         ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
         ...(this.jobContinueOnError !== undefined
@@ -1536,6 +1758,14 @@ class JobBuilder {
             }
           : {}),
         ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+        ...(this.jobEnvironment !== undefined
+          ? {
+              environment:
+                typeof this.jobEnvironment === 'string'
+                  ? this.jobEnvironment
+                  : { ...this.jobEnvironment },
+            }
+          : {}),
         ...(this.jobContainer !== undefined
           ? { container: cloneContainerConfig(this.jobContainer) }
           : {}),
@@ -1556,6 +1786,7 @@ class JobBuilder {
     return {
       kind: 'steps',
       id: this.id,
+      ...(this.jobName !== undefined ? { name: this.jobName } : {}),
       ...(this.jobIf !== undefined ? { if: this.jobIf } : {}),
       ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
       ...(this.jobContinueOnError !== undefined
@@ -1592,6 +1823,14 @@ class JobBuilder {
           }
         : {}),
       ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+      ...(this.jobEnvironment !== undefined
+        ? {
+            environment:
+              typeof this.jobEnvironment === 'string'
+                ? this.jobEnvironment
+                : { ...this.jobEnvironment },
+          }
+        : {}),
       ...(this.jobContainer !== undefined
         ? { container: cloneContainerConfig(this.jobContainer) }
         : {}),
@@ -1615,6 +1854,7 @@ export class WorkflowBuilder {
   readonly triggers: WorkflowTrigger[] = [];
 
   private readonly jobs: WorkflowJobDraft[] = [];
+  private runNameDraft?: string;
   private permissionsDraft?: WorkflowPermissions;
   private defaultsDraft?: {
     readonly run: WorkflowDefaultsRun;
@@ -1625,6 +1865,15 @@ export class WorkflowBuilder {
   constructor(id: WorkflowId, name: string) {
     this.id = id;
     this.name = name;
+  }
+
+  runName(runName: string): this {
+    this.runNameDraft = runName;
+    return this;
+  }
+
+  getRunName(): string | undefined {
+    return this.runNameDraft;
   }
 
   private addFilteredTrigger(type: FilteredTriggerType, filter: TriggerFilter): this {
@@ -1642,6 +1891,14 @@ export class WorkflowBuilder {
   onPullRequest(filter: PullRequestTriggerFilter = {}): this {
     this.triggers.push({
       type: 'pull_request',
+      ...clonePullRequestFilter(filter),
+    });
+    return this;
+  }
+
+  onPullRequestTarget(filter: PullRequestTriggerFilter = {}): this {
+    this.triggers.push({
+      type: 'pull_request_target',
       ...clonePullRequestFilter(filter),
     });
     return this;
@@ -1671,11 +1928,40 @@ export class WorkflowBuilder {
     return this;
   }
 
+  onWorkflowRun(
+    config: Readonly<{
+      workflows: string | readonly [string, ...string[]];
+      types?: readonly WorkflowRunActivityType[];
+      branches?: readonly string[];
+      branchesIgnore?: readonly string[];
+    }>
+  ): this {
+    const workflows = (
+      typeof config.workflows === 'string' ? [config.workflows] : [...config.workflows]
+    ) as [string, ...string[]];
+    this.triggers.push({
+      type: 'workflow_run',
+      workflows,
+      ...(config.types ? { types: [...config.types] } : {}),
+      ...(config.branches ? { branches: [...config.branches] } : {}),
+      ...(config.branchesIgnore ? { branchesIgnore: [...config.branchesIgnore] } : {}),
+    });
+    return this;
+  }
+
   onSchedule(cron: string | readonly [string, ...string[]]): this {
     this.triggers.push({
       type: 'schedule',
       cron: (Array.isArray(cron) ? [...cron] : [cron]) as [string, ...string[]],
     });
+    return this;
+  }
+
+  onEvent(type: SimpleEventType, config: Readonly<{ types?: readonly string[] }> = {}): this {
+    this.triggers.push({
+      type,
+      ...(config.types ? { types: [...config.types] } : {}),
+    } as SimpleEventTrigger);
     return this;
   }
 
@@ -1740,6 +2026,7 @@ export class WorkflowBuilder {
         return {
           kind: 'reusable-workflow',
           id: job.id,
+          ...(job.name !== undefined ? { name: job.name.trim() } : {}),
           ...(job.if !== undefined ? { if: job.if } : {}),
           ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
           ...(job.continueOnError !== undefined ? { continueOnError: job.continueOnError } : {}),
@@ -1759,6 +2046,7 @@ export class WorkflowBuilder {
       return {
         kind: 'steps',
         id: job.id,
+        ...(job.name !== undefined ? { name: job.name.trim() } : {}),
         ...(job.if !== undefined ? { if: job.if } : {}),
         ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
         ...(job.continueOnError !== undefined ? { continueOnError: job.continueOnError } : {}),
@@ -1777,6 +2065,9 @@ export class WorkflowBuilder {
           : {}),
         ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
         runsOn: finalizeRunsOn(job.runsOn!),
+        ...(job.environment !== undefined
+          ? { environment: finalizeEnvironment(job.environment) }
+          : {}),
         ...(job.container !== undefined ? { container: cloneContainerConfig(job.container) } : {}),
         ...(job.services !== undefined ? { services: cloneServices(job.services) } : {}),
         ...(job.outputs !== undefined && Object.keys(job.outputs).length > 0
@@ -1789,6 +2080,7 @@ export class WorkflowBuilder {
     return deepFreeze({
       id: this.id,
       name: this.name.trim(),
+      ...(this.runNameDraft !== undefined ? { runName: this.runNameDraft.trim() } : {}),
       on: this.triggers.map(cloneTrigger),
       ...(this.permissionsDraft !== undefined
         ? { permissions: canonicalizePermissions(this.permissionsDraft) }

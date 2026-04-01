@@ -8,7 +8,14 @@ export {
   type WorkflowId,
 } from '@ghawb/shared';
 export { defineWorkflow, WorkflowBuilder } from './builders.ts';
-export { PULL_REQUEST_ACTIVITY_TYPES, WORKFLOW_DISPATCH_INPUT_TYPES } from './model.ts';
+export {
+  PULL_REQUEST_ACTIVITY_TYPES,
+  RunnerLabel,
+  SIMPLE_EVENT_ACTIVITY_TYPES,
+  WORKFLOW_DISPATCH_INPUT_TYPES,
+  WORKFLOW_RUN_ACTIVITY_TYPES,
+  isSimpleEventType,
+} from './model.ts';
 export {
   createWorkflowRenderPayload,
   renderWorkflow,
@@ -24,12 +31,14 @@ export {
   type WorkflowRenderStepPayload,
   type WorkflowRenderTriggerPayload,
   type WorkflowRenderWorkflowCallPayload,
+  type WorkflowRenderWorkflowRunPayload,
 } from './renderer.ts';
 export type {
   ContainerConfig,
   ContainerCredentials,
   ContainerPort,
   ContainerPorts,
+  JobEnvironment,
   MatrixAxisValues,
   MatrixExcludeEntry,
   MatrixIncludeEntry,
@@ -38,6 +47,9 @@ export type {
   RunStepMetadata,
   RunStep,
   RunsOnTarget as RunsOn,
+  RunsOnValue,
+  SimpleEventTrigger,
+  SimpleEventType,
   StepMetadata,
   TriggerFilter,
   TriggerType as WorkflowTriggerName,
@@ -66,6 +78,8 @@ export type {
   ReusableWorkflowJob,
   ReusableWorkflowJobSecrets,
   StepsJob,
+  WorkflowRunActivityType,
+  WorkflowRunTrigger,
   WorkflowServices,
   WorkflowStrategy,
   WorkflowStep,

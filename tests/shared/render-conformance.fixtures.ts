@@ -2,6 +2,8 @@ import {
   createJobId,
   createWorkflowId,
   defineWorkflow,
+  RunnerLabel,
+  type PullRequestTriggerFilter,
   type WorkflowDefinition,
   type WorkflowRenderPayload,
 } from '@ghawb/sdk';
@@ -893,6 +895,292 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'display_names',
+    defineWorkflow({
+      id: createWorkflowId('display_names'),
+      name: 'Display Names',
+    })
+      .runName('Build ${{ github.ref_name }}')
+      .onPush({
+        branches: ['main'],
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.displayName('Build & Test').runsOn('ubuntu-latest').run('npm test');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .displayName('Deploy to staging')
+          .needs(createJobId('build'))
+          .usesWorkflow('org/repo/.github/workflows/deploy.yml@main');
+      })
+      .build(),
+    {
+      name: 'Display Names',
+      'run-name': 'Build ${{ github.ref_name }}',
+      on: {
+        push: {
+          branches: ['main'],
+        },
+      },
+      jobs: {
+        build: {
+          name: 'Build & Test',
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'npm test',
+            },
+          ],
+        },
+        deploy: {
+          name: 'Deploy to staging',
+          needs: ['build'],
+          uses: 'org/repo/.github/workflows/deploy.yml@main',
+        },
+      },
+    }
+  ),
+  createRenderFixture(
+    'environment_string',
+    defineWorkflow({
+      id: createWorkflowId('environment_string'),
+      name: 'Environment String',
+    })
+      .onPush({ branches: ['main'] })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').environment('production').run('deploy.sh');
+      })
+      .build(),
+    {
+      name: 'Environment String',
+      on: { push: { branches: ['main'] } },
+      jobs: {
+        deploy: {
+          'runs-on': 'ubuntu-latest',
+          environment: 'production',
+          steps: [{ run: 'deploy.sh' }],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
+    'environment_object',
+    defineWorkflow({
+      id: createWorkflowId('environment_object'),
+      name: 'Environment Object',
+    })
+      .onPush({ branches: ['main'] })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .environment({ name: 'production', url: 'https://example.com' })
+          .run('deploy.sh');
+      })
+      .build(),
+    {
+      name: 'Environment Object',
+      on: { push: { branches: ['main'] } },
+      jobs: {
+        deploy: {
+          'runs-on': 'ubuntu-latest',
+          environment: { name: 'production', url: 'https://example.com' },
+          steps: [{ run: 'deploy.sh' }],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
+    'pull_request_target_with_types',
+    defineWorkflow({
+      id: createWorkflowId('pull_request_target_with_types'),
+      name: 'PR Target',
+    })
+      .onPullRequestTarget({
+        branches: ['main'],
+        types: ['opened', 'synchronize', 'labeled'],
+      })
+      .addJob(createJobId('label_check'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo "checking labels"');
+      })
+      .build(),
+    {
+      name: 'PR Target',
+      on: {
+        pull_request_target: {
+          branches: ['main'],
+          types: ['opened', 'synchronize', 'labeled'],
+        },
+      },
+      jobs: {
+        label_check: {
+          'runs-on': 'ubuntu-latest',
+          steps: [{ run: 'echo "checking labels"' }],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
+    'workflow_run_minimal',
+    defineWorkflow({
+      id: createWorkflowId('workflow_run_minimal'),
+      name: 'Deploy After CI',
+    })
+      .onWorkflowRun({ workflows: 'CI' })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').run('deploy.sh');
+      })
+      .build(),
+    {
+      name: 'Deploy After CI',
+      on: { workflow_run: { workflows: ['CI'] } },
+      jobs: {
+        deploy: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'deploy.sh' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'workflow_run_full',
+    defineWorkflow({
+      id: createWorkflowId('workflow_run_full'),
+      name: 'Deploy On Complete',
+    })
+      .onWorkflowRun({
+        workflows: ['CI', 'Lint'],
+        types: ['completed'],
+        branches: ['main', 'release/*'],
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').run('deploy.sh');
+      })
+      .build(),
+    {
+      name: 'Deploy On Complete',
+      on: {
+        workflow_run: {
+          workflows: ['CI', 'Lint'],
+          types: ['completed'],
+          branches: ['main', 'release/*'],
+        },
+      },
+      jobs: {
+        deploy: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'deploy.sh' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'simple_event_with_types',
+    defineWorkflow({
+      id: createWorkflowId('simple_event_with_types'),
+      name: 'Issue Handler',
+    })
+      .onEvent('issues', { types: ['opened', 'closed'] })
+      .addJob(createJobId('handle'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo "issue event"');
+      })
+      .build(),
+    {
+      name: 'Issue Handler',
+      on: { issues: { types: ['opened', 'closed'] } },
+      jobs: {
+        handle: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'echo "issue event"' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'simple_event_bare',
+    defineWorkflow({
+      id: createWorkflowId('simple_event_bare'),
+      name: 'Fork Handler',
+    })
+      .onEvent('fork')
+      .addJob(createJobId('notify'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo "forked"');
+      })
+      .build(),
+    {
+      name: 'Fork Handler',
+      on: { fork: null },
+      jobs: {
+        notify: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'echo "forked"' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'repository_dispatch_with_types',
+    defineWorkflow({
+      id: createWorkflowId('repository_dispatch_with_types'),
+      name: 'Dispatch Handler',
+    })
+      .onEvent('repository_dispatch', { types: ['deploy', 'rollback'] })
+      .addJob(createJobId('handle'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo "dispatched"');
+      })
+      .build(),
+    {
+      name: 'Dispatch Handler',
+      on: { repository_dispatch: { types: ['deploy', 'rollback'] } },
+      jobs: {
+        handle: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'echo "dispatched"' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'multi_trigger_with_simple_events',
+    defineWorkflow({
+      id: createWorkflowId('multi_trigger'),
+      name: 'Multi Trigger',
+    })
+      .onPush({ branches: ['main'] })
+      .onEvent('release', { types: ['published'] })
+      .onEvent('create')
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('npm build');
+      })
+      .build(),
+    {
+      name: 'Multi Trigger',
+      on: {
+        push: { branches: ['main'] },
+        create: null,
+        release: { types: ['published'] },
+      },
+      jobs: {
+        build: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'npm build' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'typed_runner_labels',
+    defineWorkflow({
+      id: createWorkflowId('typed_runner_labels'),
+      name: 'Typed Runners',
+    })
+      .onPush({ branches: ['main'] })
+      .addJob(createJobId('linux'), (job) => {
+        job.runsOn(RunnerLabel.UbuntuLatest).run('echo linux');
+      })
+      .addJob(createJobId('macos'), (job) => {
+        job.runsOn(RunnerLabel.Macos15).run('echo macos');
+      })
+      .addJob(createJobId('windows'), (job) => {
+        job.runsOn(RunnerLabel.WindowsLatest).run('echo windows');
+      })
+      .addJob(createJobId('multi'), (job) => {
+        job.runsOn([RunnerLabel.UbuntuLatest, 'self-hosted']).run('echo multi');
+      })
+      .build(),
+    {
+      name: 'Typed Runners',
+      on: { push: { branches: ['main'] } },
+      jobs: {
+        linux: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'echo linux' }] },
+        macos: { 'runs-on': 'macos-15', steps: [{ run: 'echo macos' }] },
+        windows: { 'runs-on': 'windows-latest', steps: [{ run: 'echo windows' }] },
+        multi: { 'runs-on': ['ubuntu-latest', 'self-hosted'], steps: [{ run: 'echo multi' }] },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -1219,5 +1507,464 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     expectedIssues: [
       'job "call" reusable workflow job must not define container. Only step-based jobs support container',
     ],
+  },
+  {
+    name: 'blank_run_name',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_run_name'),
+        name: 'Blank Run Name',
+      })
+        .runName('   ')
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hi');
+        })
+        .build(),
+    expectedIssues: ['workflow run-name must not be empty'],
+  },
+  {
+    name: 'blank_job_name',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_job_name'),
+        name: 'Blank Job Name',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job.displayName('  ').runsOn('ubuntu-latest').run('echo hi');
+        })
+        .build(),
+    expectedIssues: ['job "test" name must not be empty'],
+  },
+  {
+    name: 'blank_environment_string',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_environment_string'),
+        name: 'Blank Environment String',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').environment('   ').run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: ['job "deploy" environment name must not be empty'],
+  },
+  {
+    name: 'blank_environment_object_name',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_environment_object_name'),
+        name: 'Blank Environment Object Name',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').environment({ name: '   ' }).run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: ['job "deploy" environment name must not be empty'],
+  },
+  {
+    name: 'blank_environment_url',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_environment_url'),
+        name: 'Blank Environment URL',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .environment({ name: 'production', url: '   ' })
+            .run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: ['job "deploy" environment url must not be empty'],
+  },
+  {
+    name: 'reusable_workflow_rejects_environment',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('reusable_with_environment'),
+        name: 'Reusable With Environment',
+      }).onPush();
+      builder.addJob(createJobId('call'), (job) => {
+        (job as unknown as { jobEnvironment: string }).jobEnvironment = 'production';
+        job.usesWorkflow('org/repo/.github/workflows/ci.yml@main');
+      });
+      return builder.build();
+    },
+    expectedIssues: [
+      'job "call" reusable workflow job must not define environment. Only step-based jobs support environment',
+    ],
+  },
+  {
+    name: 'reusable_workflow_rejects_environment_object',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('reusable_with_env_obj'),
+        name: 'Reusable With Environment Object',
+      }).onPush();
+      builder.addJob(createJobId('call'), (job) => {
+        (
+          job as unknown as {
+            jobEnvironment: { name: string; url: string };
+          }
+        ).jobEnvironment = { name: 'staging', url: 'https://staging.example.com' };
+        job.usesWorkflow('org/repo/.github/workflows/ci.yml@main');
+      });
+      return builder.build();
+    },
+    expectedIssues: [
+      'job "call" reusable workflow job must not define environment. Only step-based jobs support environment',
+    ],
+  },
+  {
+    name: 'pull_request_target_rejects_tags',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('prt_tags'),
+        name: 'PRT Tags',
+      })
+        .onPullRequestTarget({ tags: ['v*'] } as unknown as PullRequestTriggerFilter)
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hi');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "pull_request_target" does not support tags. Supported: branches, branches-ignore, paths, paths-ignore, types',
+    ],
+  },
+  {
+    name: 'duplicate_pull_request_target',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('dup_prt'),
+        name: 'Dup PRT',
+      })
+        .onPullRequestTarget()
+        .onPullRequestTarget()
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hi');
+        })
+        .build(),
+    expectedIssues: ['duplicate trigger "pull_request_target"'],
+  },
+  {
+    name: 'workflow_run_blank_workflow_name',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('wfr_blank'),
+        name: 'WFR Blank',
+      })
+        .onWorkflowRun({ workflows: ['CI', '  '] })
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: ['trigger "workflow_run" workflows must not contain blank values'],
+  },
+  {
+    name: 'workflow_run_rejects_tags',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_tags'),
+        name: 'WFR Tags',
+      });
+      builder.triggers.push(
+        Object.assign(
+          { type: 'workflow_run' as const, workflows: ['CI'] as [string, ...string[]] },
+          { tags: ['v1'] }
+        ) as unknown as ReturnType<typeof builder.triggers.pop> & object
+      );
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: [
+      'trigger "workflow_run" does not support tags. Supported: workflows, types, branches, branches-ignore',
+    ],
+  },
+  {
+    name: 'workflow_run_rejects_paths',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_paths'),
+        name: 'WFR Paths',
+      });
+      builder.triggers.push(
+        Object.assign(
+          { type: 'workflow_run' as const, workflows: ['CI'] as [string, ...string[]] },
+          { paths: ['src/**'], pathsIgnore: ['docs/**'], tagsIgnore: ['v0.*'] }
+        ) as unknown as ReturnType<typeof builder.triggers.pop> & object
+      );
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: [
+      'trigger "workflow_run" does not support paths. Supported: workflows, types, branches, branches-ignore',
+      'trigger "workflow_run" does not support paths-ignore. Supported: workflows, types, branches, branches-ignore',
+      'trigger "workflow_run" does not support tags-ignore. Supported: workflows, types, branches, branches-ignore',
+    ],
+  },
+  {
+    name: 'workflow_run_unknown_activity_type',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('wfr_bad_type'),
+        name: 'WFR Bad Type',
+      })
+        .onWorkflowRun({
+          workflows: ['CI'],
+          types: ['failed' as 'completed'],
+        })
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "workflow_run" types contains unknown activity type "failed". Expected: one of "completed", "requested", "in_progress"',
+    ],
+  },
+  {
+    name: 'workflow_run_branches_mutual_exclusion',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('wfr_branch_mx'),
+        name: 'WFR Branch MX',
+      })
+        .onWorkflowRun({
+          workflows: ['CI'],
+          branches: ['main'],
+          branchesIgnore: ['develop'],
+        })
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "workflow_run" must not combine branches and branches-ignore. Use one or the other, not both',
+    ],
+  },
+  {
+    name: 'workflow_run_empty_workflows',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_empty_wf'),
+        name: 'WFR Empty WF',
+      });
+      builder.triggers.push({
+        type: 'workflow_run',
+        workflows: [] as unknown as [string, ...string[]],
+      });
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "workflow_run" workflows must not be empty'],
+  },
+  {
+    name: 'workflow_run_empty_branches',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_empty_br'),
+        name: 'WFR Empty BR',
+      });
+      builder.triggers.push({
+        type: 'workflow_run',
+        workflows: ['CI'] as [string, ...string[]],
+        branches: [],
+      });
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "workflow_run" branches must not be empty'],
+  },
+  {
+    name: 'workflow_run_blank_branch_values',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_blank_br'),
+        name: 'WFR Blank BR',
+      });
+      builder.triggers.push({
+        type: 'workflow_run',
+        workflows: ['CI'] as [string, ...string[]],
+        branches: ['main', '  '],
+      });
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "workflow_run" branches must not contain blank values'],
+  },
+  {
+    name: 'workflow_run_empty_types',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_empty_ty'),
+        name: 'WFR Empty Ty',
+      });
+      builder.triggers.push({
+        type: 'workflow_run',
+        workflows: ['CI'] as [string, ...string[]],
+        types: [],
+      });
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "workflow_run" types must not be empty'],
+  },
+  {
+    name: 'simple_event_unknown_activity_type',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('simple_bad_type'),
+        name: 'Simple Bad Type',
+      })
+        .onEvent('issues', { types: ['invalid' as 'opened'] })
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "issue event"');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "issues" types contains unknown activity type "invalid". Expected: one of "opened", "edited", "deleted", "transferred", "pinned", "unpinned", "closed", "reopened", "assigned", "unassigned", "labeled", "unlabeled", "locked", "unlocked", "milestoned", "demilestoned"',
+    ],
+  },
+  {
+    name: 'simple_event_rejects_branches',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('simple_branches'),
+        name: 'Simple Branches',
+      });
+      builder.triggers.push(
+        Object.assign({ type: 'issues' as const }, { branches: ['main'] }) as unknown as ReturnType<
+          typeof builder.triggers.pop
+        > &
+          object
+      );
+      return builder
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "issue event"');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "issues" does not support branches'],
+  },
+  {
+    name: 'bare_event_rejects_types',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('bare_event_types'),
+        name: 'Bare Event Types',
+      });
+      builder.triggers.push({
+        type: 'fork' as const,
+        types: ['created'],
+      } as unknown as ReturnType<typeof builder.triggers.pop> & object);
+      return builder
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "forked"');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "fork" does not support types'],
+  },
+  {
+    name: 'repository_dispatch_blank_type',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('dispatch_blank'),
+        name: 'Dispatch Blank',
+      })
+        .onEvent('repository_dispatch', { types: ['deploy', '  '] })
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "dispatched"');
+        })
+        .build(),
+    expectedIssues: ['trigger "repository_dispatch" types must not contain blank values'],
+  },
+  {
+    name: 'simple_event_rejects_all_filter_fields',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('simple_all_filters'),
+        name: 'Simple All Filters',
+      });
+      builder.triggers.push(
+        Object.assign(
+          { type: 'issues' as const },
+          {
+            branchesIgnore: ['dev'],
+            paths: ['src/**'],
+            pathsIgnore: ['docs/**'],
+            tags: ['v1'],
+            tagsIgnore: ['v0.*'],
+          }
+        ) as unknown as ReturnType<typeof builder.triggers.pop> & object
+      );
+      return builder
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "issue event"');
+        })
+        .build();
+    },
+    expectedIssues: [
+      'trigger "issues" does not support branches-ignore',
+      'trigger "issues" does not support paths',
+      'trigger "issues" does not support paths-ignore',
+      'trigger "issues" does not support tags',
+      'trigger "issues" does not support tags-ignore',
+    ],
+  },
+  {
+    name: 'repository_dispatch_empty_types',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('dispatch_empty_types'),
+        name: 'Dispatch Empty Types',
+      })
+        .onEvent('repository_dispatch', { types: [] as unknown as [string] })
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "dispatched"');
+        })
+        .build(),
+    expectedIssues: ['trigger "repository_dispatch" types must not be empty'],
+  },
+  {
+    name: 'simple_event_empty_types',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('simple_empty_types'),
+        name: 'Simple Empty Types',
+      });
+      builder.triggers.push({
+        type: 'issues' as const,
+        types: [],
+      });
+      return builder
+        .addJob(createJobId('handle'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo "issue event"');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "issues" types must not be empty'],
   },
 ];

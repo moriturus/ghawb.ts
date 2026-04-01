@@ -1,6 +1,9 @@
 import {
   WORKFLOW_PERMISSION_KEYS,
+  isSimpleEventType,
   type ContainerConfig,
+  type FilteredWorkflowTrigger,
+  type SimpleEventTrigger,
   type TriggerType,
   type WorkflowDefinition,
   type WorkflowCallInput,
@@ -12,6 +15,7 @@ import {
   type WorkflowPermissionLevel,
   type WorkflowPermissionShorthand,
   type WorkflowPermissions,
+  type WorkflowRunTrigger,
   type WorkflowServices,
   type WorkflowStep,
   type WorkflowStrategy,
@@ -89,6 +93,13 @@ export interface WorkflowRenderWorkflowCallPayload {
   readonly secrets?: Readonly<Record<string, WorkflowRenderWorkflowCallSecretPayload>>;
 }
 
+export interface WorkflowRenderWorkflowRunPayload {
+  readonly workflows: readonly string[];
+  readonly types?: readonly string[];
+  readonly branches?: readonly string[];
+  readonly 'branches-ignore'?: readonly string[];
+}
+
 export interface WorkflowRenderStepPayload {
   readonly name?: string;
   readonly id?: string;
@@ -120,6 +131,7 @@ export interface WorkflowRenderContainerPayload {
 }
 
 export interface WorkflowRenderJobPayloadBase {
+  readonly name?: string;
   readonly if?: string;
   readonly needs?: readonly string[];
   readonly 'continue-on-error'?: boolean;
@@ -155,6 +167,7 @@ export interface WorkflowRenderJobPayloadBase {
 
 export interface WorkflowRenderStepsJobPayload extends WorkflowRenderJobPayloadBase {
   readonly 'runs-on': string | readonly string[];
+  readonly environment?: string | { readonly name: string; readonly url?: string };
   readonly container?: WorkflowRenderContainerPayload;
   readonly services?: Readonly<Record<string, WorkflowRenderContainerPayload>>;
   readonly steps: readonly WorkflowRenderStepPayload[];
@@ -170,6 +183,7 @@ export type WorkflowRenderJobPayload =
 
 export interface WorkflowRenderPayload {
   readonly name: string;
+  readonly 'run-name'?: string;
   readonly on: Readonly<
     Partial<
       Record<
@@ -178,6 +192,7 @@ export interface WorkflowRenderPayload {
         | readonly WorkflowRenderScheduleEntryPayload[]
         | WorkflowRenderDispatchPayload
         | WorkflowRenderWorkflowCallPayload
+        | WorkflowRenderWorkflowRunPayload
         | null
       >
     >
@@ -274,6 +289,7 @@ function createTriggerPayload(
   | readonly WorkflowRenderScheduleEntryPayload[]
   | WorkflowRenderDispatchPayload
   | WorkflowRenderWorkflowCallPayload
+  | WorkflowRenderWorkflowRunPayload
   | null {
   if (trigger.type === 'workflow_dispatch') {
     assertAllowedKeys(trigger, ['type', 'inputs'], `trigger "${trigger.type}"`);
@@ -336,20 +352,50 @@ function createTriggerPayload(
     };
   }
 
+  if (trigger.type === 'workflow_run') {
+    const wfTrigger = trigger as WorkflowRunTrigger;
+    assertAllowedKeys(
+      trigger,
+      ['type', 'workflows', 'types', 'branches', 'branchesIgnore'],
+      `trigger "${trigger.type}"`
+    );
+
+    return {
+      workflows: [...wfTrigger.workflows],
+      ...(wfTrigger.types ? { types: [...wfTrigger.types] } : {}),
+      ...(wfTrigger.branches ? { branches: [...wfTrigger.branches] } : {}),
+      ...(wfTrigger.branchesIgnore ? { 'branches-ignore': [...wfTrigger.branchesIgnore] } : {}),
+    };
+  }
+
+  if (isSimpleEventType(trigger.type)) {
+    const simpleTrigger = trigger as SimpleEventTrigger;
+    assertAllowedKeys(trigger, ['type', 'types'], `trigger "${trigger.type}"`);
+
+    if (simpleTrigger.types && simpleTrigger.types.length > 0) {
+      return { types: [...simpleTrigger.types] };
+    }
+
+    return null;
+  }
+
   assertAllowedKeys(
     trigger,
     ['type', 'branches', 'branchesIgnore', 'paths', 'pathsIgnore', 'tags', 'tagsIgnore', 'types'],
     `trigger "${trigger.type}"`
   );
 
+  const filteredTrigger = trigger as FilteredWorkflowTrigger;
   const payload: WorkflowRenderTriggerPayload = {
-    ...(trigger.branches ? { branches: [...trigger.branches] } : {}),
-    ...(trigger.branchesIgnore ? { 'branches-ignore': [...trigger.branchesIgnore] } : {}),
-    ...(trigger.paths ? { paths: [...trigger.paths] } : {}),
-    ...(trigger.pathsIgnore ? { 'paths-ignore': [...trigger.pathsIgnore] } : {}),
-    ...(trigger.tags ? { tags: [...trigger.tags] } : {}),
-    ...(trigger.tagsIgnore ? { 'tags-ignore': [...trigger.tagsIgnore] } : {}),
-    ...(trigger.types ? { types: [...trigger.types] } : {}),
+    ...(filteredTrigger.branches ? { branches: [...filteredTrigger.branches] } : {}),
+    ...(filteredTrigger.branchesIgnore
+      ? { 'branches-ignore': [...filteredTrigger.branchesIgnore] }
+      : {}),
+    ...(filteredTrigger.paths ? { paths: [...filteredTrigger.paths] } : {}),
+    ...(filteredTrigger.pathsIgnore ? { 'paths-ignore': [...filteredTrigger.pathsIgnore] } : {}),
+    ...(filteredTrigger.tags ? { tags: [...filteredTrigger.tags] } : {}),
+    ...(filteredTrigger.tagsIgnore ? { 'tags-ignore': [...filteredTrigger.tagsIgnore] } : {}),
+    ...(filteredTrigger.types ? { types: [...filteredTrigger.types] } : {}),
   };
 
   return Object.keys(payload).length === 0 ? null : payload;
@@ -581,7 +627,7 @@ function createServicesPayload(
 export function createWorkflowRenderPayload(workflow: WorkflowDefinition): WorkflowRenderPayload {
   assertAllowedKeys(
     workflow,
-    ['id', 'name', 'on', 'permissions', 'defaults', 'env', 'concurrency', 'jobs'],
+    ['id', 'name', 'runName', 'on', 'permissions', 'defaults', 'env', 'concurrency', 'jobs'],
     'workflow'
   );
 
@@ -592,6 +638,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       | readonly WorkflowRenderScheduleEntryPayload[]
       | WorkflowRenderDispatchPayload
       | WorkflowRenderWorkflowCallPayload
+      | WorkflowRenderWorkflowRunPayload
       | null
     >
   > = {};
@@ -599,9 +646,34 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   for (const triggerType of [
     'push',
     'pull_request',
+    'pull_request_target',
     'workflow_dispatch',
     'workflow_call',
+    'workflow_run',
     'schedule',
+    'check_run',
+    'check_suite',
+    'create',
+    'delete',
+    'deployment',
+    'deployment_status',
+    'discussion',
+    'discussion_comment',
+    'fork',
+    'gollum',
+    'issue_comment',
+    'issues',
+    'label',
+    'member',
+    'merge_group',
+    'milestone',
+    'page_build',
+    'public',
+    'registry_package',
+    'release',
+    'repository_dispatch',
+    'status',
+    'watch',
   ] as const) {
     const trigger = workflow.on.find((candidate) => candidate.type === triggerType);
 
@@ -628,11 +700,23 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     if (job.kind === 'reusable-workflow') {
       assertAllowedKeys(
         job,
-        ['kind', 'id', 'if', 'needs', 'continueOnError', 'permissions', 'secrets', 'with', 'uses'],
+        [
+          'kind',
+          'id',
+          'name',
+          'if',
+          'needs',
+          'continueOnError',
+          'permissions',
+          'secrets',
+          'with',
+          'uses',
+        ],
         `job "${job.id}"`
       );
 
       jobs[String(job.id)] = {
+        ...(job.name !== undefined ? { name: job.name } : {}),
         ...(job.if !== undefined ? { if: job.if } : {}),
         ...(job.needs ? { needs: [...job.needs] } : {}),
         ...(job.continueOnError !== undefined ? { 'continue-on-error': job.continueOnError } : {}),
@@ -653,6 +737,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       [
         'kind',
         'id',
+        'name',
         'if',
         'needs',
         'continueOnError',
@@ -663,6 +748,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
         'env',
         'strategy',
         'runsOn',
+        'environment',
         'container',
         'services',
         'outputs',
@@ -672,6 +758,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     );
 
     jobs[String(job.id)] = {
+      ...(job.name !== undefined ? { name: job.name } : {}),
       ...(job.if !== undefined ? { if: job.if } : {}),
       ...(job.needs ? { needs: [...job.needs] } : {}),
       ...(job.continueOnError !== undefined ? { 'continue-on-error': job.continueOnError } : {}),
@@ -686,6 +773,17 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       ...(job.env && Object.keys(job.env).length > 0 ? { env: { ...job.env } } : {}),
       ...(job.strategy ? { strategy: createStrategyPayload(job.strategy) } : {}),
       'runs-on': Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
+      ...(job.environment !== undefined
+        ? {
+            environment:
+              typeof job.environment === 'string'
+                ? job.environment
+                : {
+                    name: job.environment.name,
+                    ...(job.environment.url !== undefined ? { url: job.environment.url } : {}),
+                  },
+          }
+        : {}),
       ...(job.container ? { container: createContainerPayload(job.container) } : {}),
       ...(job.services && Object.keys(job.services).length > 0
         ? { services: createServicesPayload(job.services) }
@@ -699,6 +797,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
 
   return deepFreeze({
     name: workflow.name,
+    ...(workflow.runName !== undefined ? { 'run-name': workflow.runName } : {}),
     on,
     ...(workflowPermissions ? { permissions: workflowPermissions } : {}),
     ...workflowDefaults,

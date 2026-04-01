@@ -33,65 +33,17 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-### Item 36: Display name fields (`run-name` and job `name`)
+### Item 46: Type-safety deepening (`uses` helpers, expression helpers, typed action wrappers)
 
-- Why: The GPT review syntax matrix identified `run-name` (workflow-level) and `jobs.<job_id>.name` (job-level) as unsupported. Both are widely used in real CI workflows for dynamic run naming and readable job display names. They are simple string fields with no complex validation beyond non-blank requirements.
-- Prerequisites: None.
-- Implementation Plan: Add optional `runName` to the workflow model, add optional `name` to the job model, add builder methods, add render payload entries at the correct canonical positions, add validation (non-blank string), add conformance fixtures.
-- Definition of Done: Both fields are modeled, buildable, validated, rendered in canonical order, covered by unit tests and cross-runtime conformance fixtures, and documented in SPEC.md. Code review completed.
-- Acceptance Criteria: `run-name` renders immediately after `name` at workflow level. Job `name` renders as the first field before `if` in both step-based and reusable-workflow job field orders. Blank values are rejected at build time. Expressions are accepted as string values.
-- Story Points: 2
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [syntax-support-matrix.md](../gpt_reviews/syntax-support-matrix.md)
-
-### Item 37: Job deployment `environment` support
-
-- Why: The GPT review identified `jobs.<job_id>.environment` as unsupported. Environment is required for deployment protection rules and environment-scoped secrets in GitHub Actions. It supports both a simple string form (name only) and an object form with `name` and optional `url`.
-- Prerequisites: None.
-- Implementation Plan: Add `Environment` type to the model (string | {name, url}). Add builder method on the job builder. Add validation (non-blank name, non-blank url if present). Add render payload entry in the step-based job field order. Add conformance fixtures for both string and object forms.
-- Definition of Done: Environment field is modeled, buildable, validated, rendered in canonical order, covered by unit tests and cross-runtime conformance fixtures, and documented in SPEC.md. Reusable-workflow jobs reject `environment` at build time. Code review completed.
-- Acceptance Criteria: String form renders as `environment: <name>`. Object form renders as `environment: { name: ..., url: ... }`. Blank `name` rejected. Blank `url` rejected when present. Reusable-workflow jobs reject environment. Canonical field position defined before implementation per Sprint 9 rule.
-- Story Points: 3
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [syntax-support-matrix.md](../gpt_reviews/syntax-support-matrix.md)
-
-### Item 38: `pull_request_target` trigger
-
-- Why: The GPT review identified `pull_request_target` as unsupported. It is used in workflows that need access to repository secrets when processing PRs from forks — a common pattern for CI on open-source projects. It shares the same filter structure as `pull_request` (branches, paths, types).
-- Prerequisites: None.
-- Implementation Plan: Add `pull_request_target` to the trigger model reusing the `pull_request` filter infrastructure (branches, branches-ignore, paths, paths-ignore, types with the same activity type allowlist). Add builder method. Add rendering in the canonical trigger key order. Add validation following `pull_request` rules. Add conformance fixtures.
-- Definition of Done: `pull_request_target` trigger is modeled, buildable, validated, rendered, covered by unit tests and cross-runtime conformance fixtures, and documented in SPEC.md with canonical trigger key order updated. Code review completed.
-- Acceptance Criteria: Same filter options as `pull_request`. Same activity type allowlist. Same mutual exclusion rules for branch/path filters. Tags/tags-ignore rejected. Renders in canonical trigger order. Duplicate trigger rejected at build time.
-- Story Points: 2
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [syntax-support-matrix.md](../gpt_reviews/syntax-support-matrix.md)
-
-### Item 39: `workflow_run` trigger
-
-- Why: The GPT review identified `workflow_run` as unsupported. It enables "deploy after CI passes" and other workflow-chaining patterns by triggering based on the completion or status of other workflows. It has a unique shape distinct from other triggers.
-- Prerequisites: None.
-- Implementation Plan: Add `workflow_run` trigger to the model with required `workflows` (non-empty string array of workflow names), optional `types` (allowlist: `completed`, `requested`, `in_progress`), and optional `branches`/`branches-ignore` filters (with mutual exclusion). Add builder method, rendering, and validation. Add conformance fixtures.
-- Definition of Done: `workflow_run` trigger is modeled, buildable, validated, rendered in canonical trigger order, covered by unit tests and cross-runtime conformance fixtures, and documented in SPEC.md. Code review completed.
-- Acceptance Criteria: `workflows` is required and must be a non-empty array of non-blank strings. `types` validated against the fixed allowlist. `branches` and `branches-ignore` are mutually exclusive. `paths`/`tags` filters rejected. Duplicate trigger rejected at build time.
-- Story Points: 3
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [syntax-support-matrix.md](../gpt_reviews/syntax-support-matrix.md)
-
-### Item 40: Simple event triggers expansion
-
-- Why: The GPT review identified many event trigger families as unsupported. Most GitHub Actions event triggers follow a simple pattern: an event name with an optional `types` array filtered against a per-event allowlist (or no types at all). Implementing these as a batch significantly widens the syntax coverage percentage at lower marginal cost than individually scoping each one.
-- Prerequisites: None.
-- Implementation Plan: Add a batch of simple event triggers to the model. Each trigger is either types-only (with a per-event allowlist) or no-configuration. Planned events: `issues`, `issue_comment`, `release`, `create`, `delete`, `fork`, `gollum`, `watch`, `label`, `milestone`, `discussion`, `discussion_comment`, `check_run`, `check_suite`, `deployment`, `deployment_status`, `member`, `merge_group`, `page_build`, `public`, `registry_package`, `status`. For `repository_dispatch`, support optional `types` as client-defined string array without a fixed allowlist. Add builder methods, validation, rendering (all in canonical trigger key order), and conformance fixtures for representative events.
-- Definition of Done: All listed event triggers are modeled, buildable, validated, rendered in canonical trigger order, covered by unit tests with representative conformance fixtures, and documented in SPEC.md. Unsupported trigger fields (branch/path/tag filters on events that don't support them) are rejected at build time. Code review completed.
-- Acceptance Criteria: Each event trigger renders correctly in isolation and in combination with existing triggers. Events with `types` validate against their per-event allowlist. Events without configurable fields render as bare event keys. `repository_dispatch` accepts arbitrary `types` strings. Duplicate triggers rejected. At least 4 representative conformance fixtures (types-only event, no-config event, repository_dispatch, multi-trigger combination).
+- Why: The GPT review identifies that several important workflow surfaces still rely on raw string literals: `uses` action references, expression strings, and generic `with` payloads. The review explicitly recommends strengthening type safety beyond runner labels to reduce the gap between "typed workflow builder" and "workflow builder with stringly-typed islands." This item addresses the review's Type-Safety Direction priorities #2–4.
+- Prerequisites: Item 44 (typed runner labels) should land first as the simpler type-safety introduction. ✅ Committed in Sprint 12. The broader syntax items (36–40) should also be complete so the type-safe surface applies to the widest possible API. ✅ Committed in Sprint 12.
+- Implementation Plan: Phase 1: Design a typed `uses` helper that accepts `owner/repo@ref` components and produces validated action reference strings, with branded-type or template-literal-type safety. Phase 2: Introduce expression helper functions for common GitHub Actions contexts (`github.event`, `secrets.*`, `env.*`, `steps.<id>.outputs.*`, `needs.<id>.outputs.*`) that produce validated expression strings. Phase 3: Add typed wrappers for high-value actions (e.g., `actions/checkout`, `actions/setup-node`) with typed `with` payloads. Each phase follows TDD with conformance fixtures. The design must preserve backward compatibility — raw strings must remain accepted alongside typed helpers.
+- Definition of Done: At least Phase 1 (typed `uses` helpers) is implemented with builder API, validation, and tests. Phase 2 and 3 scope is confirmed or deferred based on design findings. All changes maintain backward compatibility with existing string-based usage. SPEC.md updated. Code review completed.
+- Acceptance Criteria: SDK consumers can construct action references via a typed helper instead of raw strings. Typed helper paths provide compile-time guidance through the type system; runtime validation rejects malformed action references regardless of entry path. Raw string `uses` values continue to work without changes. Expression helpers (if implemented) produce correctly formatted `${{ }}` strings. No breaking change to the existing API.
 - Story Points: 5
 - Status: ready
 - Completed At: N/A
-- Notes/Links: [syntax-support-matrix.md](../gpt_reviews/syntax-support-matrix.md)
+- Notes/Links: [overview.md §Type-Safety Direction](../gpt_reviews/overview.md), [commercial-readiness.md §Type-Safety Improvement Proposal](../gpt_reviews/commercial-readiness.md)
 
 ### Item 41: Release packaging for npm consumers
 
@@ -129,18 +81,6 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: [commercial-readiness.md](../gpt_reviews/commercial-readiness.md), [overview.md](../gpt_reviews/overview.md)
 
-### Item 44: Typed runner labels for `runs-on`
-
-- Why: The GPT review identified that the project's type-safety claims outrun some important surfaces, with runner labels as the primary example. Currently `runs-on` accepts any string or string array. Adding known GitHub-hosted runner label constants and a union type improves both type safety and the developer experience with IDE autocomplete.
-- Prerequisites: None.
-- Implementation Plan: Define a `RunnerLabel` union type covering known GitHub-hosted runners (e.g., `ubuntu-latest`, `ubuntu-24.04`, `ubuntu-22.04`, `windows-latest`, `windows-2025`, `windows-2022`, `macos-latest`, `macos-15`, `macos-14`, `macos-13`, and larger runner variants). The `runs-on` builder method accepts `RunnerLabel | string` (or arrays thereof) so custom/self-hosted labels remain supported. No warning channel is introduced — unknown labels are accepted silently via the string fallback. The value is purely in typed autocomplete and compile-time guidance, not runtime validation of label correctness. Export the runner label constants for SDK consumers. Add conformance fixtures.
-- Definition of Done: Runner label constants are defined and exported. `runs-on` builder method accepts typed labels with string fallback. Known labels documented in SPEC.md. Conformance fixtures updated. Code review completed.
-- Acceptance Criteria: SDK consumers can use `RunnerLabel.UbuntuLatest` or equivalent constants. Custom string labels continue to work. The type system guides users toward known labels via autocomplete. No breaking change to existing `runs-on` string usage.
-- Story Points: 3
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [commercial-readiness.md](../gpt_reviews/commercial-readiness.md), [overview.md](../gpt_reviews/overview.md)
-
 ### Item 45: Release automation workflow
 
 - Why: The GPT review's Release Improvement Proposal recommends an automated release workflow covering changesets or equivalent versioning, release PRs, tagged npm/JSR publishing, and GitHub Releases with changelog notes. Without this, every release requires manual version bumps, manual publishing, and manual changelog updates — which is error-prone and scales poorly.
@@ -152,18 +92,6 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Status: ready
 - Completed At: N/A
 - Notes/Links: [commercial-readiness.md §Release Improvement Proposal](../gpt_reviews/commercial-readiness.md)
-
-### Item 46: Type-safety deepening (`uses` helpers, expression helpers, typed action wrappers)
-
-- Why: The GPT review identifies that several important workflow surfaces still rely on raw string literals: `uses` action references, expression strings, and generic `with` payloads. The review explicitly recommends strengthening type safety beyond runner labels to reduce the gap between "typed workflow builder" and "workflow builder with stringly-typed islands." This item addresses the review's Type-Safety Direction priorities #2–4.
-- Prerequisites: Item 44 (typed runner labels) should land first as the simpler type-safety introduction. The broader syntax items (36–40) should also be complete so the type-safe surface applies to the widest possible API.
-- Implementation Plan: Phase 1: Design a typed `uses` helper that accepts `owner/repo@ref` components and produces validated action reference strings, with branded-type or template-literal-type safety. Phase 2: Introduce expression helper functions for common GitHub Actions contexts (`github.event`, `secrets.*`, `env.*`, `steps.<id>.outputs.*`, `needs.<id>.outputs.*`) that produce validated expression strings. Phase 3: Add typed wrappers for high-value actions (e.g., `actions/checkout`, `actions/setup-node`) with typed `with` payloads. Each phase follows TDD with conformance fixtures. The design must preserve backward compatibility — raw strings must remain accepted alongside typed helpers.
-- Definition of Done: At least Phase 1 (typed `uses` helpers) is implemented with builder API, validation, and tests. Phase 2 and 3 scope is confirmed or deferred based on design findings. All changes maintain backward compatibility with existing string-based usage. SPEC.md updated. Code review completed.
-- Acceptance Criteria: SDK consumers can construct action references via a typed helper instead of raw strings. Typed helper paths provide compile-time guidance through the type system; runtime validation rejects malformed action references regardless of entry path. Raw string `uses` values continue to work without changes. Expression helpers (if implemented) produce correctly formatted `${{ }}` strings. No breaking change to the existing API.
-- Story Points: 5
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [overview.md §Type-Safety Direction](../gpt_reviews/overview.md), [commercial-readiness.md §Type-Safety Improvement Proposal](../gpt_reviews/commercial-readiness.md)
 
 - Team intake decision: After Sprint 7 closeout exhausted the previously planned backlog, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, SDK completeness, and distribution readiness. Sprint 8 committed `Item 20` through `Item 23`. Sprint 9 committed `Item 24` through `Item 27`.
 - Product Owner intake rationale (Aoi Sakamoto): Prioritize filling the most impactful SDK feature gaps first — `env` maps and trigger completeness are table-stakes for real workflow authoring. Cross-job data flow (`step id` + `job outputs`) and strategy completion follow because they unlock materially new workflow patterns. Distribution readiness is last because the SDK surface must stabilize before external consumers arrive.
@@ -183,6 +111,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Product Owner GPT review priority adjustment (Aoi Sakamoto): The GPT review confirms the team's existing strategy — fill feature gaps first, harden second, distribute last. The review's strongest signal is that feature coverage breadth is the primary weakness. Accordingly: Item 28 stays first (immediate gap fill). Item 31 stays second (validation hardening confirmed by GPT as priority #2). Item 32 (workflow_call) is placed third because it is the single highest-value missing feature — it enables an entirely new composition pattern. Item 34 (coverage) is placed fourth because it is low-effort infrastructure that validates the 100% coverage goal before more surfaces are added. Item 33 (container/services) is placed fifth as the next syntax expansion. Item 35 (error diagnostics) is placed sixth because it is cross-cutting and benefits from a stabilized surface. Item 30 (process hardening) remains before the capstone. Item 29 (distribution) remains last. This order optimizes for the GPT review's recommendation: feature breadth → validation → infrastructure → quality → process → distribution.
 - Sprint 7 retrospective guidance remains in force: every workflow-surface expansion must add or update shared cross-runtime conformance fixtures in the same slice, and the explicit repository-local workflow contract must not be silently widened.
 - Sprint 11 selection decision: Sprint 11 commits Item 33 (3 SP), Item 35 (3 SP), Item 30 (2 SP), and Item 29 (4 SP) for 12 SP with a 3 SP buffer. This is the final sprint — all remaining product backlog items are committed in the documented priority order. The Product Owner confirmed the execution order: Item 33 → Item 35 → Item 30 → Item 29. Item 35 benefits from Item 33 landing first so the container/services validation surface adopts the new diagnostic message format from the start. Item 29 stays last per the established capstone rule. An error message enrichment convention was approved during planning: `[scope] [field] [constraint]. Expected: [format/values]. [optional fix suggestion]`, preserving existing prefix structure.
+- Sprint 12 selection decision: Sprint 12 commits Item 36 (2 SP), Item 37 (3 SP), Item 38 (2 SP), Item 39 (3 SP), Item 40 (5 SP), and Item 44 (3 SP) for 18 SP with a 2 SP buffer under a 20 SP capacity. Items 36–40 form the "syntax breadth" group; Item 44 starts the "type-safety" group. The Product Owner confirmed the execution order: Item 36 → Item 37 → Item 38 → Item 39 → Item 40 → Item 44. Items 36 and 37 modify the step-based job field order incrementally; Item 36 lands first to avoid conflicting SPEC.md edits. Canonical field orders and trigger orders are pre-defined for all SDK-surface items per Sprint 9 retrospective guidance. The remaining backlog after Sprint 12 contains 5 items totaling 21 SP: Item 46 (5 SP), Item 41 (5 SP), Item 42 (3 SP), Item 43 (3 SP), Item 45 (5 SP).
 - Post-Sprint 11 GPT review intake decision: A second external GPT review evaluated the project after all 35 items were delivered. The overall score rose from 6.6/10 to 8/10, confirming that the core implementation quality is high. The review identified three gap themes: (1) syntax coverage breadth (60% practical / 30% full GitHub Docs surface), (2) commercial release maturity (packaging, governance, documentation — rated "medium-low"), and (3) type-safety depth (runner labels, uses references, expression helpers still string-typed). The review's #1 recommendation is to prepare the project for external consumption rather than continuing to refine only the core. The team conducted a full intake discussion below. A subsequent coverage audit identified five additional gaps in the initial intake; the team added Items 45–46 and amended Items 42–43 to achieve full review coverage.
 - Team GPT review discussion (Mio Kanda — SDK/Architecture): The syntax coverage items are mechanically familiar — they follow the same model/builder/validation/rendering/conformance pattern used for the last 20+ items. `pull_request_target` directly reuses `pull_request` infrastructure. `workflow_run` introduces a new trigger shape (required `workflows` list) but nothing architecturally novel. The simple event triggers batch (Item 40) is large in count (~23 events) but low in per-event complexity — most are "event name + optional types allowlist." Display names and environment are single-field additions. Release packaging (Item 41) is the only architecturally significant change: it introduces a build step for the first time, which changes the development and publishing workflow. This should be scoped carefully so the source-first development experience (Bun/JSR/Deno) is not degraded. Typed runner labels (Item 44) are a modest type-safety improvement — they add a known-label union type without breaking the existing string fallback. The deeper type-safety items (Item 46 — typed `uses` helpers, expression helpers, typed action wrappers) are architecturally more ambitious. They require careful API design to preserve backward compatibility while adding genuine compile-time safety. A phased approach with Phase 1 (`uses` helpers) delivered first and Phases 2–3 scoped during implementation is the right way to manage design risk. Release automation (Item 45) is tooling infrastructure that wraps the packaging pipeline from Item 41 — it should come after packaging and governance are established.
 - Team GPT review discussion (Haru Nishimura — Quality/Testing): The Sprint 7 conformance-fixture rule applies to all syntax-expansion items (Items 36–40, 44). Each must include cross-runtime conformance fixtures in the same slice. The simple event triggers batch (Item 40) should include at least 4 representative conformance fixtures rather than one per event — the pattern is uniform enough that representative coverage is sufficient without testing all 23 events individually. The governance item (Item 42) introduces `CHANGELOG.md`, `SECURITY.md`, and `SUPPORT.md` which don't need code tests, but the version bump to `0.1.0` must be verified across all package manifests. The README rewrite (Item 43) should include examples that actually compile and render — ideally verified in CI or at least manually during code review. The `actionlint` guidance in Item 43 is important: it clarifies that `ghawb` handles authoring-time safety while `actionlint` handles YAML-level static analysis, and the two are complementary rather than competing. The coverage scope clarification (also Item 43) resolves the review's weakness #3 — "100% SDK line coverage" is precise and defensible, while unqualified "100% coverage" is not. For Item 46 (type-safety deepening), the phased approach is essential — we should validate the `uses` helper design with real tests before committing to expression helpers or action wrappers.
@@ -203,3 +132,4 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - [Sprint 9 Backlog](./sprint_backlogs/sp9.md)
 - [Sprint 10 Backlog](./sprint_backlogs/sp10.md)
 - [Sprint 11 Backlog](./sprint_backlogs/sp11.md)
+- [Sprint 12 Backlog](./sprint_backlogs/sp12.md)

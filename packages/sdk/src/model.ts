@@ -1,7 +1,123 @@
 import type { JobId, WorkflowId } from '@ghawb/shared';
 
-export type FilteredTriggerType = 'push' | 'pull_request';
-export type TriggerType = FilteredTriggerType | 'workflow_dispatch' | 'workflow_call' | 'schedule';
+export type FilteredTriggerType = 'push' | 'pull_request' | 'pull_request_target';
+
+export type SimpleEventType =
+  | 'check_run'
+  | 'check_suite'
+  | 'create'
+  | 'delete'
+  | 'deployment'
+  | 'deployment_status'
+  | 'discussion'
+  | 'discussion_comment'
+  | 'fork'
+  | 'gollum'
+  | 'issue_comment'
+  | 'issues'
+  | 'label'
+  | 'member'
+  | 'merge_group'
+  | 'milestone'
+  | 'page_build'
+  | 'public'
+  | 'registry_package'
+  | 'release'
+  | 'repository_dispatch'
+  | 'status'
+  | 'watch';
+
+const SIMPLE_EVENT_TYPES: readonly string[] = [
+  'check_run',
+  'check_suite',
+  'create',
+  'delete',
+  'deployment',
+  'deployment_status',
+  'discussion',
+  'discussion_comment',
+  'fork',
+  'gollum',
+  'issue_comment',
+  'issues',
+  'label',
+  'member',
+  'merge_group',
+  'milestone',
+  'page_build',
+  'public',
+  'registry_package',
+  'release',
+  'repository_dispatch',
+  'status',
+  'watch',
+];
+
+export function isSimpleEventType(value: string): value is SimpleEventType {
+  return SIMPLE_EVENT_TYPES.includes(value);
+}
+
+export const SIMPLE_EVENT_ACTIVITY_TYPES: Readonly<
+  Partial<Record<SimpleEventType, readonly string[]>>
+> = {
+  check_run: ['created', 'rerequested', 'completed', 'requested_action'],
+  check_suite: ['completed', 'requested', 'rerequested'],
+  discussion: [
+    'created',
+    'edited',
+    'deleted',
+    'transferred',
+    'pinned',
+    'unpinned',
+    'labeled',
+    'unlabeled',
+    'locked',
+    'unlocked',
+    'category_changed',
+    'answered',
+    'unanswered',
+  ],
+  discussion_comment: ['created', 'edited', 'deleted'],
+  issue_comment: ['created', 'edited', 'deleted'],
+  issues: [
+    'opened',
+    'edited',
+    'deleted',
+    'transferred',
+    'pinned',
+    'unpinned',
+    'closed',
+    'reopened',
+    'assigned',
+    'unassigned',
+    'labeled',
+    'unlabeled',
+    'locked',
+    'unlocked',
+    'milestoned',
+    'demilestoned',
+  ],
+  label: ['created', 'edited', 'deleted'],
+  member: ['added', 'edited', 'removed'],
+  merge_group: ['checks_requested', 'destroyed'],
+  milestone: ['created', 'closed', 'opened', 'edited', 'deleted'],
+  registry_package: ['published', 'updated'],
+  release: ['published', 'unpublished', 'created', 'edited', 'deleted', 'prereleased', 'released'],
+  watch: ['started'],
+};
+
+export interface SimpleEventTrigger {
+  readonly type: SimpleEventType;
+  readonly types?: readonly string[];
+}
+
+export type TriggerType =
+  | FilteredTriggerType
+  | 'workflow_dispatch'
+  | 'workflow_call'
+  | 'workflow_run'
+  | 'schedule'
+  | SimpleEventType;
 
 export const PULL_REQUEST_ACTIVITY_TYPES = [
   'assigned',
@@ -103,11 +219,24 @@ export interface ScheduleTrigger {
   readonly cron: readonly [string, ...string[]];
 }
 
+export const WORKFLOW_RUN_ACTIVITY_TYPES = ['completed', 'requested', 'in_progress'] as const;
+export type WorkflowRunActivityType = (typeof WORKFLOW_RUN_ACTIVITY_TYPES)[number];
+
+export interface WorkflowRunTrigger {
+  readonly type: 'workflow_run';
+  readonly workflows: readonly [string, ...string[]];
+  readonly types?: readonly WorkflowRunActivityType[];
+  readonly branches?: readonly string[];
+  readonly branchesIgnore?: readonly string[];
+}
+
 export type WorkflowTrigger =
   | FilteredWorkflowTrigger
   | WorkflowDispatchTrigger
   | WorkflowCallTrigger
-  | ScheduleTrigger;
+  | WorkflowRunTrigger
+  | ScheduleTrigger
+  | SimpleEventTrigger;
 
 export interface StepMetadata {
   readonly id?: string;
@@ -162,7 +291,29 @@ export type WorkflowPermissionMap = Readonly<
 >;
 export type WorkflowPermissions = WorkflowPermissionMap | WorkflowPermissionShorthand;
 
-export type RunsOnTarget = string | readonly [string, ...string[]];
+export const RunnerLabel = {
+  UbuntuLatest: 'ubuntu-latest',
+  Ubuntu2404: 'ubuntu-24.04',
+  Ubuntu2204: 'ubuntu-22.04',
+  WindowsLatest: 'windows-latest',
+  Windows2025: 'windows-2025',
+  Windows2022: 'windows-2022',
+  MacosLatest: 'macos-latest',
+  Macos15: 'macos-15',
+  Macos14: 'macos-14',
+  Macos13: 'macos-13',
+  MacosLarge15: 'macos-15-large',
+  MacosLarge14: 'macos-14-large',
+  MacosLarge13: 'macos-13-large',
+  MacosXlarge15: 'macos-15-xlarge',
+  MacosXlarge14: 'macos-14-xlarge',
+  MacosXlarge13: 'macos-13-xlarge',
+} as const;
+
+export type RunnerLabel = (typeof RunnerLabel)[keyof typeof RunnerLabel];
+
+export type RunsOnValue = RunnerLabel | (string & {});
+export type RunsOnTarget = RunsOnValue | readonly [RunsOnValue, ...RunsOnValue[]];
 export type MatrixAxisValues = readonly [string, ...string[]];
 export type WorkflowMatrix = Readonly<Record<string, MatrixAxisValues>>;
 export type MatrixIncludeEntry = Readonly<Record<string, string>>;
@@ -210,6 +361,7 @@ export type WorkflowServices = Readonly<Record<string, ContainerConfig>>;
 
 export interface WorkflowJobBase {
   readonly id: JobId;
+  readonly name?: string;
   readonly if?: string;
   readonly needs?: readonly [JobId, ...JobId[]];
   readonly continueOnError?: boolean;
@@ -231,9 +383,12 @@ export interface WorkflowJobBase {
   readonly uses?: string;
 }
 
+export type JobEnvironment = string | { readonly name: string; readonly url?: string };
+
 export interface StepsJob extends WorkflowJobBase {
   readonly kind: 'steps';
   readonly runsOn: RunsOnTarget;
+  readonly environment?: JobEnvironment;
   readonly container?: ContainerConfig;
   readonly services?: WorkflowServices;
   readonly steps: readonly WorkflowStep[];
@@ -251,6 +406,7 @@ export type WorkflowJob = StepsJob | ReusableWorkflowJob;
 export interface WorkflowDefinition {
   readonly id: WorkflowId;
   readonly name: string;
+  readonly runName?: string;
   readonly on: readonly WorkflowTrigger[];
   readonly permissions?: WorkflowPermissions;
   readonly defaults?: {

@@ -50,9 +50,9 @@ Status: ready
 - Definition of Done: Pull request triggers support an optional `types` filter, validation rejects unknown type names, rendering is deterministic, conformance fixtures cover the new filter across runtimes, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Users can specify `types` on pull request triggers (e.g., `['opened', 'synchronize']`), accepted types are validated against the fixed allowlist (`assigned`, `unassigned`, `labeled`, `unlabeled`, `opened`, `edited`, `closed`, `reopened`, `synchronize`, `converted_to_draft`, `ready_for_review`, `locked`, `unlocked`, `review_requested`, `review_request_removed`, `auto_merge_enabled`, `auto_merge_disabled`), unknown type names fail at build time, `types` on `push`, `workflow_dispatch`, or `schedule` triggers fails at build time, the filter composes cleanly with existing `branches` and `paths` filters, and cross-runtime conformance fixtures are added in the same slice.
 - Story Points: 2
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). Scope is limited to `pull_request` activity types and does not extend to other event-specific type filters in this slice.
+- Status: done
+- Completed At: 2026-04-01T01:05:00Z
+- Notes/Links: [SPEC.md](../SPEC.md). Scope is limited to `pull_request` activity types and does not extend to other event-specific type filters in this slice. PR #18 merged into sprint-8 branch.
 
 ### Item 22: Trigger filter negation and tag filters
 

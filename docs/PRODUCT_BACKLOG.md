@@ -33,7 +33,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-Sprint 9 committed `Item 24` through `Item 27` into the sprint backlog (with `Item 26` re-estimated from 4 to 5 SP during refinement). Two items remain unselected below in priority order.
+Sprint 9 committed `Item 24` through `Item 27` into the sprint backlog (with `Item 26` re-estimated from 4 to 5 SP during refinement). After Sprint 9 planning, a BOARD triage concretized remaining process gaps and the Sprint 8 retrospective's product improvement into new backlog items. Four items remain unselected below in priority order.
 
 ### Item 28: Workflow-level defaults and permissions shorthand
 
@@ -46,6 +46,30 @@ Sprint 9 committed `Item 24` through `Item 27` into the sprint backlog (with `It
 - Status: pending
 - Completed At: N/A
 - Notes/Links: [SPEC.md](../SPEC.md). This item deliberately widens the permissions boundary documented in SPEC.md; the specification must be updated to reflect the expanded supported forms.
+
+### Item 31: Identifier format validation hardening
+
+- Why: Step IDs (introduced in Sprint 8, Item 23) are validated for non-blank and per-job uniqueness but not against the GitHub Actions identifier format (`^[a-zA-Z_][a-zA-Z0-9_-]*$`). This was flagged as a residual risk in the Sprint 8 review and as a product improvement in the Sprint 8 retrospective. The same gap applies to other identifier-like fields: matrix axis keys and workflow dispatch input names. Adding format validation catches malformed identifiers at SDK build time rather than deferring to GitHub Actions runtime failure.
+- Prerequisites: Ideally follows Sprint 9 (Items 24–27) so that matrix axis keys and dispatch input names are already implemented when format validation is applied uniformly.
+- Implementation Plan: Define a shared identifier format validator using the pattern `^[a-zA-Z_][a-zA-Z0-9_-]*$`, apply it to step IDs, matrix axis keys, workflow dispatch input names, and any other identifier-like fields, update validation error messages to include the expected format, and add test coverage for format-invalid identifiers across all affected surfaces.
+- Definition of Done: All identifier-like fields are validated against the GitHub Actions identifier format at build time, validation error messages clearly state the expected format, test coverage includes format-invalid cases for every affected surface, and the change is code reviewed by a non-implementing persona.
+- Acceptance Criteria: Step IDs starting with a digit or containing invalid characters fail at build time with a clear format error, matrix axis keys with invalid characters fail at build time, workflow dispatch input names with invalid characters fail at build time, the validator is shared across all identifier surfaces to avoid duplication, and existing valid identifiers continue to pass without regression.
+- Story Points: 2
+- Status: pending
+- Completed At: N/A
+- Notes/Links: [SPEC.md](../SPEC.md), [sprint_reviews/sp8.md](./sprint_reviews/sp8.md), [sprint_retrospectives/sp8.md](./sprint_retrospectives/sp8.md). The identifier format pattern matches GitHub Actions documentation. The shared validator should use the existing identifier factory pattern from `@ghawb/shared`.
+
+### Item 30: Sprint ceremony process hardening
+
+- Why: Four Scrum Master BOARD items (closeout waiting behavior, evidence provenance in review/retro notes, clean-branch verification gate, external proof planning) have been flagged repeatedly across sprints 4–8 but never formally addressed. The PLAYBOOK.md captures adjacent guidance but leaves specific operational gaps that cause recurring ambiguity during sprint closeout and review.
+- Prerequisites: None. This item is documentation and process work independent of SDK feature delivery.
+- Implementation Plan: Update PLAYBOOK.md to add explicit closeout waiting behavior rules (wait / handoff / follow-up decision tree when hosted proof is pending), add evidence provenance requirements to sprint review and retrospective notes (clean snapshot vs. scoped dirty-worktree), define clean-branch or scoped-verification gate criteria before sprint closeout, and add external proof planning expectations to the planning and refinement protocol. Update CONTRIBUTING.md if any contributor-facing verification expectations change.
+- Definition of Done: PLAYBOOK.md documents explicit closeout waiting behavior, evidence provenance requirements, verification gate criteria, and external proof planning expectations. The four originating BOARD items are closed. CONTRIBUTING.md is updated if applicable. The change is reviewed by a non-implementing persona.
+- Acceptance Criteria: PLAYBOOK.md contains a concrete decision tree for closeout waiting behavior when hosted proof is pending, sprint review and retrospective templates require an explicit evidence provenance note, the closeout protocol includes a verification-target decision gate (clean branch or scoped file set), and the planning protocol includes an external proof requirement step.
+- Story Points: 2
+- Status: pending
+- Completed At: N/A
+- Notes/Links: [scrum_master/PLAYBOOK.md](./scrum_master/PLAYBOOK.md), [scrum_master/BOARD.md](./scrum_master/BOARD.md). Consolidates BOARD items #1, #2, #3, #5 into a single deliverable backlog item.
 
 ### Item 29: Self-hosting expansion and package distribution readiness
 
@@ -67,7 +91,9 @@ Sprint 9 committed `Item 24` through `Item 27` into the sprint backlog (with `It
 - Developer intake rationale (Mio Kanda — SDK/Architecture): The items preserve the explicit-boundary pattern from ADR 0001. Each item adds one coherent AST surface with builder API, validation, deterministic rendering, and conformance fixtures. No item introduces implicit behavior, discovery, or YAML input.
 - Developer intake rationale (Haru Nishimura — Quality/Testing): Every item explicitly includes conformance fixture updates. The ordering allows validation patterns to be established early (env, triggers) and reused in later items (outputs, strategy). Property-based testing for determinism is desirable but not required in this intake scope.
 - Developer intake rationale (Yui Morita — Tooling/Workflow): Self-hosting expansion (`Item 29`) is the right capstone because it proves the broader SDK surface in the repository's own workflows. Packaging readiness in the same item gives distribution a concrete starting point without splitting it into a separate slice that might drift.
-- Ordered delivery guidance: The remaining backlog (`Item 28` and `Item 29`) is ordered by priority. `Item 29` must stay last. The Sprint 7 retrospective conformance-fixture rule is honored.
+- Ordered delivery guidance: The remaining backlog is ordered Item 28 → Item 31 → Item 30 → Item 29. Item 29 must stay last. Items 31 and 30 were added during Sprint 9 BOARD triage and Product Owner priority adjustment. The Sprint 7 retrospective conformance-fixture rule is honored for all SDK-surface items.
+- Sprint 9 BOARD triage decision: Eight remaining BOARD items were triaged. Four were closed as already codified in PLAYBOOK.md (#4 DoD evidence map, #6 pre-review consistency, #7 sprint-start doc rules, #8 acceptance criteria review). Four were concretized as product backlog Item 30 (#1 closeout waiting, #2 evidence provenance, #3 verification gate, #5 external proof planning). Sprint 8 retrospective product improvement (identifier format validation) was concretized as Item 31.
+- Product Owner priority adjustment (Aoi Sakamoto): Reordered the backlog to Item 28 → Item 31 → Item 30 → Item 29. SDK feature gap (Item 28) first, then validation hardening (Item 31) to solidify the API surface before distribution, then process hardening (Item 30) to improve ceremonies before the capstone sprint, then distribution readiness (Item 29) last as established. Item 31 before Item 30 because external consumer quality gates outweigh internal process friction reduction.
 - Sprint 7 retrospective guidance remains in force: every workflow-surface expansion must add or update shared cross-runtime conformance fixtures in the same slice, and the explicit repository-local workflow contract must not be silently widened.
 
 ## Sprint Backlog Records

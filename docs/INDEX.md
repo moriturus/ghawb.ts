@@ -34,6 +34,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp5.md](./sprint_retrospectives/sp5.md): Sprint 5 retrospective summary, role reflections, and routed improvement actions.
 - [sprint_retrospectives/sp6.md](./sprint_retrospectives/sp6.md): Sprint 6 retrospective summary, role reflections, and routed improvement actions.
 - [sprint_retrospectives/sp7.md](./sprint_retrospectives/sp7.md): Sprint 7 retrospective summary, role reflections, and routed improvement actions.
+- [sprint_retrospectives/sp8.md](./sprint_retrospectives/sp8.md): Sprint 8 retrospective summary, role reflections, sub-agent delegation friction, and routed improvement actions.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 
 ## Notes

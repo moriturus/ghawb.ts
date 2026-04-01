@@ -66,3 +66,21 @@ Use this document to capture durable lessons discovered during implementation.
 - Why it matters: Multi-runtime support becomes noisy and brittle if runtime-specific tests are not isolated by entrypoint and by type-check surface.
 - Recommendation: Keep root `tsc` focused on shared code plus the Node-facing smoke path, and let Bun and Deno validate their own test files through their native runners.
 - Links: [package.json](../package.json), [tsconfig.json](../tsconfig.json), [deno.json](../deno.json)
+
+### Sub-agent prompts must include counter-examples for exactOptionalPropertyTypes
+
+- Date: 2026-04-05
+- Context: Sprint 8, Item 22 (trigger filter negation and tag filters).
+- What happened: A test-writing sub-agent produced `tagsIgnore: undefined` in a test fixture despite the prompt explicitly warning against it. This is the same class of error that was first documented as a lesson during Sprint 1 and that is reinforced in AGENTS.md. The warning-only approach is not sufficient to prevent the recurrence.
+- Why it matters: Under `exactOptionalPropertyTypes: true`, writing `prop: undefined` for an optional property is a type error. When sub-agents produce this pattern, it requires manual correction after the delegation completes.
+- Recommendation: Include a concrete counter-example in sub-agent prompts showing the wrong code (`tags: undefined`) and the correct alternative (omit the property entirely, or use conditional spread `...(tags ? { tags } : {})`). Rule statements without examples are less effective at preventing this class of mistake.
+- Links: [tsconfig.json](../tsconfig.json), [AGENTS.md](../AGENTS.md)
+
+### Narrow regex capture groups under strict TypeScript
+
+- Date: 2026-04-05
+- Context: Sprint 8, Item 23 (step identifiers and job output declarations).
+- What happened: The `steps.<id>` referential validation used `String.prototype.matchAll()` to extract step IDs from output value expressions. The regex match group `match[1]` is typed as `string | undefined` under `strictNullChecks`, but the developer initially treated it as `string` without narrowing. The type-check pass caught the error.
+- Why it matters: Regex capture groups always have an `undefined` element type in their match arrays under strict TypeScript, even when the group is not optional in the pattern. Forgetting to narrow creates type errors that are only caught at the type-check stage rather than at authoring time.
+- Recommendation: Always apply a nullish coalescing guard (`match[1] ?? ''`) or an explicit truthiness check when reading regex capture groups. Treat every `match[N]` access (where N > 0) as potentially `undefined` regardless of the pattern structure.
+- Links: [builders.ts](../packages/sdk/src/builders.ts)

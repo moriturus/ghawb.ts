@@ -35,7 +35,11 @@ describe('identifier factories', () => {
 
   it('rejects leading digits', () => {
     expect(() => createJobId('1build')).toThrowError(
-      new InvalidIdentifierError('job', '1build', `value must match /${IDENTIFIER_FORMAT_SOURCE}/`)
+      new InvalidIdentifierError(
+        'job',
+        '1build',
+        `value must match /${IDENTIFIER_FORMAT_SOURCE}/. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens`
+      )
     );
   });
 

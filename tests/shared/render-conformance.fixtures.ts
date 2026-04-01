@@ -942,12 +942,12 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: [
-      'trigger "workflow_call" input "choice_input" type "choice" is not supported',
-      'trigger "workflow_call" input "choice_input" options is not supported',
-      'trigger "workflow_call" output "bad/name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+      'trigger "workflow_call" input "choice_input" type "choice" is not supported. Expected: one of "string", "boolean", "number", "environment"',
+      'trigger "workflow_call" input "choice_input" options is not supported. Remove the options field',
+      'trigger "workflow_call" output "bad/name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
       'trigger "workflow_call" output "bad/name" value must be a non-blank string',
-      'job "deploy" reusable workflow job must not define runs-on',
-      'job "deploy" reusable workflow job must not define inline steps',
+      'job "deploy" reusable workflow job must not define runs-on. Only step-based jobs support runs-on',
+      'job "deploy" reusable workflow job must not define inline steps. Only step-based jobs support inline steps',
       'job "deploy" secrets must not contain blank keys',
     ],
   },
@@ -991,8 +991,8 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: [
-      'trigger "pull_request" types contains unknown activity type "merged"',
-      'trigger "pull_request" types contains unknown activity type "approved"',
+      'trigger "pull_request" types contains unknown activity type "merged". Expected: one of "assigned", "unassigned", "labeled", "unlabeled", "opened", "edited", "closed", "reopened", "synchronize", "converted_to_draft", "ready_for_review", "locked", "unlocked", "review_requested", "review_request_removed", "auto_merge_enabled", "auto_merge_disabled"',
+      'trigger "pull_request" types contains unknown activity type "approved". Expected: one of "assigned", "unassigned", "labeled", "unlabeled", "opened", "edited", "closed", "reopened", "synchronize", "converted_to_draft", "ready_for_review", "locked", "unlocked", "review_requested", "review_request_removed", "auto_merge_enabled", "auto_merge_disabled"',
     ],
   },
   {
@@ -1010,7 +1010,9 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
           job.runsOn('ubuntu-latest').run('bun test');
         })
         .build(),
-    expectedIssues: ['trigger "push" must not combine branches and branches-ignore'],
+    expectedIssues: [
+      'trigger "push" must not combine branches and branches-ignore. Use one or the other, not both',
+    ],
   },
   {
     name: 'step_id_duplicate_rejected',
@@ -1041,7 +1043,9 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
           job.runsOn('ubuntu-latest').run('echo first', { id: '1start' });
         })
         .build(),
-    expectedIssues: ['job "test" step 1 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$'],
+    expectedIssues: [
+      'job "test" step 1 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+    ],
   },
   {
     name: 'job_output_undeclared_step_ref',
@@ -1099,7 +1103,9 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
             .run('bun test');
         })
         .build(),
-    expectedIssues: ['job "test" strategy.matrix axis "1os" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$'],
+    expectedIssues: [
+      'job "test" strategy.matrix axis "1os" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+    ],
   },
   {
     name: 'dispatch_choice_without_options',
@@ -1119,7 +1125,7 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: [
-      'trigger "workflow_dispatch" input "environment" type "choice" requires non-empty options',
+      'trigger "workflow_dispatch" input "environment" type "choice" requires non-empty options. Expected: a non-empty array of string options',
     ],
   },
   {
@@ -1139,7 +1145,7 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: [
-      'trigger "workflow_dispatch" input "1start" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+      'trigger "workflow_dispatch" input "1start" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
     ],
   },
   {
@@ -1171,7 +1177,7 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
             .run('bun test');
         })
         .build(),
-    expectedIssues: ['job "test" continue-on-error must be a boolean'],
+    expectedIssues: ['job "test" continue-on-error must be a boolean. Expected: true or false'],
   },
   {
     name: 'invalid_container_and_services',
@@ -1192,7 +1198,7 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     expectedIssues: [
       'job "bad_container" container image must be a non-blank string',
       'job "bad_container" container ports must not contain blank strings',
-      'job "bad_container" service "1bad" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+      'job "bad_container" service "1bad" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
     ],
   },
   {
@@ -1210,6 +1216,8 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
       });
       return builder.build();
     },
-    expectedIssues: ['job "call" reusable workflow job must not define container'],
+    expectedIssues: [
+      'job "call" reusable workflow job must not define container. Only step-based jobs support container',
+    ],
   },
 ];

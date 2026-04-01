@@ -22,11 +22,19 @@ function createIdentifier<TIdentifier extends WorkflowId | JobId>(
   }
 
   if (value !== value.trim()) {
-    throw new InvalidIdentifierError(kind, value, 'value must not contain surrounding whitespace');
+    throw new InvalidIdentifierError(
+      kind,
+      value,
+      'value must not contain surrounding whitespace. Expected: no leading or trailing spaces'
+    );
   }
 
   if (!IDENTIFIER_FORMAT_PATTERN.test(value)) {
-    throw new InvalidIdentifierError(kind, value, `value must match /${IDENTIFIER_FORMAT_SOURCE}/`);
+    throw new InvalidIdentifierError(
+      kind,
+      value,
+      `value must match /${IDENTIFIER_FORMAT_SOURCE}/. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens`
+    );
   }
 
   return value as TIdentifier;

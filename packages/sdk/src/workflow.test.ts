@@ -472,7 +472,7 @@ describe('workflow builder', () => {
         'job "job" step 1 if must not be empty',
         'job "job" step 1 env must not contain blank keys',
         'duplicate job id "job"',
-        'job "job" must define runs-on',
+        'job "job" must define runs-on. Expected: a runner label string or array of labels',
       ])
     );
   });
@@ -485,8 +485,8 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'workflow must define at least one trigger',
-        'workflow must define at least one job',
+        'workflow must define at least one trigger. Expected: at least one trigger (e.g. push, pull_request, workflow_dispatch)',
+        'workflow must define at least one job. Expected: at least one job definition',
       ])
     );
   });
@@ -502,7 +502,9 @@ describe('workflow builder', () => {
       });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['job "build" must define at least one step'])
+      new WorkflowValidationError([
+        'job "build" must define at least one step. Expected: at least one run or uses step',
+      ])
     );
   });
 
@@ -583,8 +585,8 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_dispatch" does not support branches',
-        'trigger "workflow_dispatch" does not support paths',
+        'trigger "workflow_dispatch" does not support branches. Supported: inputs',
+        'trigger "workflow_dispatch" does not support paths. Supported: inputs',
       ])
     );
   });
@@ -645,8 +647,8 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "schedule" does not support branches',
-        'trigger "schedule" does not support paths',
+        'trigger "schedule" does not support branches. Supported: cron',
+        'trigger "schedule" does not support paths. Supported: cron',
       ])
     );
   });
@@ -673,7 +675,9 @@ describe('workflow builder', () => {
     });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['trigger "schedule" must define at least one cron entry'])
+      new WorkflowValidationError([
+        'trigger "schedule" must define at least one cron entry. Expected: at least one cron expression',
+      ])
     );
   });
 
@@ -733,8 +737,8 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'job "blanktarget" runs-on must not be empty',
-        'job "emptytarget" runs-on array must not be empty',
+        'job "blanktarget" runs-on must not be empty. Expected: a non-blank runner label',
+        'job "emptytarget" runs-on array must not be empty. Expected: at least one runner label',
         'job "emptyneeds" needs must not be empty',
       ])
     );
@@ -762,10 +766,10 @@ describe('workflow builder', () => {
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
         'job "test" strategy.matrix must not contain blank axis names',
-        'job "test" strategy.matrix does not support axis "include"',
+        'job "test" strategy.matrix does not support axis "include". Expected: axes matching /^[a-zA-Z_][a-zA-Z0-9_-]*$/ (include and exclude are reserved)',
         'job "test" strategy.matrix axis "os" must not be empty',
         'job "test" strategy.matrix axis "node" must not contain blank values',
-        'job "test" strategy.matrix axis "runtime" must contain only strings',
+        'job "test" strategy.matrix axis "runtime" must contain only strings. Expected: every element to be a string',
       ])
     );
   });
@@ -793,8 +797,8 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'job "empty" strategy.matrix must define at least one axis',
-        'job "nonarray" strategy.matrix axis "os" must be an array',
+        'job "empty" strategy.matrix must define at least one axis. Expected: at least one axis name mapped to a string array',
+        'job "nonarray" strategy.matrix axis "os" must be an array. Expected: an array of strings',
       ])
     );
   });
@@ -819,10 +823,10 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'job "test" strategy.matrix axis "1os" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-        'job "test" strategy.matrix axis "bad/name" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-        'job "test" strategy.matrix axis "axis name" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-        'job "test" strategy.matrix axis "軸" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'job "test" strategy.matrix axis "1os" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+        'job "test" strategy.matrix axis "bad/name" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+        'job "test" strategy.matrix axis "axis name" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+        'job "test" strategy.matrix axis "軸" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
       ])
     );
   });
@@ -851,9 +855,9 @@ describe('workflow builder', () => {
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
         'workflow permissions entry "actions" must be one of read, write, none',
-        'workflow permissions contains unsupported key "unknown"',
+        'workflow permissions contains unsupported key "unknown". Expected: one of actions, artifact-metadata, attestations, checks, contents, deployments, discussions, id-token, issues, models, packages, pages, pull-requests, security-events, statuses',
         'job "check" permissions entry "models" must be one of read, none',
-        'job "check" permissions contains unsupported key "unknown"',
+        'job "check" permissions contains unsupported key "unknown". Expected: one of actions, artifact-metadata, attestations, checks, contents, deployments, discussions, id-token, issues, models, packages, pages, pull-requests, security-events, statuses',
       ])
     );
   });
@@ -882,7 +886,7 @@ describe('workflow builder', () => {
       new WorkflowValidationError([
         'workflow permissions must use either shorthand ("read-all"/"write-all") or an object map, not both',
         'workflow defaults.run.shell must not be empty',
-        'workflow defaults.run must define shell or working-directory',
+        'workflow defaults.run must define shell or working-directory. Expected: at least one of shell or working-directory',
         'job "check" permissions must use either shorthand ("read-all"/"write-all") or an object map, not both',
       ])
     );
@@ -904,7 +908,7 @@ describe('workflow builder', () => {
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
         'workflow defaults.run.working-directory must not be empty',
-        'workflow defaults.run must define shell or working-directory',
+        'workflow defaults.run must define shell or working-directory. Expected: at least one of shell or working-directory',
       ])
     );
   });
@@ -931,7 +935,7 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'job "check" timeout-minutes must be a positive integer',
+        'job "check" timeout-minutes must be a positive integer. Expected: a whole number greater than 0',
         'job "check" defaults.run.shell must not be empty',
         'job "check" defaults.run.working-directory must not be empty',
         'job "check" step 1 shell must not be empty',
@@ -972,7 +976,7 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'job "check" defaults.run must define shell or working-directory',
+        'job "check" defaults.run must define shell or working-directory. Expected: at least one of shell or working-directory',
       ])
     );
   });
@@ -1000,9 +1004,9 @@ describe('workflow builder', () => {
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
         'workflow concurrency group must not be empty',
-        'workflow concurrency cancel-in-progress must be a boolean',
+        'workflow concurrency cancel-in-progress must be a boolean. Expected: true or false',
         'job "check" concurrency group must not be empty',
-        'job "check" concurrency cancel-in-progress must be a boolean',
+        'job "check" concurrency cancel-in-progress must be a boolean. Expected: true or false',
       ])
     );
   });
@@ -1335,8 +1339,8 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "pull_request" types contains unknown activity type "merged"',
-        'trigger "pull_request" types contains unknown activity type "drafted"',
+        'trigger "pull_request" types contains unknown activity type "merged". Expected: one of "assigned", "unassigned", "labeled", "unlabeled", "opened", "edited", "closed", "reopened", "synchronize", "converted_to_draft", "ready_for_review", "locked", "unlocked", "review_requested", "review_request_removed", "auto_merge_enabled", "auto_merge_disabled"',
+        'trigger "pull_request" types contains unknown activity type "drafted". Expected: one of "assigned", "unassigned", "labeled", "unlabeled", "opened", "edited", "closed", "reopened", "synchronize", "converted_to_draft", "ready_for_review", "locked", "unlocked", "review_requested", "review_request_removed", "auto_merge_enabled", "auto_merge_disabled"',
       ])
     );
   });
@@ -1379,7 +1383,9 @@ describe('workflow builder', () => {
     });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['trigger "push" does not support types'])
+      new WorkflowValidationError([
+        'trigger "push" does not support types. Supported: branches, branches-ignore, paths, paths-ignore, tags, tags-ignore',
+      ])
     );
   });
 
@@ -1402,7 +1408,9 @@ describe('workflow builder', () => {
     });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['trigger "workflow_dispatch" does not support types'])
+      new WorkflowValidationError([
+        'trigger "workflow_dispatch" does not support types. Supported: inputs',
+      ])
     );
   });
 
@@ -1427,7 +1435,7 @@ describe('workflow builder', () => {
     });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['trigger "schedule" does not support types'])
+      new WorkflowValidationError(['trigger "schedule" does not support types. Supported: cron'])
     );
   });
 
@@ -1593,7 +1601,9 @@ describe('workflow builder', () => {
       });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['trigger "push" must not combine branches and branches-ignore'])
+      new WorkflowValidationError([
+        'trigger "push" must not combine branches and branches-ignore. Use one or the other, not both',
+      ])
     );
   });
 
@@ -1611,7 +1621,9 @@ describe('workflow builder', () => {
       });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['trigger "push" must not combine paths and paths-ignore'])
+      new WorkflowValidationError([
+        'trigger "push" must not combine paths and paths-ignore. Use one or the other, not both',
+      ])
     );
   });
 
@@ -1629,7 +1641,9 @@ describe('workflow builder', () => {
       });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['trigger "push" must not combine tags and tags-ignore'])
+      new WorkflowValidationError([
+        'trigger "push" must not combine tags and tags-ignore. Use one or the other, not both',
+      ])
     );
   });
 
@@ -1646,7 +1660,9 @@ describe('workflow builder', () => {
       });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['trigger "pull_request" does not support tags'])
+      new WorkflowValidationError([
+        'trigger "pull_request" does not support tags. Supported: branches, branches-ignore, paths, paths-ignore, types',
+      ])
     );
   });
 
@@ -1663,7 +1679,9 @@ describe('workflow builder', () => {
       });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['trigger "pull_request" does not support tags-ignore'])
+      new WorkflowValidationError([
+        'trigger "pull_request" does not support tags-ignore. Supported: branches, branches-ignore, paths, paths-ignore, types',
+      ])
     );
   });
 
@@ -1688,7 +1706,7 @@ describe('workflow builder', () => {
         'trigger "push" paths-ignore must not be empty',
         'trigger "push" tags must not be empty',
         'trigger "push" tags-ignore must not be empty',
-        'trigger "push" must not combine tags and tags-ignore',
+        'trigger "push" must not combine tags and tags-ignore. Use one or the other, not both',
       ])
     );
   });
@@ -1714,7 +1732,7 @@ describe('workflow builder', () => {
         'trigger "push" paths-ignore must not contain blank values',
         'trigger "push" tags must not contain blank values',
         'trigger "push" tags-ignore must not contain blank values',
-        'trigger "push" must not combine tags and tags-ignore',
+        'trigger "push" must not combine tags and tags-ignore. Use one or the other, not both',
       ])
     );
   });
@@ -1921,7 +1939,7 @@ describe('workflow builder', () => {
 
       expect(() => builder.build()).toThrowError(
         new WorkflowValidationError([
-          'job "build" step 1 id must not contain surrounding whitespace',
+          'job "build" step 1 id must not contain surrounding whitespace. Expected: no leading or trailing spaces',
         ])
       );
     });
@@ -1976,10 +1994,10 @@ describe('workflow builder', () => {
 
       expect(() => builder.build()).toThrowError(
         new WorkflowValidationError([
-          'job "test" step 1 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-          'job "test" step 2 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-          'job "test" step 3 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-          'job "test" step 4 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+          'job "test" step 1 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+          'job "test" step 2 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+          'job "test" step 3 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+          'job "test" step 4 id must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
         ])
       );
     });
@@ -2270,9 +2288,9 @@ describe('workflow builder', () => {
 
       expect(() => builder.build()).toThrowError(
         new WorkflowValidationError([
-          'job "test" strategy.fail-fast must be a boolean',
-          'job "test" strategy.max-parallel must be a positive integer',
-          'job "test" strategy.matrix include entry 1 key "count" must be a string value',
+          'job "test" strategy.fail-fast must be a boolean. Expected: true or false',
+          'job "test" strategy.max-parallel must be a positive integer. Expected: a whole number greater than 0',
+          'job "test" strategy.matrix include entry 1 key "count" must be a string value. Expected: a string value',
           'job "test" strategy.matrix exclude entry 1 references undeclared axis "runtime"',
         ])
       );
@@ -2300,7 +2318,7 @@ describe('workflow builder', () => {
         new WorkflowValidationError([
           'job "test" strategy.matrix exclude entry 1 must not contain blank keys',
           'job "test" strategy.matrix exclude entry 1 references undeclared axis ""',
-          'job "test" strategy.matrix exclude entry 1 key "os" must be a string value',
+          'job "test" strategy.matrix exclude entry 1 key "os" must be a string value. Expected: a string value',
         ])
       );
     });
@@ -2335,8 +2353,8 @@ describe('workflow builder', () => {
 
       expect(() => builder.build()).toThrowError(
         new WorkflowValidationError([
-          'job "test" strategy.matrix include entry 1 must be a record object',
-          'job "test" strategy.matrix exclude entry 1 must be a record object',
+          'job "test" strategy.matrix include entry 1 must be a record object. Expected: a plain object with string keys',
+          'job "test" strategy.matrix exclude entry 1 must be a record object. Expected: a plain object with string keys',
         ])
       );
     });
@@ -2462,8 +2480,8 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'job "test" step 1 continue-on-error must be a boolean',
-        'job "test" step 1 timeout-minutes must be a positive integer',
+        'job "test" step 1 continue-on-error must be a boolean. Expected: true or false',
+        'job "test" step 1 timeout-minutes must be a positive integer. Expected: a whole number greater than 0',
       ])
     );
   });
@@ -2590,7 +2608,7 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_dispatch" input "name" required must be a boolean',
+        'trigger "workflow_dispatch" input "name" required must be a boolean. Expected: true or false',
       ])
     );
   });
@@ -2609,7 +2627,7 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_dispatch" input "name" type "invalid" is not a valid input type',
+        'trigger "workflow_dispatch" input "name" type "invalid" is not a valid input type. Expected: one of "string", "boolean", "choice", "number", "environment"',
       ])
     );
   });
@@ -2631,10 +2649,10 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_dispatch" input "1start" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-        'trigger "workflow_dispatch" input "bad/name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-        'trigger "workflow_dispatch" input "input name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-        'trigger "workflow_dispatch" input "入力" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'trigger "workflow_dispatch" input "1start" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+        'trigger "workflow_dispatch" input "bad/name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+        'trigger "workflow_dispatch" input "input name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+        'trigger "workflow_dispatch" input "入力" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
       ])
     );
   });
@@ -2653,7 +2671,7 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_dispatch" input "name" type "choice" requires non-empty options',
+        'trigger "workflow_dispatch" input "name" type "choice" requires non-empty options. Expected: a non-empty array of string options',
       ])
     );
   });
@@ -2675,7 +2693,7 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_dispatch" input "name" options is only valid when type is "choice"',
+        'trigger "workflow_dispatch" input "name" options is only valid when type is "choice". Remove options or set type to "choice"',
       ])
     );
   });
@@ -2696,7 +2714,7 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_dispatch" input "name" options is only valid when type is "choice"',
+        'trigger "workflow_dispatch" input "name" options is only valid when type is "choice". Remove options or set type to "choice"',
       ])
     );
   });
@@ -2822,9 +2840,9 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_call" does not support branches',
-        'trigger "workflow_call" does not support paths',
-        'trigger "workflow_call" does not support types',
+        'trigger "workflow_call" does not support branches. Supported: inputs, outputs, secrets',
+        'trigger "workflow_call" does not support paths. Supported: inputs, outputs, secrets',
+        'trigger "workflow_call" does not support types. Supported: inputs, outputs, secrets',
       ])
     );
   });
@@ -2851,9 +2869,9 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_call" input "input name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-        'trigger "workflow_call" output "bad/name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
-        'trigger "workflow_call" secret "入力" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'trigger "workflow_call" input "input name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+        'trigger "workflow_call" output "bad/name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
+        'trigger "workflow_call" secret "入力" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens',
       ])
     );
   });
@@ -2880,7 +2898,7 @@ describe('workflow builder', () => {
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
         'trigger "workflow_call" inputs must not contain blank names',
-        'trigger "workflow_call" input "valid_input" required must be a boolean',
+        'trigger "workflow_call" input "valid_input" required must be a boolean. Expected: true or false',
       ])
     );
   });
@@ -2904,8 +2922,8 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_call" input "choice_input" type "choice" is not supported',
-        'trigger "workflow_call" input "choice_input" options is not supported',
+        'trigger "workflow_call" input "choice_input" type "choice" is not supported. Expected: one of "string", "boolean", "number", "environment"',
+        'trigger "workflow_call" input "choice_input" options is not supported. Remove the options field',
       ])
     );
   });
@@ -2928,7 +2946,7 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_call" input "bad_input" type "invalid" is not a valid input type',
+        'trigger "workflow_call" input "bad_input" type "invalid" is not a valid input type. Expected: one of "string", "boolean", "choice", "number", "environment"',
       ])
     );
   });
@@ -2974,7 +2992,7 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'trigger "workflow_call" secret "token" required must be a boolean',
+        'trigger "workflow_call" secret "token" required must be a boolean. Expected: true or false',
       ])
     );
   });
@@ -3109,8 +3127,8 @@ describe('workflow builder', () => {
 
     expect(() => builder.build()).toThrowError(
       new WorkflowValidationError([
-        'job "deploy" reusable workflow job must not define runs-on',
-        'job "deploy" reusable workflow job must not define inline steps',
+        'job "deploy" reusable workflow job must not define runs-on. Only step-based jobs support runs-on',
+        'job "deploy" reusable workflow job must not define inline steps. Only step-based jobs support inline steps',
       ])
     );
   });
@@ -3160,7 +3178,9 @@ describe('workflow builder', () => {
       });
 
     expect(() => missingUsesBuilder.build()).toThrowError(
-      new WorkflowValidationError(['job "deploy" reusable workflow job must define uses'])
+      new WorkflowValidationError([
+        'job "deploy" reusable workflow job must define uses. Expected: a reusable workflow reference (e.g. "org/repo/.github/workflows/ci.yml@main")',
+      ])
     );
     expect(() => blankUsesBuilder.build()).toThrowError(
       new WorkflowValidationError(['job "deploy" reusable workflow uses must not be empty'])
@@ -3284,7 +3304,9 @@ describe('workflow builder', () => {
       });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError(['job "test" continue-on-error must be a boolean'])
+      new WorkflowValidationError([
+        'job "test" continue-on-error must be a boolean. Expected: true or false',
+      ])
     );
   });
 

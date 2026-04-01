@@ -799,7 +799,11 @@ describe('workflow renderer', () => {
 
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
-    ).toThrowError(new WorkflowRenderError('unsupported workflow permissions key "unknown"'));
+    ).toThrowError(
+      new WorkflowRenderError(
+        'unsupported workflow permissions key "unknown". Expected: one of actions, artifact-metadata, attestations, checks, contents, deployments, discussions, id-token, issues, models, packages, pages, pull-requests, security-events, statuses'
+      )
+    );
   });
 
   it('fails explicitly before emission when permissions contain undefined values', () => {
@@ -834,7 +838,9 @@ describe('workflow renderer', () => {
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(
-      new WorkflowRenderError('unsupported workflow permissions value "contents: undefined"')
+      new WorkflowRenderError(
+        'unsupported workflow permissions value "contents: undefined". Expected: one of read, write, none'
+      )
     );
   });
 
@@ -1078,7 +1084,11 @@ describe('workflow renderer', () => {
 
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
-    ).toThrowError(new WorkflowRenderError('unsupported workflow concurrency value "group:  "'));
+    ).toThrowError(
+      new WorkflowRenderError(
+        'unsupported workflow concurrency value "group:  ". Expected: a non-blank string'
+      )
+    );
   });
 
   it('fails explicitly before emission when job concurrency cancelInProgress is not a boolean', () => {
@@ -1143,7 +1153,11 @@ describe('workflow renderer', () => {
 
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
-    ).toThrowError(new WorkflowRenderError('defaults.run must define shell or working-directory'));
+    ).toThrowError(
+      new WorkflowRenderError(
+        'defaults.run must define shell or working-directory. Expected: at least one of shell or working-directory'
+      )
+    );
   });
 
   it('fails explicitly before emission when workflow-level defaults.run is empty', () => {
@@ -1174,7 +1188,11 @@ describe('workflow renderer', () => {
 
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
-    ).toThrowError(new WorkflowRenderError('defaults.run must define shell or working-directory'));
+    ).toThrowError(
+      new WorkflowRenderError(
+        'defaults.run must define shell or working-directory. Expected: at least one of shell or working-directory'
+      )
+    );
   });
 
   it('fails explicitly before emission when permissions shorthand is invalid', () => {
@@ -1204,7 +1222,9 @@ describe('workflow renderer', () => {
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(
-      new WorkflowRenderError('unsupported workflow permissions shorthand "admin-all"')
+      new WorkflowRenderError(
+        'unsupported workflow permissions shorthand "admin-all". Expected: "read-all" or "write-all"'
+      )
     );
   });
 

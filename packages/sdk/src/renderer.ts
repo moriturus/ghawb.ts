@@ -43,6 +43,7 @@ export class WorkflowRenderError extends Error {
 export interface WorkflowRenderTriggerPayload {
   readonly branches?: readonly string[];
   readonly paths?: readonly string[];
+  readonly types?: readonly string[];
 }
 
 export interface WorkflowRenderScheduleEntryPayload {
@@ -140,11 +141,12 @@ function createTriggerPayload(
     return trigger.cron.map((cron) => ({ cron }));
   }
 
-  assertAllowedKeys(trigger, ['type', 'branches', 'paths'], `trigger "${trigger.type}"`);
+  assertAllowedKeys(trigger, ['type', 'branches', 'paths', 'types'], `trigger "${trigger.type}"`);
 
   const payload: WorkflowRenderTriggerPayload = {
     ...(trigger.branches ? { branches: [...trigger.branches] } : {}),
     ...(trigger.paths ? { paths: [...trigger.paths] } : {}),
+    ...(trigger.types ? { types: [...trigger.types] } : {}),
   };
 
   return Object.keys(payload).length === 0 ? null : payload;

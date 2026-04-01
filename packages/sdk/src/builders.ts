@@ -2,8 +2,11 @@ import { WorkflowValidationError, type JobId, type WorkflowId } from '@ghawb/sha
 
 import {
   WORKFLOW_PERMISSION_KEYS,
+  PULL_REQUEST_ACTIVITY_TYPES,
   type FilteredTriggerType,
   type MatrixAxisValues,
+  type PullRequestActivityType,
+  type PullRequestTriggerFilter,
   type RunStepMetadata,
   type RunsOnTarget,
   type StepMetadata,
@@ -90,6 +93,13 @@ function cloneFilter(filter: TriggerFilter): TriggerFilter {
   };
 }
 
+function clonePullRequestFilter(filter: PullRequestTriggerFilter): PullRequestTriggerFilter {
+  return {
+    ...cloneFilter(filter),
+    ...(filter.types ? { types: [...filter.types] } : {}),
+  };
+}
+
 function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
   if (trigger.type === 'workflow_dispatch') {
     return {
@@ -107,6 +117,7 @@ function cloneTrigger(trigger: WorkflowTrigger): WorkflowTrigger {
   return {
     type: trigger.type,
     ...cloneFilter(trigger),
+    ...(trigger.types ? { types: [...trigger.types] } : {}),
   };
 }
 
@@ -217,6 +228,10 @@ function createValidationIssues(
         issues.push('trigger "workflow_dispatch" does not support paths');
       }
 
+      if ('types' in trigger) {
+        issues.push('trigger "workflow_dispatch" does not support types');
+      }
+
       continue;
     }
 
@@ -227,6 +242,10 @@ function createValidationIssues(
 
       if ('paths' in trigger) {
         issues.push('trigger "schedule" does not support paths');
+      }
+
+      if ('types' in trigger) {
+        issues.push('trigger "schedule" does not support types');
       }
 
       if (trigger.cron.length === 0) {
@@ -266,6 +285,24 @@ function createValidationIssues(
 
       if (values.some((value) => value.trim().length === 0)) {
         issues.push(`trigger "${trigger.type}" ${label} must not contain blank values`);
+      }
+    }
+
+    if (trigger.types !== undefined) {
+      if (trigger.type !== 'pull_request') {
+        issues.push(`trigger "${trigger.type}" does not support types`);
+      } else {
+        if (trigger.types.length === 0) {
+          issues.push('trigger "pull_request" types must not be empty');
+        }
+
+        for (const activityType of trigger.types) {
+          if (!PULL_REQUEST_ACTIVITY_TYPES.includes(activityType as PullRequestActivityType)) {
+            issues.push(
+              `trigger "pull_request" types contains unknown activity type "${activityType}"`
+            );
+          }
+        }
       }
     }
   }
@@ -718,8 +755,12 @@ export class WorkflowBuilder {
     return this.addFilteredTrigger('push', filter);
   }
 
-  onPullRequest(filter: TriggerFilter = {}): this {
-    return this.addFilteredTrigger('pull_request', filter);
+  onPullRequest(filter: PullRequestTriggerFilter = {}): this {
+    this.triggers.push({
+      type: 'pull_request',
+      ...clonePullRequestFilter(filter),
+    });
+    return this;
   }
 
   onWorkflowDispatch(): this {

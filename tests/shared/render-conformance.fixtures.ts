@@ -1019,6 +1019,54 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'workflow_run_minimal',
+    defineWorkflow({
+      id: createWorkflowId('workflow_run_minimal'),
+      name: 'Deploy After CI',
+    })
+      .onWorkflowRun({ workflows: 'CI' })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').run('deploy.sh');
+      })
+      .build(),
+    {
+      name: 'Deploy After CI',
+      on: { workflow_run: { workflows: ['CI'] } },
+      jobs: {
+        deploy: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'deploy.sh' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'workflow_run_full',
+    defineWorkflow({
+      id: createWorkflowId('workflow_run_full'),
+      name: 'Deploy On Complete',
+    })
+      .onWorkflowRun({
+        workflows: ['CI', 'Lint'],
+        types: ['completed'],
+        branches: ['main', 'release/*'],
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').run('deploy.sh');
+      })
+      .build(),
+    {
+      name: 'Deploy On Complete',
+      on: {
+        workflow_run: {
+          workflows: ['CI', 'Lint'],
+          types: ['completed'],
+          branches: ['main', 'release/*'],
+        },
+      },
+      jobs: {
+        deploy: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'deploy.sh' }] },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -1488,5 +1536,185 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: ['duplicate trigger "pull_request_target"'],
+  },
+  {
+    name: 'workflow_run_blank_workflow_name',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('wfr_blank'),
+        name: 'WFR Blank',
+      })
+        .onWorkflowRun({ workflows: ['CI', '  '] })
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: ['trigger "workflow_run" workflows must not contain blank values'],
+  },
+  {
+    name: 'workflow_run_rejects_tags',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_tags'),
+        name: 'WFR Tags',
+      });
+      builder.triggers.push(
+        Object.assign(
+          { type: 'workflow_run' as const, workflows: ['CI'] as [string, ...string[]] },
+          { tags: ['v1'] }
+        ) as unknown as ReturnType<typeof builder.triggers.pop> & object
+      );
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: [
+      'trigger "workflow_run" does not support tags. Supported: workflows, types, branches, branches-ignore',
+    ],
+  },
+  {
+    name: 'workflow_run_rejects_paths',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_paths'),
+        name: 'WFR Paths',
+      });
+      builder.triggers.push(
+        Object.assign(
+          { type: 'workflow_run' as const, workflows: ['CI'] as [string, ...string[]] },
+          { paths: ['src/**'], pathsIgnore: ['docs/**'], tagsIgnore: ['v0.*'] }
+        ) as unknown as ReturnType<typeof builder.triggers.pop> & object
+      );
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: [
+      'trigger "workflow_run" does not support paths. Supported: workflows, types, branches, branches-ignore',
+      'trigger "workflow_run" does not support paths-ignore. Supported: workflows, types, branches, branches-ignore',
+      'trigger "workflow_run" does not support tags-ignore. Supported: workflows, types, branches, branches-ignore',
+    ],
+  },
+  {
+    name: 'workflow_run_unknown_activity_type',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('wfr_bad_type'),
+        name: 'WFR Bad Type',
+      })
+        .onWorkflowRun({
+          workflows: ['CI'],
+          types: ['failed' as 'completed'],
+        })
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "workflow_run" types contains unknown activity type "failed". Expected: one of "completed", "requested", "in_progress"',
+    ],
+  },
+  {
+    name: 'workflow_run_branches_mutual_exclusion',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('wfr_branch_mx'),
+        name: 'WFR Branch MX',
+      })
+        .onWorkflowRun({
+          workflows: ['CI'],
+          branches: ['main'],
+          branchesIgnore: ['develop'],
+        })
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "workflow_run" must not combine branches and branches-ignore. Use one or the other, not both',
+    ],
+  },
+  {
+    name: 'workflow_run_empty_workflows',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_empty_wf'),
+        name: 'WFR Empty WF',
+      });
+      builder.triggers.push({
+        type: 'workflow_run',
+        workflows: [] as unknown as [string, ...string[]],
+      });
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "workflow_run" workflows must not be empty'],
+  },
+  {
+    name: 'workflow_run_empty_branches',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_empty_br'),
+        name: 'WFR Empty BR',
+      });
+      builder.triggers.push({
+        type: 'workflow_run',
+        workflows: ['CI'] as [string, ...string[]],
+        branches: [],
+      });
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "workflow_run" branches must not be empty'],
+  },
+  {
+    name: 'workflow_run_blank_branch_values',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_blank_br'),
+        name: 'WFR Blank BR',
+      });
+      builder.triggers.push({
+        type: 'workflow_run',
+        workflows: ['CI'] as [string, ...string[]],
+        branches: ['main', '  '],
+      });
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "workflow_run" branches must not contain blank values'],
+  },
+  {
+    name: 'workflow_run_empty_types',
+    build: () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('wfr_empty_ty'),
+        name: 'WFR Empty Ty',
+      });
+      builder.triggers.push({
+        type: 'workflow_run',
+        workflows: ['CI'] as [string, ...string[]],
+        types: [],
+      });
+      return builder
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('deploy.sh');
+        })
+        .build();
+    },
+    expectedIssues: ['trigger "workflow_run" types must not be empty'],
   },
 ];

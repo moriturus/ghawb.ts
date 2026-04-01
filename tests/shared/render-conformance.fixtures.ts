@@ -724,6 +724,96 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'workflow_call_and_reusable_job',
+    defineWorkflow({
+      id: createWorkflowId('workflow_call_and_reusable_job'),
+      name: 'Workflow Call And Reusable Job',
+    })
+      .onWorkflowCall({
+        inputs: {
+          environment: {
+            description: 'Target environment',
+            required: true,
+            default: 'staging',
+            type: 'string',
+          },
+        },
+        outputs: {
+          artifact_url: {
+            description: 'Artifact URL',
+            value: '${{ jobs.build.outputs.artifact_url }}',
+          },
+        },
+        secrets: {
+          github_token: {
+            description: 'GitHub token',
+            required: true,
+          },
+        },
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .needs(createJobId('build'))
+          .continueOnError(true)
+          .usesWorkflow('./.github/workflows/deploy.yml@main', {
+            with: {
+              environment: 'production',
+            },
+            secrets: 'inherit',
+          });
+      })
+      .build(),
+    {
+      name: 'Workflow Call And Reusable Job',
+      on: {
+        workflow_call: {
+          inputs: {
+            environment: {
+              description: 'Target environment',
+              required: true,
+              default: 'staging',
+              type: 'string',
+            },
+          },
+          outputs: {
+            artifact_url: {
+              description: 'Artifact URL',
+              value: '${{ jobs.build.outputs.artifact_url }}',
+            },
+          },
+          secrets: {
+            github_token: {
+              description: 'GitHub token',
+              required: true,
+            },
+          },
+        },
+      },
+      jobs: {
+        build: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+        deploy: {
+          needs: ['build'],
+          'continue-on-error': true,
+          secrets: 'inherit',
+          with: {
+            environment: 'production',
+          },
+          uses: './.github/workflows/deploy.yml@main',
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -740,6 +830,47 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: ['trigger "schedule" cron must not contain blank values'],
+  },
+  {
+    name: 'invalid_workflow_call_and_reusable_job',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('invalid_workflow_call_and_reusable_job'),
+        name: 'Invalid Workflow Call And Reusable Job',
+      })
+        .onWorkflowCall({
+          inputs: {
+            choice_input: {
+              type: 'choice' as unknown as 'string',
+              options: ['a', 'b'],
+            } as unknown as import('../../packages/sdk/src/index.ts').WorkflowCallInput,
+          },
+          outputs: {
+            'bad/name': {
+              value: ' ',
+            },
+          } as unknown as import('../../packages/sdk/src/index.ts').WorkflowCallOutputs,
+        })
+        .addJob(createJobId('deploy'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .run('echo deploy')
+            .usesWorkflow('./.github/workflows/deploy.yml@main', {
+              secrets: {
+                ' ': '${{ secrets.GITHUB_TOKEN }}',
+              },
+            });
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "workflow_call" input "choice_input" type "choice" is not supported',
+      'trigger "workflow_call" input "choice_input" options is not supported',
+      'trigger "workflow_call" output "bad/name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+      'trigger "workflow_call" output "bad/name" value must be a non-blank string',
+      'job "deploy" reusable workflow job must not define runs-on',
+      'job "deploy" reusable workflow job must not define inline steps',
+      'job "deploy" secrets must not contain blank keys',
+    ],
   },
   {
     name: 'blank_env_keys',

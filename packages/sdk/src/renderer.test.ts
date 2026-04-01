@@ -171,6 +171,152 @@ describe('workflow renderer', () => {
     expect(Object.keys(payload.on)).toEqual(['push', 'workflow_dispatch', 'schedule']);
   });
 
+  it('renders workflow_call in canonical trigger order after workflow_dispatch', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('reusable_order'),
+      name: 'Reusable Order',
+    })
+      .onSchedule('0 0 * * *')
+      .onWorkflowCall({
+        inputs: {
+          environment: {
+            type: 'string',
+          },
+        },
+      })
+      .onWorkflowDispatch()
+      .onPush({
+        branches: ['main'],
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+
+    expect(Object.keys(payload.on)).toEqual([
+      'push',
+      'workflow_dispatch',
+      'workflow_call',
+      'schedule',
+    ]);
+  });
+
+  it('renders workflow_call fields in canonical order', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_call_render'),
+      name: 'Workflow Call Render',
+    })
+      .onWorkflowCall({
+        inputs: {
+          environment: {
+            description: 'Target environment',
+            required: true,
+            default: 'staging',
+            type: 'string',
+          },
+        },
+        outputs: {
+          artifact_url: {
+            description: 'Artifact URL',
+            value: '${{ jobs.build.outputs.artifact_url }}',
+          },
+        },
+        secrets: {
+          token: {
+            description: 'Deploy token',
+            required: true,
+          },
+        },
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const workflowCallPayload = payload.on.workflow_call!;
+
+    expect(workflowCallPayload).toEqual({
+      inputs: {
+        environment: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'string',
+        },
+      },
+      outputs: {
+        artifact_url: {
+          description: 'Artifact URL',
+          value: '${{ jobs.build.outputs.artifact_url }}',
+        },
+      },
+      secrets: {
+        token: {
+          description: 'Deploy token',
+          required: true,
+        },
+      },
+    });
+    expect(Object.keys(workflowCallPayload)).toEqual(['inputs', 'outputs', 'secrets']);
+  });
+
+  it('renders workflow_call without inputs when only outputs are declared', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_call_outputs_only'),
+      name: 'Workflow Call Outputs Only',
+    })
+      .onWorkflowCall({
+        outputs: {
+          artifact_url: {
+            value: '${{ jobs.build.outputs.artifact_url }}',
+          },
+        },
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).on.workflow_call).toEqual({
+      outputs: {
+        artifact_url: {
+          value: '${{ jobs.build.outputs.artifact_url }}',
+        },
+      },
+    });
+  });
+
+  it('renders workflow_call secrets with description and required', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_call_secret_render'),
+      name: 'Workflow Call Secret Render',
+    })
+      .onWorkflowCall({
+        secrets: {
+          token: {
+            description: 'Deploy token',
+            required: true,
+          },
+        },
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).on.workflow_call).toEqual({
+      secrets: {
+        token: {
+          description: 'Deploy token',
+          required: true,
+        },
+      },
+    });
+  });
+
   it('renders identical output across repeated runs with the same emitter', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('repeatable'),
@@ -209,6 +355,38 @@ describe('workflow renderer', () => {
               run: 'bun test',
             },
           ],
+        },
+      },
+    });
+  });
+
+  it('renders workflow_dispatch inputs with all fields in payload order', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('dispatch_render_full'),
+      name: 'Dispatch Render Full',
+    })
+      .onWorkflowDispatch({
+        environment: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'choice',
+          options: ['staging', 'production'],
+        },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).on.workflow_dispatch).toEqual({
+      inputs: {
+        environment: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'choice',
+          options: ['staging', 'production'],
         },
       },
     });
@@ -485,6 +663,27 @@ describe('workflow renderer', () => {
     expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
   });
 
+  it('renders workflow defaults.run with shell-only payloads', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('defaults_shell_only'),
+      name: 'Defaults Shell Only',
+    })
+      .onPush()
+      .defaultsRun({
+        shell: 'bash',
+      })
+      .addJob(createJobId('check'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).defaults).toEqual({
+      run: {
+        shell: 'bash',
+      },
+    });
+  });
+
   it('renders workflow-level and job-level concurrency deterministically', () => {
     const workflow = defineWorkflow({
       id: createWorkflowId('concurrency'),
@@ -544,6 +743,7 @@ describe('workflow renderer', () => {
       ],
       jobs: [
         {
+          kind: 'steps',
           id: createJobId('test'),
           runsOn: 'ubuntu-latest',
           steps: [
@@ -1529,7 +1729,7 @@ describe('workflow renderer', () => {
         .build();
 
       const payload = createWorkflowRenderPayload(workflow);
-      const stepPayload = payload.jobs.build!.steps[0]!;
+      const stepPayload = payload.jobs.build!.steps![0]!;
       const stepKeys = Object.keys(stepPayload);
 
       expect(stepPayload).toEqual({
@@ -1557,7 +1757,7 @@ describe('workflow renderer', () => {
         .build();
 
       const payload = createWorkflowRenderPayload(workflow);
-      const stepPayload = payload.jobs.build!.steps[0]!;
+      const stepPayload = payload.jobs.build!.steps![0]!;
       const stepKeys = Object.keys(stepPayload);
 
       expect(stepPayload).toEqual({
@@ -1580,7 +1780,7 @@ describe('workflow renderer', () => {
         .build();
 
       const payload = createWorkflowRenderPayload(workflow);
-      const stepPayload = payload.jobs.build!.steps[0]!;
+      const stepPayload = payload.jobs.build!.steps![0]!;
 
       expect(stepPayload).not.toHaveProperty('id');
     });
@@ -1766,7 +1966,7 @@ describe('workflow renderer', () => {
       .build();
 
     const payload = createWorkflowRenderPayload(workflow);
-    const stepPayload = payload.jobs.build!.steps[0]!;
+    const stepPayload = payload.jobs.build!.steps![0]!;
     const stepKeys = Object.keys(stepPayload);
 
     expect(stepPayload['continue-on-error']).toBe(true);
@@ -1795,9 +1995,129 @@ describe('workflow renderer', () => {
       .build();
 
     const payload = createWorkflowRenderPayload(workflow);
-    const stepPayload = payload.jobs.build!.steps[0]!;
+    const stepPayload = payload.jobs.build!.steps![0]!;
 
     expect(stepPayload['continue-on-error']).toBe(false);
     expect(stepPayload['timeout-minutes']).toBe(5);
+  });
+
+  it('renders uses steps with if and env metadata', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('render_uses_if_env'),
+      name: 'Render Uses If Env',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').uses('actions/checkout@v4', {
+          if: 'success()',
+          env: {
+            CI: 'true',
+          },
+        });
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).jobs.build!.steps![0]).toEqual({
+      if: 'success()',
+      env: {
+        CI: 'true',
+      },
+      uses: 'actions/checkout@v4',
+    });
+  });
+
+  it('renders reusable workflow jobs in canonical field order', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('reusable_job_render'),
+      name: 'Reusable Job Render',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .needs(createJobId('build'))
+          .continueOnError(true)
+          .permissions('read-all')
+          .usesWorkflow('./.github/workflows/deploy.yml@main', {
+            secrets: 'inherit',
+            with: {
+              environment: 'production',
+            },
+          });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const deployJob = payload.jobs.deploy!;
+
+    expect(deployJob).toEqual({
+      if: "github.ref == 'refs/heads/main'",
+      needs: ['build'],
+      'continue-on-error': true,
+      permissions: 'read-all',
+      secrets: 'inherit',
+      with: {
+        environment: 'production',
+      },
+      uses: './.github/workflows/deploy.yml@main',
+    });
+    expect(Object.keys(deployJob)).toEqual([
+      'if',
+      'needs',
+      'continue-on-error',
+      'permissions',
+      'secrets',
+      'with',
+      'uses',
+    ]);
+  });
+
+  it('renders reusable workflow jobs with explicit secret maps', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('reusable_job_secret_map'),
+      name: 'Reusable Job Secret Map',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.usesWorkflow('./.github/workflows/deploy.yml@main', {
+          secrets: {
+            token: '${{ secrets.GITHUB_TOKEN }}',
+          },
+        });
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).jobs.deploy).toEqual({
+      secrets: {
+        token: '${{ secrets.GITHUB_TOKEN }}',
+      },
+      uses: './.github/workflows/deploy.yml@main',
+    });
+  });
+
+  it('renders reusable workflow jobs without secrets', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('reusable_job_without_secrets'),
+      name: 'Reusable Job Without Secrets',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.usesWorkflow('./.github/workflows/deploy.yml@main', {
+          with: {
+            environment: 'production',
+          },
+        });
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).jobs.deploy).toEqual({
+      with: {
+        environment: 'production',
+      },
+      uses: './.github/workflows/deploy.yml@main',
+    });
   });
 });

@@ -2,6 +2,9 @@ import {
   WORKFLOW_PERMISSION_KEYS,
   type TriggerType,
   type WorkflowDefinition,
+  type WorkflowCallInput,
+  type WorkflowCallOutput,
+  type WorkflowCallSecret,
   type WorkflowDispatchInput,
   type WorkflowMatrix,
   type WorkflowPermissionKey,
@@ -68,6 +71,22 @@ export interface WorkflowRenderDispatchPayload {
   readonly inputs: Readonly<Record<string, WorkflowRenderDispatchInputPayload>>;
 }
 
+export interface WorkflowRenderWorkflowCallOutputPayload {
+  readonly description?: string;
+  readonly value: string;
+}
+
+export interface WorkflowRenderWorkflowCallSecretPayload {
+  readonly description?: string;
+  readonly required?: boolean;
+}
+
+export interface WorkflowRenderWorkflowCallPayload {
+  readonly inputs?: Readonly<Record<string, WorkflowRenderDispatchInputPayload>>;
+  readonly outputs?: Readonly<Record<string, WorkflowRenderWorkflowCallOutputPayload>>;
+  readonly secrets?: Readonly<Record<string, WorkflowRenderWorkflowCallSecretPayload>>;
+}
+
 export interface WorkflowRenderStepPayload {
   readonly name?: string;
   readonly id?: string;
@@ -84,7 +103,7 @@ export interface WorkflowRenderStepPayload {
 
 export type WorkflowRenderPermissionsPayload = WorkflowPermissions;
 
-export interface WorkflowRenderJobPayload {
+export interface WorkflowRenderJobPayloadBase {
   readonly if?: string;
   readonly needs?: readonly string[];
   readonly 'continue-on-error'?: boolean;
@@ -108,10 +127,26 @@ export interface WorkflowRenderJobPayload {
       Record<string, readonly string[] | readonly Readonly<Record<string, string>>[]>
     >;
   };
-  readonly 'runs-on': string | readonly string[];
+  readonly 'runs-on'?: string | readonly string[];
   readonly outputs?: Readonly<Record<string, string>>;
+  readonly steps?: readonly WorkflowRenderStepPayload[];
+  readonly secrets?: 'inherit' | Readonly<Record<string, string>>;
+  readonly with?: Readonly<Record<string, string>>;
+  readonly uses?: string;
+}
+
+export interface WorkflowRenderStepsJobPayload extends WorkflowRenderJobPayloadBase {
+  readonly 'runs-on': string | readonly string[];
   readonly steps: readonly WorkflowRenderStepPayload[];
 }
+
+export interface WorkflowRenderReusableWorkflowJobPayload extends WorkflowRenderJobPayloadBase {
+  readonly uses: string;
+}
+
+export type WorkflowRenderJobPayload =
+  | WorkflowRenderStepsJobPayload
+  | WorkflowRenderReusableWorkflowJobPayload;
 
 export interface WorkflowRenderPayload {
   readonly name: string;
@@ -122,6 +157,7 @@ export interface WorkflowRenderPayload {
         | WorkflowRenderTriggerPayload
         | readonly WorkflowRenderScheduleEntryPayload[]
         | WorkflowRenderDispatchPayload
+        | WorkflowRenderWorkflowCallPayload
         | null
       >
     >
@@ -182,12 +218,42 @@ function createDispatchInputPayload(
   return payload;
 }
 
+function createWorkflowCallInputPayload(
+  input: WorkflowCallInput
+): WorkflowRenderDispatchInputPayload {
+  return {
+    ...(input.description !== undefined ? { description: input.description } : {}),
+    ...(input.required !== undefined ? { required: input.required } : {}),
+    ...(input.default !== undefined ? { default: input.default } : {}),
+    ...(input.type !== undefined ? { type: input.type } : {}),
+  };
+}
+
+function createWorkflowCallOutputPayload(
+  output: WorkflowCallOutput
+): WorkflowRenderWorkflowCallOutputPayload {
+  return {
+    ...(output.description !== undefined ? { description: output.description } : {}),
+    value: output.value,
+  };
+}
+
+function createWorkflowCallSecretPayload(
+  secret: WorkflowCallSecret
+): WorkflowRenderWorkflowCallSecretPayload {
+  return {
+    ...(secret.description !== undefined ? { description: secret.description } : {}),
+    ...(secret.required !== undefined ? { required: secret.required } : {}),
+  };
+}
+
 function createTriggerPayload(
   trigger: WorkflowTrigger
 ):
   | WorkflowRenderTriggerPayload
   | readonly WorkflowRenderScheduleEntryPayload[]
   | WorkflowRenderDispatchPayload
+  | WorkflowRenderWorkflowCallPayload
   | null {
   if (trigger.type === 'workflow_dispatch') {
     assertAllowedKeys(trigger, ['type', 'inputs'], `trigger "${trigger.type}"`);
@@ -206,6 +272,48 @@ function createTriggerPayload(
   if (trigger.type === 'schedule') {
     assertAllowedKeys(trigger, ['type', 'cron'], `trigger "${trigger.type}"`);
     return trigger.cron.map((cron) => ({ cron }));
+  }
+
+  if (trigger.type === 'workflow_call') {
+    assertAllowedKeys(
+      trigger,
+      ['type', 'inputs', 'outputs', 'secrets'],
+      `trigger "${trigger.type}"`
+    );
+
+    const inputs =
+      trigger.inputs && Object.keys(trigger.inputs).length > 0
+        ? Object.fromEntries(
+            Object.entries(trigger.inputs).map(([name, input]) => [
+              name,
+              createWorkflowCallInputPayload(input),
+            ])
+          )
+        : undefined;
+    const outputs =
+      trigger.outputs && Object.keys(trigger.outputs).length > 0
+        ? Object.fromEntries(
+            Object.entries(trigger.outputs).map(([name, output]) => [
+              name,
+              createWorkflowCallOutputPayload(output),
+            ])
+          )
+        : undefined;
+    const secrets =
+      trigger.secrets && Object.keys(trigger.secrets).length > 0
+        ? Object.fromEntries(
+            Object.entries(trigger.secrets).map(([name, secret]) => [
+              name,
+              createWorkflowCallSecretPayload(secret),
+            ])
+          )
+        : undefined;
+
+    return {
+      ...(inputs ? { inputs } : {}),
+      ...(outputs ? { outputs } : {}),
+      ...(secrets ? { secrets } : {}),
+    };
   }
 
   assertAllowedKeys(
@@ -427,11 +535,18 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       | WorkflowRenderTriggerPayload
       | readonly WorkflowRenderScheduleEntryPayload[]
       | WorkflowRenderDispatchPayload
+      | WorkflowRenderWorkflowCallPayload
       | null
     >
   > = {};
 
-  for (const triggerType of ['push', 'pull_request', 'workflow_dispatch', 'schedule'] as const) {
+  for (const triggerType of [
+    'push',
+    'pull_request',
+    'workflow_dispatch',
+    'workflow_call',
+    'schedule',
+  ] as const) {
     const trigger = workflow.on.find((candidate) => candidate.type === triggerType);
 
     if (trigger) {
@@ -454,9 +569,33 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   const jobs: Record<string, WorkflowRenderJobPayload> = {};
 
   for (const job of workflow.jobs) {
+    if (job.kind === 'reusable-workflow') {
+      assertAllowedKeys(
+        job,
+        ['kind', 'id', 'if', 'needs', 'continueOnError', 'permissions', 'secrets', 'with', 'uses'],
+        `job "${job.id}"`
+      );
+
+      jobs[String(job.id)] = {
+        ...(job.if !== undefined ? { if: job.if } : {}),
+        ...(job.needs ? { needs: [...job.needs] } : {}),
+        ...(job.continueOnError !== undefined ? { 'continue-on-error': job.continueOnError } : {}),
+        ...(job.permissions
+          ? { permissions: createPermissionsPayload(job.permissions, `job "${job.id}"`) }
+          : {}),
+        ...(job.secrets !== undefined
+          ? { secrets: job.secrets === 'inherit' ? 'inherit' : { ...job.secrets } }
+          : {}),
+        ...(job.with && Object.keys(job.with).length > 0 ? { with: { ...job.with } } : {}),
+        uses: job.uses,
+      };
+      continue;
+    }
+
     assertAllowedKeys(
       job,
       [
+        'kind',
         'id',
         'if',
         'needs',

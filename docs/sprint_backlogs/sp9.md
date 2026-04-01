@@ -8,7 +8,7 @@ Capacity: 15 story points.
 
 Selected implementation units for Sprint 9: 14/15 story points.
 
-Status: ready
+Status: done
 
 ## Planning Notes
 
@@ -77,6 +77,6 @@ Status: ready
 - Definition of Done: Jobs support optional `if` and `continue-on-error`, validation rejects blank expressions and non-boolean values, rendering is deterministic in the canonical job-field position, conformance fixtures cover the new fields across runtimes, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Users can set `if` conditions and `continueOnError` on jobs, blank `if` strings fail at build time, `if` renders before `needs` and `continue-on-error` renders after `needs` in canonical job-field order, the fields compose correctly with existing job-level features like `needs` and `permissions`, and cross-runtime conformance fixtures are added in the same slice.
 - Story Points: 2
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). The `if` field is accepted as a plain string expression; no AST-level expression validation is in scope for this item.
+- Status: done
+- Completed At: 2026-04-01T10:45:00Z
+- Notes/Links: [SPEC.md](../SPEC.md). The `if` field is accepted as a plain string expression; no AST-level expression validation is in scope for this item. PR #25 merged into sprint-9 branch.

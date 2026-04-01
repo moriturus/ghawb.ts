@@ -654,34 +654,34 @@ function createValidationIssues(
       );
     }
 
-    if (trigger.type === 'pull_request') {
+    if (trigger.type === 'pull_request' || trigger.type === 'pull_request_target') {
       if (trigger.tags !== undefined) {
         issues.push(
-          'trigger "pull_request" does not support tags. Supported: branches, branches-ignore, paths, paths-ignore, types'
+          `trigger "${trigger.type}" does not support tags. Supported: branches, branches-ignore, paths, paths-ignore, types`
         );
       }
 
       if (trigger.tagsIgnore !== undefined) {
         issues.push(
-          'trigger "pull_request" does not support tags-ignore. Supported: branches, branches-ignore, paths, paths-ignore, types'
+          `trigger "${trigger.type}" does not support tags-ignore. Supported: branches, branches-ignore, paths, paths-ignore, types`
         );
       }
     }
 
     if (trigger.types !== undefined) {
-      if (trigger.type !== 'pull_request') {
+      if (trigger.type !== 'pull_request' && trigger.type !== 'pull_request_target') {
         issues.push(
           `trigger "${trigger.type}" does not support types. Supported: branches, branches-ignore, paths, paths-ignore, tags, tags-ignore`
         );
       } else {
         if (trigger.types.length === 0) {
-          issues.push('trigger "pull_request" types must not be empty');
+          issues.push(`trigger "${trigger.type}" types must not be empty`);
         }
 
         for (const activityType of trigger.types) {
           if (!PULL_REQUEST_ACTIVITY_TYPES.includes(activityType as PullRequestActivityType)) {
             issues.push(
-              `trigger "pull_request" types contains unknown activity type "${activityType}". Expected: one of ${PULL_REQUEST_ACTIVITY_TYPES.map((t) => `"${t}"`).join(', ')}`
+              `trigger "${trigger.type}" types contains unknown activity type "${activityType}". Expected: one of ${PULL_REQUEST_ACTIVITY_TYPES.map((t) => `"${t}"`).join(', ')}`
             );
           }
         }
@@ -1725,6 +1725,14 @@ export class WorkflowBuilder {
   onPullRequest(filter: PullRequestTriggerFilter = {}): this {
     this.triggers.push({
       type: 'pull_request',
+      ...clonePullRequestFilter(filter),
+    });
+    return this;
+  }
+
+  onPullRequestTarget(filter: PullRequestTriggerFilter = {}): this {
+    this.triggers.push({
+      type: 'pull_request_target',
       ...clonePullRequestFilter(filter),
     });
     return this;

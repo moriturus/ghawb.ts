@@ -2,6 +2,7 @@ import {
   createJobId,
   createWorkflowId,
   defineWorkflow,
+  type PullRequestTriggerFilter,
   type WorkflowDefinition,
   type WorkflowRenderPayload,
 } from '@ghawb/sdk';
@@ -988,6 +989,36 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'pull_request_target_with_types',
+    defineWorkflow({
+      id: createWorkflowId('pull_request_target_with_types'),
+      name: 'PR Target',
+    })
+      .onPullRequestTarget({
+        branches: ['main'],
+        types: ['opened', 'synchronize', 'labeled'],
+      })
+      .addJob(createJobId('label_check'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo "checking labels"');
+      })
+      .build(),
+    {
+      name: 'PR Target',
+      on: {
+        pull_request_target: {
+          branches: ['main'],
+          types: ['opened', 'synchronize', 'labeled'],
+        },
+      },
+      jobs: {
+        label_check: {
+          'runs-on': 'ubuntu-latest',
+          steps: [{ run: 'echo "checking labels"' }],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -1426,5 +1457,36 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     expectedIssues: [
       'job "call" reusable workflow job must not define environment. Only step-based jobs support environment',
     ],
+  },
+  {
+    name: 'pull_request_target_rejects_tags',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('prt_tags'),
+        name: 'PRT Tags',
+      })
+        .onPullRequestTarget({ tags: ['v*'] } as unknown as PullRequestTriggerFilter)
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hi');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "pull_request_target" does not support tags. Supported: branches, branches-ignore, paths, paths-ignore, types',
+    ],
+  },
+  {
+    name: 'duplicate_pull_request_target',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('dup_prt'),
+        name: 'Dup PRT',
+      })
+        .onPullRequestTarget()
+        .onPullRequestTarget()
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hi');
+        })
+        .build(),
+    expectedIssues: ['duplicate trigger "pull_request_target"'],
   },
 ];

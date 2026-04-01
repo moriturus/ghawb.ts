@@ -602,6 +602,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   for (const triggerType of [
     'push',
     'pull_request',
+    'pull_request_target',
     'workflow_dispatch',
     'workflow_call',
     'schedule',

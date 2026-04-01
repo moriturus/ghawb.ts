@@ -1979,4 +1979,52 @@ describe('workflow builder', () => {
       expect(Object.isFrozen(strategy.exclude![0])).toBe(true);
     });
   });
+
+  it('builds steps with continue-on-error and timeout-minutes', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('step_continue_timeout'),
+      name: 'Step Continue Timeout',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .run('bun run lint', {
+            continueOnError: true,
+            timeoutMinutes: 30,
+          })
+          .uses('actions/checkout@v4', {
+            continueOnError: false,
+            timeoutMinutes: 10,
+          });
+      })
+      .build();
+
+    const steps = workflow.jobs[0]!.steps;
+    expect(steps[0]!.continueOnError).toBe(true);
+    expect(steps[0]!.timeoutMinutes).toBe(30);
+    expect(steps[1]!.continueOnError).toBe(false);
+    expect(steps[1]!.timeoutMinutes).toBe(10);
+  });
+
+  it('rejects invalid step continue-on-error and timeout-minutes', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('bad_step_meta'),
+      name: 'Bad Step Meta',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('echo hi', {
+          continueOnError: 'yes' as unknown as boolean,
+          timeoutMinutes: 0,
+        });
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "test" step 1 continue-on-error must be a boolean',
+        'job "test" step 1 timeout-minutes must be a positive integer',
+      ])
+    );
+  });
 });

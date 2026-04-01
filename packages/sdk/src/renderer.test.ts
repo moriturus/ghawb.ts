@@ -1572,4 +1572,55 @@ describe('workflow renderer', () => {
       expect(include[0]!.custom_key).toBe('value');
     });
   });
+
+  it('renders step continue-on-error and timeout-minutes in canonical position', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('render_step_continue_timeout'),
+      name: 'Render Step Continue Timeout',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run lint', {
+          continueOnError: true,
+          timeoutMinutes: 15,
+          workingDirectory: './src',
+        });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const stepPayload = payload.jobs.build!.steps[0]!;
+    const stepKeys = Object.keys(stepPayload);
+
+    expect(stepPayload['continue-on-error']).toBe(true);
+    expect(stepPayload['timeout-minutes']).toBe(15);
+    expect(stepPayload['working-directory']).toBe('./src');
+
+    expect(stepKeys.indexOf('working-directory')).toBeLessThan(
+      stepKeys.indexOf('continue-on-error')
+    );
+    expect(stepKeys.indexOf('continue-on-error')).toBeLessThan(stepKeys.indexOf('timeout-minutes'));
+    expect(stepKeys.indexOf('timeout-minutes')).toBeLessThan(stepKeys.indexOf('run'));
+  });
+
+  it('renders uses step with continue-on-error and timeout-minutes', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('render_uses_continue_timeout'),
+      name: 'Render Uses Continue Timeout',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').uses('actions/checkout@v4', {
+          continueOnError: false,
+          timeoutMinutes: 5,
+        });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const stepPayload = payload.jobs.build!.steps[0]!;
+
+    expect(stepPayload['continue-on-error']).toBe(false);
+    expect(stepPayload['timeout-minutes']).toBe(5);
+  });
 });

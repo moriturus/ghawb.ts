@@ -509,6 +509,52 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'step_continue_on_error_and_timeout',
+    defineWorkflow({
+      id: createWorkflowId('step_continue_on_error_and_timeout'),
+      name: 'Step Continue On Error And Timeout',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .run('bun run lint', {
+            name: 'Lint',
+            continueOnError: true,
+            timeoutMinutes: 10,
+          })
+          .uses('actions/checkout@v4', {
+            continueOnError: false,
+            timeoutMinutes: 5,
+          });
+      })
+      .build(),
+    {
+      name: 'Step Continue On Error And Timeout',
+      on: {
+        push: null,
+      },
+      jobs: {
+        test: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              name: 'Lint',
+              'continue-on-error': true,
+              'timeout-minutes': 10,
+              run: 'bun run lint',
+            },
+            {
+              'continue-on-error': false,
+              'timeout-minutes': 5,
+              uses: 'actions/checkout@v4',
+            },
+          ],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [

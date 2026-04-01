@@ -61,6 +61,7 @@ interface WorkflowStepDraft extends StepMetadata {
 
 interface WorkflowJobDraftBase {
   readonly id: JobId;
+  readonly name?: string;
   readonly if?: string;
   readonly needs?: readonly JobId[];
   readonly continueOnError?: boolean;
@@ -355,6 +356,10 @@ function createValidationIssues(
 
   if (workflow.name.trim().length === 0) {
     issues.push('workflow name must not be empty');
+  }
+
+  if (workflow.getRunName() !== undefined && workflow.getRunName()!.trim().length === 0) {
+    issues.push('workflow run-name must not be empty');
   }
 
   if (workflow.triggers.length === 0) {
@@ -694,6 +699,10 @@ function createValidationIssues(
       issues.push(`duplicate job id "${jobId}"`);
     } else {
       seenJobIds.add(jobId);
+    }
+
+    if (job.name !== undefined && job.name.trim().length === 0) {
+      issues.push(`job "${jobId}" name must not be empty`);
     }
 
     if (job.needs !== undefined) {
@@ -1341,6 +1350,7 @@ function finalizeReusableWorkflowJobSecrets(
 class JobBuilder {
   readonly id: JobId;
 
+  private jobName?: string;
   private jobIf?: string;
   private jobNeeds?: readonly JobId[];
   private jobContinueOnError?: boolean;
@@ -1370,6 +1380,11 @@ class JobBuilder {
 
   constructor(id: JobId) {
     this.id = id;
+  }
+
+  displayName(name: string): this {
+    this.jobName = name;
+    return this;
   }
 
   ifCondition(expression: string): this {
@@ -1520,6 +1535,7 @@ class JobBuilder {
       return {
         kind: 'reusable-workflow',
         id: this.id,
+        ...(this.jobName !== undefined ? { name: this.jobName } : {}),
         ...(this.jobIf !== undefined ? { if: this.jobIf } : {}),
         ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
         ...(this.jobContinueOnError !== undefined
@@ -1556,6 +1572,7 @@ class JobBuilder {
     return {
       kind: 'steps',
       id: this.id,
+      ...(this.jobName !== undefined ? { name: this.jobName } : {}),
       ...(this.jobIf !== undefined ? { if: this.jobIf } : {}),
       ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
       ...(this.jobContinueOnError !== undefined
@@ -1615,6 +1632,7 @@ export class WorkflowBuilder {
   readonly triggers: WorkflowTrigger[] = [];
 
   private readonly jobs: WorkflowJobDraft[] = [];
+  private runNameDraft?: string;
   private permissionsDraft?: WorkflowPermissions;
   private defaultsDraft?: {
     readonly run: WorkflowDefaultsRun;
@@ -1625,6 +1643,15 @@ export class WorkflowBuilder {
   constructor(id: WorkflowId, name: string) {
     this.id = id;
     this.name = name;
+  }
+
+  runName(runName: string): this {
+    this.runNameDraft = runName;
+    return this;
+  }
+
+  getRunName(): string | undefined {
+    return this.runNameDraft;
   }
 
   private addFilteredTrigger(type: FilteredTriggerType, filter: TriggerFilter): this {
@@ -1740,6 +1767,7 @@ export class WorkflowBuilder {
         return {
           kind: 'reusable-workflow',
           id: job.id,
+          ...(job.name !== undefined ? { name: job.name.trim() } : {}),
           ...(job.if !== undefined ? { if: job.if } : {}),
           ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
           ...(job.continueOnError !== undefined ? { continueOnError: job.continueOnError } : {}),
@@ -1759,6 +1787,7 @@ export class WorkflowBuilder {
       return {
         kind: 'steps',
         id: job.id,
+        ...(job.name !== undefined ? { name: job.name.trim() } : {}),
         ...(job.if !== undefined ? { if: job.if } : {}),
         ...(job.needs !== undefined ? { needs: finalizeNeeds(job.needs) } : {}),
         ...(job.continueOnError !== undefined ? { continueOnError: job.continueOnError } : {}),
@@ -1789,6 +1818,7 @@ export class WorkflowBuilder {
     return deepFreeze({
       id: this.id,
       name: this.name.trim(),
+      ...(this.runNameDraft !== undefined ? { runName: this.runNameDraft.trim() } : {}),
       on: this.triggers.map(cloneTrigger),
       ...(this.permissionsDraft !== undefined
         ? { permissions: canonicalizePermissions(this.permissionsDraft) }

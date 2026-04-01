@@ -799,4 +799,197 @@ describe('workflow builder', () => {
       (workflow.jobs[1]!.steps[0]!.env as Record<string, string>).CI = 'false';
     }).toThrow(TypeError);
   });
+
+  it('preserves workflow-level env in the built model', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_env'),
+      name: 'Workflow Env',
+    })
+      .onPush()
+      .env({
+        NODE_ENV: 'production',
+        CI: 'true',
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      })
+      .build();
+
+    expect(workflow.env).toEqual({
+      NODE_ENV: 'production',
+      CI: 'true',
+    });
+  });
+
+  it('preserves job-level env in the built model', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('job_env'),
+      name: 'Job Env',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job
+          .env({
+            NODE_ENV: 'test',
+            DEBUG: '1',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun run build');
+      })
+      .build();
+
+    expect(workflow.jobs[0]!.env).toEqual({
+      NODE_ENV: 'test',
+      DEBUG: '1',
+    });
+  });
+
+  it('preserves both workflow-level and job-level env together', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('both_env'),
+      name: 'Both Env',
+    })
+      .onPush()
+      .env({
+        CI: 'true',
+      })
+      .addJob(createJobId('build'), (job) => {
+        job
+          .env({
+            NODE_ENV: 'production',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun run build');
+      })
+      .build();
+
+    expect(workflow.env).toEqual({ CI: 'true' });
+    expect(workflow.jobs[0]!.env).toEqual({ NODE_ENV: 'production' });
+  });
+
+  it('rejects blank env keys at workflow level', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_workflow_env'),
+      name: 'Invalid Workflow Env',
+    })
+      .onPush()
+      .env({
+        '': 'value',
+        VALID: 'ok',
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run build');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['workflow env must not contain blank keys'])
+    );
+  });
+
+  it('rejects blank env keys at job level', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('invalid_job_env'),
+      name: 'Invalid Job Env',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job
+          .env({
+            ' ': 'value',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun run build');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['job "build" env must not contain blank keys'])
+    );
+  });
+
+  it('omits empty env maps from the built model', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('empty_env'),
+      name: 'Empty Env',
+    })
+      .onPush()
+      .env({})
+      .addJob(createJobId('build'), (job) => {
+        job.env({}).runsOn('ubuntu-latest').run('bun run build');
+      })
+      .build();
+
+    expect(workflow.env).toBeUndefined();
+    expect(workflow.jobs[0]!.env).toBeUndefined();
+  });
+
+  it('deep-freezes built env maps at workflow and job levels', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('frozen_env'),
+      name: 'Frozen Env',
+    })
+      .onPush()
+      .env({
+        CI: 'true',
+      })
+      .addJob(createJobId('build'), (job) => {
+        job
+          .env({
+            NODE_ENV: 'production',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun run build');
+      })
+      .build();
+
+    expect(Object.isFrozen(workflow.env)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[0]!.env)).toBe(true);
+
+    expect(() => {
+      (workflow.env as Record<string, string>).CI = 'false';
+    }).toThrow(TypeError);
+    expect(() => {
+      (workflow.jobs[0]!.env as Record<string, string>).NODE_ENV = 'dev';
+    }).toThrow(TypeError);
+  });
+
+  it('composes env with permissions and concurrency', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('env_compose'),
+      name: 'Env Compose',
+    })
+      .onPush()
+      .permissions({
+        contents: 'read',
+      })
+      .env({
+        CI: 'true',
+      })
+      .concurrency({
+        group: 'deploy',
+        cancelInProgress: true,
+      })
+      .addJob(createJobId('build'), (job) => {
+        job
+          .permissions({ checks: 'write' })
+          .concurrency({ group: 'build-${{ github.ref }}' })
+          .env({ NODE_ENV: 'production' })
+          .runsOn('ubuntu-latest')
+          .run('bun run build');
+      })
+      .build();
+
+    expect(workflow).toMatchObject({
+      permissions: { contents: 'read' },
+      env: { CI: 'true' },
+      concurrency: { group: 'deploy', cancelInProgress: true },
+      jobs: [
+        {
+          id: 'build',
+          permissions: { checks: 'write' },
+          concurrency: { group: 'build-${{ github.ref }}' },
+          env: { NODE_ENV: 'production' },
+        },
+      ],
+    });
+  });
 });

@@ -89,6 +89,8 @@ export interface WorkflowConcurrency {
   readonly cancelInProgress?: boolean;
 }
 
+export type WorkflowEnv = Readonly<Record<string, string>>;
+
 export interface WorkflowJob {
   readonly id: JobId;
   readonly needs?: readonly [JobId, ...JobId[]];
@@ -98,6 +100,7 @@ export interface WorkflowJob {
     readonly run: WorkflowDefaultsRun;
   };
   readonly concurrency?: WorkflowConcurrency;
+  readonly env?: WorkflowEnv;
   readonly strategy?: WorkflowStrategy;
   readonly runsOn: RunsOnTarget;
   readonly steps: readonly WorkflowStep[];
@@ -108,6 +111,7 @@ export interface WorkflowDefinition {
   readonly name: string;
   readonly on: readonly WorkflowTrigger[];
   readonly permissions?: WorkflowPermissions;
+  readonly env?: WorkflowEnv;
   readonly concurrency?: WorkflowConcurrency;
   readonly jobs: readonly WorkflowJob[];
 }

@@ -66,6 +66,84 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
     }
   ),
   createRenderFixture(
+    'env_workflow_and_job',
+    defineWorkflow({
+      id: createWorkflowId('env_workflow_and_job'),
+      name: 'Env Workflow And Job',
+    })
+      .onPush({
+        branches: ['main'],
+      })
+      .permissions({
+        contents: 'read',
+      })
+      .env({
+        CI: 'true',
+        NODE_ENV: 'production',
+      })
+      .concurrency({
+        group: 'deploy',
+      })
+      .addJob(createJobId('build'), (job) => {
+        job
+          .concurrency({
+            group: 'build-${{ github.ref }}',
+          })
+          .env({
+            DEPLOY_TARGET: 'staging',
+          })
+          .runsOn('ubuntu-latest')
+          .run('bun run build');
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.needs(createJobId('build')).runsOn('ubuntu-latest').run('bun test');
+      })
+      .build(),
+    {
+      name: 'Env Workflow And Job',
+      on: {
+        push: {
+          branches: ['main'],
+        },
+      },
+      permissions: {
+        contents: 'read',
+      },
+      env: {
+        CI: 'true',
+        NODE_ENV: 'production',
+      },
+      concurrency: {
+        group: 'deploy',
+      },
+      jobs: {
+        build: {
+          concurrency: {
+            group: 'build-${{ github.ref }}',
+          },
+          env: {
+            DEPLOY_TARGET: 'staging',
+          },
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run build',
+            },
+          ],
+        },
+        test: {
+          needs: ['build'],
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
     'dispatch_and_schedule',
     defineWorkflow({
       id: createWorkflowId('dispatch_and_schedule'),
@@ -291,5 +369,30 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: ['trigger "schedule" cron must not contain blank values'],
+  },
+  {
+    name: 'blank_env_keys',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_env_keys'),
+        name: 'Blank Env Keys',
+      })
+        .onPush()
+        .env({
+          '': 'workflow-value',
+        })
+        .addJob(createJobId('build'), (job) => {
+          job
+            .env({
+              ' ': 'job-value',
+            })
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        })
+        .build(),
+    expectedIssues: [
+      'workflow env must not contain blank keys',
+      'job "build" env must not contain blank keys',
+    ],
   },
 ];

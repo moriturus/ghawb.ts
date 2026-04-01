@@ -31,6 +31,7 @@ export type {
   WorkflowConcurrency,
   WorkflowDefinition,
   WorkflowDefaultsRun,
+  WorkflowEnv,
   WorkflowJob,
   WorkflowMatrix,
   WorkflowPermissionKey,

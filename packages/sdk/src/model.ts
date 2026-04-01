@@ -1,12 +1,123 @@
 import type { JobId, WorkflowId } from '@ghawb/shared';
 
 export type FilteredTriggerType = 'push' | 'pull_request' | 'pull_request_target';
+
+export type SimpleEventType =
+  | 'check_run'
+  | 'check_suite'
+  | 'create'
+  | 'delete'
+  | 'deployment'
+  | 'deployment_status'
+  | 'discussion'
+  | 'discussion_comment'
+  | 'fork'
+  | 'gollum'
+  | 'issue_comment'
+  | 'issues'
+  | 'label'
+  | 'member'
+  | 'merge_group'
+  | 'milestone'
+  | 'page_build'
+  | 'public'
+  | 'registry_package'
+  | 'release'
+  | 'repository_dispatch'
+  | 'status'
+  | 'watch';
+
+const SIMPLE_EVENT_TYPES: readonly string[] = [
+  'check_run',
+  'check_suite',
+  'create',
+  'delete',
+  'deployment',
+  'deployment_status',
+  'discussion',
+  'discussion_comment',
+  'fork',
+  'gollum',
+  'issue_comment',
+  'issues',
+  'label',
+  'member',
+  'merge_group',
+  'milestone',
+  'page_build',
+  'public',
+  'registry_package',
+  'release',
+  'repository_dispatch',
+  'status',
+  'watch',
+];
+
+export function isSimpleEventType(value: string): value is SimpleEventType {
+  return SIMPLE_EVENT_TYPES.includes(value);
+}
+
+export const SIMPLE_EVENT_ACTIVITY_TYPES: Readonly<
+  Partial<Record<SimpleEventType, readonly string[]>>
+> = {
+  check_run: ['created', 'rerequested', 'completed', 'requested_action'],
+  check_suite: ['completed', 'requested', 'rerequested'],
+  discussion: [
+    'created',
+    'edited',
+    'deleted',
+    'transferred',
+    'pinned',
+    'unpinned',
+    'labeled',
+    'unlabeled',
+    'locked',
+    'unlocked',
+    'category_changed',
+    'answered',
+    'unanswered',
+  ],
+  discussion_comment: ['created', 'edited', 'deleted'],
+  issue_comment: ['created', 'edited', 'deleted'],
+  issues: [
+    'opened',
+    'edited',
+    'deleted',
+    'transferred',
+    'pinned',
+    'unpinned',
+    'closed',
+    'reopened',
+    'assigned',
+    'unassigned',
+    'labeled',
+    'unlabeled',
+    'locked',
+    'unlocked',
+    'milestoned',
+    'demilestoned',
+  ],
+  label: ['created', 'edited', 'deleted'],
+  member: ['added', 'edited', 'removed'],
+  merge_group: ['checks_requested', 'destroyed'],
+  milestone: ['created', 'closed', 'opened', 'edited', 'deleted'],
+  registry_package: ['published', 'updated'],
+  release: ['published', 'unpublished', 'created', 'edited', 'deleted', 'prereleased', 'released'],
+  watch: ['started'],
+};
+
+export interface SimpleEventTrigger {
+  readonly type: SimpleEventType;
+  readonly types?: readonly string[];
+}
+
 export type TriggerType =
   | FilteredTriggerType
   | 'workflow_dispatch'
   | 'workflow_call'
   | 'workflow_run'
-  | 'schedule';
+  | 'schedule'
+  | SimpleEventType;
 
 export const PULL_REQUEST_ACTIVITY_TYPES = [
   'assigned',
@@ -124,7 +235,8 @@ export type WorkflowTrigger =
   | WorkflowDispatchTrigger
   | WorkflowCallTrigger
   | WorkflowRunTrigger
-  | ScheduleTrigger;
+  | ScheduleTrigger
+  | SimpleEventTrigger;
 
 export interface StepMetadata {
   readonly id?: string;

@@ -210,6 +210,7 @@ export type WorkflowServices = Readonly<Record<string, ContainerConfig>>;
 
 export interface WorkflowJobBase {
   readonly id: JobId;
+  readonly name?: string;
   readonly if?: string;
   readonly needs?: readonly [JobId, ...JobId[]];
   readonly continueOnError?: boolean;
@@ -251,6 +252,7 @@ export type WorkflowJob = StepsJob | ReusableWorkflowJob;
 export interface WorkflowDefinition {
   readonly id: WorkflowId;
   readonly name: string;
+  readonly runName?: string;
   readonly on: readonly WorkflowTrigger[];
   readonly permissions?: WorkflowPermissions;
   readonly defaults?: {

@@ -120,6 +120,7 @@ export interface WorkflowRenderContainerPayload {
 }
 
 export interface WorkflowRenderJobPayloadBase {
+  readonly name?: string;
   readonly if?: string;
   readonly needs?: readonly string[];
   readonly 'continue-on-error'?: boolean;
@@ -170,6 +171,7 @@ export type WorkflowRenderJobPayload =
 
 export interface WorkflowRenderPayload {
   readonly name: string;
+  readonly 'run-name'?: string;
   readonly on: Readonly<
     Partial<
       Record<
@@ -581,7 +583,7 @@ function createServicesPayload(
 export function createWorkflowRenderPayload(workflow: WorkflowDefinition): WorkflowRenderPayload {
   assertAllowedKeys(
     workflow,
-    ['id', 'name', 'on', 'permissions', 'defaults', 'env', 'concurrency', 'jobs'],
+    ['id', 'name', 'runName', 'on', 'permissions', 'defaults', 'env', 'concurrency', 'jobs'],
     'workflow'
   );
 
@@ -628,11 +630,23 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     if (job.kind === 'reusable-workflow') {
       assertAllowedKeys(
         job,
-        ['kind', 'id', 'if', 'needs', 'continueOnError', 'permissions', 'secrets', 'with', 'uses'],
+        [
+          'kind',
+          'id',
+          'name',
+          'if',
+          'needs',
+          'continueOnError',
+          'permissions',
+          'secrets',
+          'with',
+          'uses',
+        ],
         `job "${job.id}"`
       );
 
       jobs[String(job.id)] = {
+        ...(job.name !== undefined ? { name: job.name } : {}),
         ...(job.if !== undefined ? { if: job.if } : {}),
         ...(job.needs ? { needs: [...job.needs] } : {}),
         ...(job.continueOnError !== undefined ? { 'continue-on-error': job.continueOnError } : {}),
@@ -653,6 +667,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       [
         'kind',
         'id',
+        'name',
         'if',
         'needs',
         'continueOnError',
@@ -672,6 +687,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     );
 
     jobs[String(job.id)] = {
+      ...(job.name !== undefined ? { name: job.name } : {}),
       ...(job.if !== undefined ? { if: job.if } : {}),
       ...(job.needs ? { needs: [...job.needs] } : {}),
       ...(job.continueOnError !== undefined ? { 'continue-on-error': job.continueOnError } : {}),
@@ -699,6 +715,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
 
   return deepFreeze({
     name: workflow.name,
+    ...(workflow.runName !== undefined ? { 'run-name': workflow.runName } : {}),
     on,
     ...(workflowPermissions ? { permissions: workflowPermissions } : {}),
     ...workflowDefaults,

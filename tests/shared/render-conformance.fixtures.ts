@@ -893,6 +893,52 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'display_names',
+    defineWorkflow({
+      id: createWorkflowId('display_names'),
+      name: 'Display Names',
+    })
+      .runName('Build ${{ github.ref_name }}')
+      .onPush({
+        branches: ['main'],
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.displayName('Build & Test').runsOn('ubuntu-latest').run('npm test');
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .displayName('Deploy to staging')
+          .needs(createJobId('build'))
+          .usesWorkflow('org/repo/.github/workflows/deploy.yml@main');
+      })
+      .build(),
+    {
+      name: 'Display Names',
+      'run-name': 'Build ${{ github.ref_name }}',
+      on: {
+        push: {
+          branches: ['main'],
+        },
+      },
+      jobs: {
+        build: {
+          name: 'Build & Test',
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'npm test',
+            },
+          ],
+        },
+        deploy: {
+          name: 'Deploy to staging',
+          needs: ['build'],
+          uses: 'org/repo/.github/workflows/deploy.yml@main',
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -1219,5 +1265,34 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     expectedIssues: [
       'job "call" reusable workflow job must not define container. Only step-based jobs support container',
     ],
+  },
+  {
+    name: 'blank_run_name',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_run_name'),
+        name: 'Blank Run Name',
+      })
+        .runName('   ')
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').run('echo hi');
+        })
+        .build(),
+    expectedIssues: ['workflow run-name must not be empty'],
+  },
+  {
+    name: 'blank_job_name',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_job_name'),
+        name: 'Blank Job Name',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job.displayName('  ').runsOn('ubuntu-latest').run('echo hi');
+        })
+        .build(),
+    expectedIssues: ['job "test" name must not be empty'],
   },
 ];

@@ -1,6 +1,6 @@
 import type { JobId, WorkflowId } from '@ghawb/shared';
 
-export type FilteredTriggerType = 'push' | 'pull_request';
+export type FilteredTriggerType = 'push' | 'pull_request' | 'pull_request_target';
 export type TriggerType = FilteredTriggerType | 'workflow_dispatch' | 'workflow_call' | 'schedule';
 
 export const PULL_REQUEST_ACTIVITY_TYPES = [

@@ -2,6 +2,7 @@ import {
   WORKFLOW_PERMISSION_KEYS,
   type TriggerType,
   type WorkflowDefinition,
+  type WorkflowDispatchInput,
   type WorkflowMatrix,
   type WorkflowPermissionKey,
   type WorkflowPermissionLevel,
@@ -54,6 +55,18 @@ export interface WorkflowRenderScheduleEntryPayload {
   readonly cron: string;
 }
 
+export interface WorkflowRenderDispatchInputPayload {
+  readonly description?: string;
+  readonly required?: boolean;
+  readonly default?: string;
+  readonly type?: string;
+  readonly options?: readonly string[];
+}
+
+export interface WorkflowRenderDispatchPayload {
+  readonly inputs: Readonly<Record<string, WorkflowRenderDispatchInputPayload>>;
+}
+
 export interface WorkflowRenderStepPayload {
   readonly name?: string;
   readonly id?: string;
@@ -103,7 +116,10 @@ export interface WorkflowRenderPayload {
     Partial<
       Record<
         TriggerType,
-        WorkflowRenderTriggerPayload | readonly WorkflowRenderScheduleEntryPayload[] | null
+        | WorkflowRenderTriggerPayload
+        | readonly WorkflowRenderScheduleEntryPayload[]
+        | WorkflowRenderDispatchPayload
+        | null
       >
     >
   >;
@@ -140,11 +156,35 @@ function assertAllowedKeys(value: object, allowedKeys: readonly string[], label:
   }
 }
 
+function createDispatchInputPayload(input: WorkflowDispatchInput): WorkflowRenderDispatchInputPayload {
+  const payload: WorkflowRenderDispatchInputPayload = {
+    ...(input.description !== undefined ? { description: input.description } : {}),
+    ...(input.required !== undefined ? { required: input.required } : {}),
+    ...(input.default !== undefined ? { default: input.default } : {}),
+    ...(input.type !== undefined ? { type: input.type } : {}),
+    ...(input.options ? { options: [...input.options] } : {}),
+  };
+  return payload;
+}
+
 function createTriggerPayload(
   trigger: WorkflowTrigger
-): WorkflowRenderTriggerPayload | readonly WorkflowRenderScheduleEntryPayload[] | null {
+):
+  | WorkflowRenderTriggerPayload
+  | readonly WorkflowRenderScheduleEntryPayload[]
+  | WorkflowRenderDispatchPayload
+  | null {
   if (trigger.type === 'workflow_dispatch') {
-    assertAllowedKeys(trigger, ['type'], `trigger "${trigger.type}"`);
+    assertAllowedKeys(trigger, ['type', 'inputs'], `trigger "${trigger.type}"`);
+
+    if (trigger.inputs && Object.keys(trigger.inputs).length > 0) {
+      const inputs: Record<string, WorkflowRenderDispatchInputPayload> = {};
+      for (const [name, input] of Object.entries(trigger.inputs)) {
+        inputs[name] = createDispatchInputPayload(input);
+      }
+      return { inputs };
+    }
+
     return null;
   }
 
@@ -355,7 +395,10 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
   const on: Partial<
     Record<
       TriggerType,
-      WorkflowRenderTriggerPayload | readonly WorkflowRenderScheduleEntryPayload[] | null
+      | WorkflowRenderTriggerPayload
+      | readonly WorkflowRenderScheduleEntryPayload[]
+      | WorkflowRenderDispatchPayload
+      | null
     >
   > = {};
 

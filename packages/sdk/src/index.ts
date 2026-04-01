@@ -8,12 +8,14 @@ export {
   type WorkflowId,
 } from '@ghawb/shared';
 export { defineWorkflow, WorkflowBuilder } from './builders.ts';
-export { PULL_REQUEST_ACTIVITY_TYPES } from './model.ts';
+export { PULL_REQUEST_ACTIVITY_TYPES, WORKFLOW_DISPATCH_INPUT_TYPES } from './model.ts';
 export {
   createWorkflowRenderPayload,
   renderWorkflow,
   WorkflowRenderError,
   type WorkflowEmitter,
+  type WorkflowRenderDispatchInputPayload,
+  type WorkflowRenderDispatchPayload,
   type WorkflowRenderJobPayload,
   type WorkflowRenderPermissionsPayload,
   type WorkflowRenderPayload,
@@ -36,6 +38,9 @@ export type {
   WorkflowConcurrency,
   WorkflowDefinition,
   WorkflowDefaultsRun,
+  WorkflowDispatchInput,
+  WorkflowDispatchInputs,
+  WorkflowDispatchInputType,
   WorkflowEnv,
   WorkflowJob,
   WorkflowJobOutputs,

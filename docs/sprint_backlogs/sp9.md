@@ -53,9 +53,9 @@ Status: ready
 - Definition of Done: Steps support optional `continue-on-error` and `timeout-minutes`, validation rejects invalid types, rendering is deterministic in the canonical step-field position, conformance fixtures cover the new fields across runtimes, and the change is code reviewed by a non-implementing persona.
 - Acceptance Criteria: Users can set `continueOnError` and `timeoutMinutes` on any step (`run` or `uses`), non-boolean `continueOnError` and non-positive-integer `timeoutMinutes` fail at build time, the fields render after `working-directory` and before `run`/`uses` in canonical step-field order, and cross-runtime conformance fixtures are added in the same slice.
 - Story Points: 2
-- Status: ready
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). Mirrors the existing job-level `timeout-minutes` validation pattern.
+- Status: done
+- Completed At: 2026-04-01T08:00:00Z
+- Notes/Links: [SPEC.md](../SPEC.md). Mirrors the existing job-level `timeout-minutes` validation pattern. PR #23 merged into sprint-9 branch.
 
 ### Item 26: Workflow dispatch trigger inputs
 

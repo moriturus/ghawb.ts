@@ -610,11 +610,7 @@ describe('workflow renderer', () => {
       on: [
         {
           type: 'workflow_dispatch',
-          inputs: {
-            environment: {
-              required: true,
-            },
-          },
+          branches: ['main'],
         },
       ],
       jobs: [
@@ -634,11 +630,7 @@ describe('workflow renderer', () => {
         | WorkflowDefinition['on'][number]
         | {
             type: 'workflow_dispatch';
-            inputs: {
-              environment: {
-                required: boolean;
-              };
-            };
+            branches: string[];
           }
       >;
     };
@@ -646,7 +638,7 @@ describe('workflow renderer', () => {
     expect(() =>
       renderWorkflow(unsupportedWorkflow, (payload) => emitPseudoYaml(payload))
     ).toThrowError(
-      new WorkflowRenderError('unsupported trigger "workflow_dispatch" field "inputs"')
+      new WorkflowRenderError('unsupported trigger "workflow_dispatch" field "branches"')
     );
   });
 

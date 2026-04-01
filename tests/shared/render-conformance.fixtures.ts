@@ -555,6 +555,68 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'dispatch_with_inputs',
+    defineWorkflow({
+      id: createWorkflowId('dispatch_with_inputs'),
+      name: 'Dispatch With Inputs',
+    })
+      .onWorkflowDispatch({
+        environment: {
+          description: 'Target environment',
+          required: true,
+          default: 'staging',
+          type: 'choice',
+          options: ['staging', 'production'],
+        },
+        log_level: {
+          description: 'Log verbosity',
+          type: 'string',
+        },
+        dry_run: {
+          type: 'boolean',
+          required: false,
+        },
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run deploy');
+      })
+      .build(),
+    {
+      name: 'Dispatch With Inputs',
+      on: {
+        workflow_dispatch: {
+          inputs: {
+            environment: {
+              description: 'Target environment',
+              required: true,
+              default: 'staging',
+              type: 'choice',
+              options: ['staging', 'production'],
+            },
+            log_level: {
+              description: 'Log verbosity',
+              type: 'string',
+            },
+            dry_run: {
+              required: false,
+              type: 'boolean',
+            },
+          },
+        },
+      },
+      jobs: {
+        deploy: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: 'bun run deploy',
+            },
+          ],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -687,6 +749,27 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         .build(),
     expectedIssues: [
       'job "test" strategy.matrix exclude entry 1 references undeclared axis "runtime"',
+    ],
+  },
+  {
+    name: 'dispatch_choice_without_options',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('dispatch_choice_without_options'),
+        name: 'Dispatch Choice Without Options',
+      })
+        .onWorkflowDispatch({
+          environment: {
+            description: 'Target environment',
+            type: 'choice',
+          },
+        })
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').run('bun run deploy');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "workflow_dispatch" input "environment" type "choice" requires non-empty options',
     ],
   },
 ];

@@ -286,11 +286,7 @@ function createValidationIssues(
           }
 
           if (input.type !== undefined) {
-            if (
-              !WORKFLOW_DISPATCH_INPUT_TYPES.includes(
-                input.type as WorkflowDispatchInputType
-              )
-            ) {
+            if (!WORKFLOW_DISPATCH_INPUT_TYPES.includes(input.type as WorkflowDispatchInputType)) {
               issues.push(
                 `trigger "workflow_dispatch" input "${inputName}" type "${input.type}" is not a valid input type`
               );
@@ -1022,7 +1018,9 @@ class JobBuilder {
       id: this.id,
       ...(this.jobIf !== undefined ? { if: this.jobIf } : {}),
       ...(this.jobNeeds !== undefined ? { needs: [...this.jobNeeds] } : {}),
-      ...(this.jobContinueOnError !== undefined ? { continueOnError: this.jobContinueOnError } : {}),
+      ...(this.jobContinueOnError !== undefined
+        ? { continueOnError: this.jobContinueOnError }
+        : {}),
       ...(this.jobPermissions !== undefined
         ? { permissions: clonePermissions(this.jobPermissions) }
         : {}),

@@ -158,7 +158,9 @@ function assertAllowedKeys(value: object, allowedKeys: readonly string[], label:
   }
 }
 
-function createDispatchInputPayload(input: WorkflowDispatchInput): WorkflowRenderDispatchInputPayload {
+function createDispatchInputPayload(
+  input: WorkflowDispatchInput
+): WorkflowRenderDispatchInputPayload {
   const payload: WorkflowRenderDispatchInputPayload = {
     ...(input.description !== undefined ? { description: input.description } : {}),
     ...(input.required !== undefined ? { required: input.required } : {}),

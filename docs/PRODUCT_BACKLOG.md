@@ -33,55 +33,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-The team conducted a whole-team backlog intake after Sprint 7 closeout exhausted the previously planned backlog. Ten new items (`Item 20` through `Item 29`) were added, balancing workflow-surface expansion, SDK completeness, and distribution readiness. The items are listed below in priority order.
-
-### Item 20: Workflow-level and job-level environment variable maps
-
-- Why: Nearly every real GitHub Actions workflow uses `env` at the workflow or job level. The SDK currently supports `env` only at the step level, leaving a fundamental gap for users defining shared environment configuration.
-- Prerequisites: None. The existing step-level `env` pattern provides a clear model to extend.
-- Implementation Plan: Add `env` support to the workflow AST at both workflow and job levels, extend the builder API with `.env()` methods on `WorkflowBuilder` and `JobBuilder`, define deterministic rendering order for the `env` block, add validation that rejects blank keys, and update cross-runtime conformance fixtures.
-- Definition of Done: Workflow-level and job-level `env` maps render deterministically, validation rejects malformed entries explicitly, conformance fixtures cover the new surface across Bun/Node/Deno, docs and SPEC.md are updated, and the change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: Users can declare `env` on both workflow and job builders, the rendered YAML places `env` in the correct canonical position, blank keys are rejected at build time, and existing step-level `env` behavior is unchanged.
-- Story Points: 3
-- Status: pending
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). Sprint 7 retrospective requires cross-runtime conformance fixture updates in the same slice as any workflow-surface expansion.
-
-### Item 21: Pull request activity type filters
-
-- Why: The `types` field on `pull_request` triggers (e.g., `opened`, `synchronize`, `reopened`) is one of the most commonly used trigger filters in real workflows, and the SDK currently does not support it.
-- Prerequisites: None. The existing trigger filter model can be extended.
-- Implementation Plan: Add a `types` array to the `pull_request` trigger builder, validate accepted activity type names against the GitHub Actions documented set, reject unknown types explicitly, render the `types` field in deterministic order, and update conformance fixtures.
-- Definition of Done: Pull request triggers support an optional `types` filter, validation rejects unknown type names, rendering is deterministic, conformance fixtures cover the new filter across runtimes, and the change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: Users can specify `types: ['opened', 'synchronize']` on pull request triggers, unknown type names fail at build time, and the filter composes cleanly with existing `branches` and `paths` filters.
-- Story Points: 2
-- Status: pending
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). Scope is limited to `pull_request` activity types and does not extend to other event-specific type filters in this slice.
-
-### Item 22: Trigger filter negation and tag filters
-
-- Why: Real workflows commonly use `branches-ignore`, `paths-ignore`, `tags`, and `tags-ignore` to scope push and pull_request triggers. The SDK only supports positive `branches` and `paths` filters today.
-- Prerequisites: None. The existing trigger filter model provides the extension point.
-- Implementation Plan: Add `branches-ignore`, `paths-ignore`, `tags`, and `tags-ignore` fields to the trigger filter model, enforce mutual exclusion between positive and negative variants (e.g., `branches` and `branches-ignore` cannot coexist on the same trigger per GitHub Actions rules), add builder methods for each, render in canonical order, and update conformance fixtures.
-- Definition of Done: Push and pull_request triggers support negation and tag filters, mutual exclusion is validated at build time, rendering is deterministic and canonical, conformance fixtures cover the new filters across runtimes, and the change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: Users can declare `branchesIgnore`, `pathsIgnore`, `tags`, and `tagsIgnore` on push and pull_request triggers, combining positive and negative variants on the same filter type fails explicitly, and tag filters work on push triggers.
-- Story Points: 3
-- Status: pending
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). GitHub Actions enforces mutual exclusion between `branches` and `branches-ignore` on the same trigger; this item must replicate that constraint.
-
-### Item 23: Step identifiers and job output declarations
-
-- Why: Cross-job data flow is a fundamental GitHub Actions composition pattern. It requires step `id` fields (to capture step outputs) and job-level `outputs` maps (to expose values to downstream jobs). Neither is currently supported.
-- Prerequisites: None directly, but this item is sequenced after `Item 20` because job `outputs` benefit from a settled `env` model for consistent rendering order.
-- Implementation Plan: Add an optional `id` field to the step model with identifier validation, add a job-level `outputs` map that references step output expressions, validate step `id` uniqueness within a job, validate that output expressions reference declared step IDs, render `id` before other step fields and `outputs` in declared order within jobs, and update conformance fixtures.
-- Definition of Done: Steps support optional `id` fields, jobs support optional `outputs` maps, validation enforces uniqueness and referential integrity, rendering is deterministic, conformance fixtures cover step IDs and job outputs across runtimes, and the change is code reviewed by a non-implementing persona.
-- Acceptance Criteria: Users can assign IDs to steps and declare job outputs referencing those IDs, duplicate step IDs within a job fail at build time, output expressions referencing undeclared step IDs fail at build time, and the rendered YAML matches GitHub Actions expected structure.
-- Story Points: 5
-- Status: pending
-- Completed At: N/A
-- Notes/Links: [SPEC.md](../SPEC.md). This item unlocks the cross-job data-passing pattern that many multi-job workflows depend on.
+The team conducted a whole-team backlog intake after Sprint 7 closeout exhausted the previously planned backlog. Ten new items (`Item 20` through `Item 29`) were added. Sprint 8 committed `Item 20` through `Item 23` into the sprint backlog. Six items remain unselected below in priority order.
 
 ### Item 24: Strategy completion — fail-fast, max-parallel, and matrix include/exclude
 
@@ -157,13 +109,13 @@ The team conducted a whole-team backlog intake after Sprint 7 closeout exhausted
 
 ## Prioritization Notes
 
-- Team intake decision: After Sprint 7 closeout exhausted the previously planned backlog, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, SDK completeness, and distribution readiness.
+- Team intake decision: After Sprint 7 closeout exhausted the previously planned backlog, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, SDK completeness, and distribution readiness. Sprint 8 committed `Item 20` through `Item 23` into the sprint backlog.
 - Product Owner intake rationale (Aoi Sakamoto): Prioritize filling the most impactful SDK feature gaps first — `env` maps and trigger completeness are table-stakes for real workflow authoring. Cross-job data flow (`step id` + `job outputs`) and strategy completion follow because they unlock materially new workflow patterns. Distribution readiness is last because the SDK surface must stabilize before external consumers arrive.
 - Scrum Master intake rationale (Ren Takahashi): Keep dependency order flat where possible to reduce sequencing friction. Most items have no hard prerequisites, which allows sprint planning flexibility. `Item 29` is intentionally last because it benefits from the broadened surface. The Sprint 7 retrospective rule — every workflow-surface expansion must include cross-runtime conformance fixture updates in the same slice — applies to every item in this intake.
 - Developer intake rationale (Mio Kanda — SDK/Architecture): The items preserve the explicit-boundary pattern from ADR 0001. Each item adds one coherent AST surface with builder API, validation, deterministic rendering, and conformance fixtures. No item introduces implicit behavior, discovery, or YAML input.
 - Developer intake rationale (Haru Nishimura — Quality/Testing): Every item explicitly includes conformance fixture updates. The ordering allows validation patterns to be established early (env, triggers) and reused in later items (outputs, strategy). Property-based testing for determinism is desirable but not required in this intake scope.
 - Developer intake rationale (Yui Morita — Tooling/Workflow): Self-hosting expansion (`Item 29`) is the right capstone because it proves the broader SDK surface in the repository's own workflows. Packaging readiness in the same item gives distribution a concrete starting point without splitting it into a separate slice that might drift.
-- Ordered delivery guidance: The backlog is ordered by priority but most items have no hard inter-item dependencies. Sprint planning may reorder within a sprint if execution efficiency requires it, as long as `Item 29` stays last and the Sprint 7 retrospective conformance-fixture rule is honored.
+- Ordered delivery guidance: The remaining backlog is ordered by priority but most items have no hard inter-item dependencies. Sprint planning may reorder within a sprint if execution efficiency requires it, as long as `Item 29` stays last and the Sprint 7 retrospective conformance-fixture rule is honored.
 - Sprint 7 retrospective guidance remains in force: every workflow-surface expansion must add or update shared cross-runtime conformance fixtures in the same slice, and the explicit repository-local workflow contract must not be silently widened.
 
 ## Sprint Backlog Records
@@ -175,3 +127,4 @@ The team conducted a whole-team backlog intake after Sprint 7 closeout exhausted
 - [Sprint 5 Backlog](./sprint_backlogs/sp5.md)
 - [Sprint 6 Backlog](./sprint_backlogs/sp6.md)
 - [Sprint 7 Backlog](./sprint_backlogs/sp7.md)
+- [Sprint 8 Backlog](./sprint_backlogs/sp8.md)

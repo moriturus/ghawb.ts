@@ -10,6 +10,7 @@ import {
   WORKFLOW_PERMISSION_KEYS,
   PULL_REQUEST_ACTIVITY_TYPES,
   WORKFLOW_DISPATCH_INPUT_TYPES,
+  type ContainerConfig,
   type FilteredTriggerType,
   type MatrixAxisValues,
   type MatrixExcludeEntry,
@@ -44,6 +45,7 @@ import {
   type WorkflowPermissionMap,
   type WorkflowPermissionShorthand,
   type WorkflowPermissions,
+  type WorkflowServices,
   type WorkflowStrategy,
   type WorkflowStep,
   type WorkflowTrigger,
@@ -81,6 +83,8 @@ interface StepsJobDraft extends WorkflowJobDraftBase {
     readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   readonly runsOn?: string | readonly string[];
+  readonly container?: ContainerConfig;
+  readonly services?: WorkflowServices;
   readonly outputs?: WorkflowJobOutputs;
   readonly steps: readonly WorkflowStepDraft[];
 }
@@ -92,6 +96,8 @@ interface ReusableWorkflowJobDraft extends WorkflowJobDraftBase {
   readonly uses?: string;
   readonly steps: readonly WorkflowStepDraft[];
   readonly runsOn?: string | readonly string[];
+  readonly container?: ContainerConfig;
+  readonly services?: WorkflowServices;
 }
 
 type WorkflowJobDraft = StepsJobDraft | ReusableWorkflowJobDraft;
@@ -321,6 +327,23 @@ function cloneConcurrency(concurrency: WorkflowConcurrency): WorkflowConcurrency
 
 function cloneEnv(env: WorkflowEnv): WorkflowEnv {
   return { ...env };
+}
+
+function cloneContainerConfig(config: ContainerConfig): ContainerConfig {
+  return {
+    image: config.image,
+    ...(config.credentials ? { credentials: { ...config.credentials } } : {}),
+    ...(config.env ? { env: { ...config.env } } : {}),
+    ...(config.ports ? { ports: [...config.ports] } : {}),
+    ...(config.volumes ? { volumes: [...config.volumes] } : {}),
+    ...(config.options !== undefined ? { options: config.options } : {}),
+  };
+}
+
+function cloneServices(services: WorkflowServices): WorkflowServices {
+  return Object.fromEntries(
+    Object.entries(services).map(([key, value]) => [key, cloneContainerConfig(value)])
+  );
 }
 
 function createValidationIssues(
@@ -716,6 +739,13 @@ function createValidationIssues(
         }
       }
 
+      if (job.container !== undefined) {
+        issues.push(`job "${jobId}" reusable workflow job must not define container`);
+      }
+      if (job.services !== undefined) {
+        issues.push(`job "${jobId}" reusable workflow job must not define services`);
+      }
+
       continue;
     }
 
@@ -872,6 +902,22 @@ function createValidationIssues(
             }
           }
         }
+      }
+    }
+
+    if (job.container !== undefined) {
+      validateContainerConfig(`job "${jobId}" container`, job.container, issues);
+    }
+
+    if (job.services !== undefined) {
+      for (const [serviceName, serviceConfig] of Object.entries(job.services)) {
+        validateIdentifierLike(
+          `job "${jobId}" service "${serviceName}"`,
+          serviceName,
+          issues,
+          'name'
+        );
+        validateContainerConfig(`job "${jobId}" service "${serviceName}"`, serviceConfig, issues);
       }
     }
 
@@ -1048,6 +1094,57 @@ function validateEnv(owner: string, env: WorkflowEnv | undefined, issues: string
   }
 }
 
+function validateContainerConfig(owner: string, config: ContainerConfig, issues: string[]): void {
+  if (typeof config.image !== 'string' || config.image.trim().length === 0) {
+    issues.push(`${owner} image must be a non-blank string`);
+  }
+
+  if (config.credentials !== undefined) {
+    if (
+      typeof config.credentials.username !== 'string' ||
+      config.credentials.username.trim().length === 0
+    ) {
+      issues.push(`${owner} credentials username must be a non-blank string`);
+    }
+    if (
+      typeof config.credentials.password !== 'string' ||
+      config.credentials.password.trim().length === 0
+    ) {
+      issues.push(`${owner} credentials password must be a non-blank string`);
+    }
+  }
+
+  validateEnv(`${owner}`, config.env, issues);
+
+  if (config.ports !== undefined) {
+    for (const port of config.ports) {
+      if (typeof port === 'number') {
+        if (!Number.isInteger(port) || port <= 0) {
+          issues.push(`${owner} ports must contain positive integers`);
+        }
+      } else if (typeof port === 'string') {
+        if (port.trim().length === 0) {
+          issues.push(`${owner} ports must not contain blank strings`);
+        }
+      }
+    }
+  }
+
+  if (config.volumes !== undefined) {
+    for (const volume of config.volumes) {
+      if (volume.trim().length === 0) {
+        issues.push(`${owner} volumes must not contain blank strings`);
+      }
+    }
+  }
+
+  if (config.options !== undefined) {
+    if (typeof config.options !== 'string' || config.options.trim().length === 0) {
+      issues.push(`${owner} options must be a non-blank string`);
+    }
+  }
+}
+
 function validateIdentifierLike(
   location: string,
   value: string,
@@ -1188,6 +1285,8 @@ class JobBuilder {
     readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   private jobRunsOn?: string | readonly string[];
+  private jobContainer?: ContainerConfig;
+  private jobServices?: WorkflowServices;
   private jobOutputs?: WorkflowJobOutputs;
   private jobKind: 'steps' | 'reusable-workflow' = 'steps';
   private jobUses?: string;
@@ -1286,6 +1385,16 @@ class JobBuilder {
     return this;
   }
 
+  container(config: ContainerConfig): this {
+    this.jobContainer = cloneContainerConfig(config);
+    return this;
+  }
+
+  services(services: WorkflowServices): this {
+    this.jobServices = cloneServices(services);
+    return this;
+  }
+
   outputs(outputs: WorkflowJobOutputs): this {
     this.jobOutputs = { ...outputs };
     return this;
@@ -1353,6 +1462,10 @@ class JobBuilder {
             }
           : {}),
         ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+        ...(this.jobContainer !== undefined
+          ? { container: cloneContainerConfig(this.jobContainer) }
+          : {}),
+        ...(this.jobServices !== undefined ? { services: cloneServices(this.jobServices) } : {}),
         steps: this.jobSteps.map((step) => ({
           kind: step.kind,
           ...(step.run !== undefined ? { run: step.run } : {}),
@@ -1405,6 +1518,10 @@ class JobBuilder {
           }
         : {}),
       ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+      ...(this.jobContainer !== undefined
+        ? { container: cloneContainerConfig(this.jobContainer) }
+        : {}),
+      ...(this.jobServices !== undefined ? { services: cloneServices(this.jobServices) } : {}),
       ...(this.jobOutputs !== undefined ? { outputs: { ...this.jobOutputs } } : {}),
       steps: this.jobSteps.map((step) => ({
         kind: step.kind,
@@ -1586,6 +1703,8 @@ export class WorkflowBuilder {
           : {}),
         ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
         runsOn: finalizeRunsOn(job.runsOn!),
+        ...(job.container !== undefined ? { container: cloneContainerConfig(job.container) } : {}),
+        ...(job.services !== undefined ? { services: cloneServices(job.services) } : {}),
         ...(job.outputs !== undefined && Object.keys(job.outputs).length > 0
           ? { outputs: { ...job.outputs } }
           : {}),

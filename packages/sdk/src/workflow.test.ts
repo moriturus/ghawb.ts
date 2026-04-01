@@ -3338,4 +3338,340 @@ describe('workflow builder', () => {
     expect(job.if).toBe("github.ref == 'refs/heads/main'");
     expect(job.continueOnError).toBe(true);
   });
+
+  it('builds a job with container', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('container_job'),
+      name: 'Container Job',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .container({
+            image: 'node:20',
+            credentials: { username: 'user', password: '${{ secrets.DOCKER_PASSWORD }}' },
+            env: { NODE_ENV: 'test' },
+            ports: [80, '8080:80'],
+            volumes: ['/data:/data'],
+            options: '--cpus 2',
+          })
+          .run('npm test');
+      })
+      .build();
+
+    const job = workflow.jobs[0]!;
+    expect(job.kind).toBe('steps');
+    if (job.kind !== 'steps') return;
+    expect(job.container).toBeDefined();
+    expect(job.container!.image).toBe('node:20');
+    expect(job.container!.credentials).toEqual({
+      username: 'user',
+      password: '${{ secrets.DOCKER_PASSWORD }}',
+    });
+    expect(job.container!.env).toEqual({ NODE_ENV: 'test' });
+    expect(job.container!.ports).toEqual([80, '8080:80']);
+    expect(job.container!.volumes).toEqual(['/data:/data']);
+    expect(job.container!.options).toBe('--cpus 2');
+  });
+
+  it('builds a job with services', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('services_job'),
+      name: 'Services Job',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .services({
+            postgres: {
+              image: 'postgres:15',
+              env: { POSTGRES_PASSWORD: 'test' },
+              ports: [5432],
+            },
+            redis: {
+              image: 'redis:7',
+              ports: [6379],
+            },
+          })
+          .run('npm test');
+      })
+      .build();
+
+    const job = workflow.jobs[0]!;
+    expect(job.kind).toBe('steps');
+    if (job.kind !== 'steps') return;
+    expect(job.services).toBeDefined();
+    expect(job.services!['postgres']!.image).toBe('postgres:15');
+    expect(job.services!['redis']!.image).toBe('redis:7');
+  });
+
+  it('builds a job with container image only', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('container_image_only'),
+      name: 'Container Image Only',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').container({ image: 'node:20' }).run('npm test');
+      })
+      .build();
+
+    const job = workflow.jobs[0]!;
+    if (job.kind !== 'steps') return;
+    expect(job.container).toEqual({ image: 'node:20' });
+  });
+
+  it('deep-freezes container and services', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('frozen_container'),
+      name: 'Frozen Container',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .container({ image: 'node:20', env: { CI: 'true' } })
+          .services({ redis: { image: 'redis:7' } })
+          .run('npm test');
+      })
+      .build();
+
+    const job = workflow.jobs[0]!;
+    expect(Object.isFrozen(job)).toBe(true);
+    if (job.kind !== 'steps') return;
+    expect(Object.isFrozen(job.container)).toBe(true);
+    expect(Object.isFrozen(job.services)).toBe(true);
+  });
+
+  it('rejects blank container image', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('blank_container_image'),
+        name: 'Blank Container Image',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job.runsOn('ubuntu-latest').container({ image: '  ' }).run('npm test');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('rejects blank container credentials username', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('blank_cred_user'),
+        name: 'Blank Cred User',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .container({ image: 'node:20', credentials: { username: '  ', password: 'secret' } })
+            .run('npm test');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('rejects blank container credentials password', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('blank_cred_pass'),
+        name: 'Blank Cred Pass',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .container({ image: 'node:20', credentials: { username: 'user', password: '  ' } })
+            .run('npm test');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('rejects blank container env keys', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('blank_container_env'),
+        name: 'Blank Container Env',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .container({ image: 'node:20', env: { '': 'val' } })
+            .run('npm test');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('rejects non-positive integer container port', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('bad_port'),
+        name: 'Bad Port',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .container({ image: 'node:20', ports: [-1] })
+            .run('npm test');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('rejects blank string container port', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('blank_port'),
+        name: 'Blank Port',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .container({ image: 'node:20', ports: ['  '] })
+            .run('npm test');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('rejects blank container volume', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('blank_volume'),
+        name: 'Blank Volume',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .container({ image: 'node:20', volumes: ['  '] })
+            .run('npm test');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('rejects blank container options', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('blank_options'),
+        name: 'Blank Options',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .container({ image: 'node:20', options: '  ' })
+            .run('npm test');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('rejects invalid service name', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('bad_service_name'),
+        name: 'Bad Service Name',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .services({ '1bad': { image: 'redis:7' } })
+            .run('npm test');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('rejects container on reusable workflow job', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('reusable_container'),
+        name: 'Reusable Container',
+      })
+        .onPush()
+        .addJob(createJobId('call'), (job) => {
+          (job as unknown as { jobContainer: { image: string } }).jobContainer = {
+            image: 'node:20',
+          };
+          job.usesWorkflow('org/repo/.github/workflows/ci.yml@main');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('rejects services on reusable workflow job', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('reusable_services'),
+        name: 'Reusable Services',
+      })
+        .onPush()
+        .addJob(createJobId('call'), (job) => {
+          (job as unknown as { jobServices: Record<string, { image: string }> }).jobServices = {
+            redis: { image: 'redis:7' },
+          };
+          job.usesWorkflow('org/repo/.github/workflows/ci.yml@main');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
+
+  it('clones container config to prevent external mutation', () => {
+    const containerConfig = {
+      image: 'node:20',
+      env: { CI: 'true' },
+      ports: [80] as (number | string)[],
+      volumes: ['/data:/data'],
+    };
+
+    const workflow = defineWorkflow({
+      id: createWorkflowId('clone_container'),
+      name: 'Clone Container',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').container(containerConfig).run('npm test');
+      })
+      .build();
+
+    containerConfig.env.CI = 'false';
+    containerConfig.ports.push(443);
+    containerConfig.volumes.push('/tmp:/tmp');
+
+    const job = workflow.jobs[0]!;
+    if (job.kind !== 'steps') return;
+    expect(job.container!.env).toEqual({ CI: 'true' });
+    expect(job.container!.ports).toEqual([80]);
+    expect(job.container!.volumes).toEqual(['/data:/data']);
+  });
+
+  it('validates each service entry like a container config', () => {
+    expect(() =>
+      defineWorkflow({
+        id: createWorkflowId('bad_service_image'),
+        name: 'Bad Service Image',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .services({ postgres: { image: '  ' } })
+            .run('npm test');
+        })
+        .build()
+    ).toThrow(WorkflowValidationError);
+  });
 });

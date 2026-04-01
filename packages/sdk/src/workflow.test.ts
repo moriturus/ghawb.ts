@@ -55,6 +55,7 @@ describe('workflow builder', () => {
     ]);
     expect(workflow.jobs).toEqual([
       {
+        kind: 'steps',
         id: 'lint',
         runsOn: 'ubuntu-latest',
         steps: [
@@ -75,6 +76,7 @@ describe('workflow builder', () => {
         ],
       },
       {
+        kind: 'steps',
         id: 'test',
         runsOn: ['ubuntu-latest', 'self-hosted'],
         steps: [
@@ -104,6 +106,65 @@ describe('workflow builder', () => {
     expect(workflow.on).toEqual([
       {
         type: 'workflow_dispatch',
+      },
+    ]);
+  });
+
+  it('builds workflows with workflow_call triggers', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('reusable'),
+      name: 'Reusable',
+    })
+      .onWorkflowCall({
+        inputs: {
+          environment: {
+            description: 'Target environment',
+            required: true,
+            default: 'staging',
+            type: 'string',
+          },
+        },
+        outputs: {
+          artifact_url: {
+            description: 'Artifact URL',
+            value: '${{ jobs.build.outputs.artifact_url }}',
+          },
+        },
+        secrets: {
+          token: {
+            description: 'Deployment token',
+            required: true,
+          },
+        },
+      })
+      .addJob(createJobId('build'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'workflow_call',
+        inputs: {
+          environment: {
+            description: 'Target environment',
+            required: true,
+            default: 'staging',
+            type: 'string',
+          },
+        },
+        outputs: {
+          artifact_url: {
+            description: 'Artifact URL',
+            value: '${{ jobs.build.outputs.artifact_url }}',
+          },
+        },
+        secrets: {
+          token: {
+            description: 'Deployment token',
+            required: true,
+          },
+        },
       },
     ]);
   });
@@ -149,6 +210,7 @@ describe('workflow builder', () => {
 
     expect(workflow.jobs).toEqual([
       {
+        kind: 'steps',
         id: 'build',
         runsOn: 'ubuntu-latest',
         steps: [
@@ -159,6 +221,7 @@ describe('workflow builder', () => {
         ],
       },
       {
+        kind: 'steps',
         id: 'test',
         needs: ['build'],
         runsOn: 'ubuntu-latest',
@@ -170,6 +233,7 @@ describe('workflow builder', () => {
         ],
       },
       {
+        kind: 'steps',
         id: 'deploy',
         needs: ['build', 'test'],
         runsOn: 'ubuntu-latest',
@@ -202,6 +266,7 @@ describe('workflow builder', () => {
 
     expect(workflow.jobs).toEqual([
       {
+        kind: 'steps',
         id: 'test',
         strategy: {
           matrix: {
@@ -318,6 +383,7 @@ describe('workflow builder', () => {
 
     expect(workflow.jobs).toEqual([
       {
+        kind: 'steps',
         id: 'check',
         timeoutMinutes: 15,
         defaults: {
@@ -1044,16 +1110,16 @@ describe('workflow builder', () => {
     expect(Object.isFrozen(workflow.jobs[1]!.strategy!)).toBe(true);
     expect(Object.isFrozen(workflow.jobs[1]!.strategy!.matrix)).toBe(true);
     expect(Object.isFrozen(workflow.jobs[1]!.strategy!.matrix.node)).toBe(true);
-    expect(Object.isFrozen(workflow.jobs[1]!.steps)).toBe(true);
-    expect(Object.isFrozen(workflow.jobs[1]!.steps[0]!)).toBe(true);
-    expect(Object.isFrozen(workflow.jobs[1]!.steps[0]!.env!)).toBe(true);
-    expect(Object.isFrozen(workflow.jobs[1]!.steps[0]!.with!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.steps!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.steps![0]!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.steps![0]!.env!)).toBe(true);
+    expect(Object.isFrozen(workflow.jobs[1]!.steps![0]!.with!)).toBe(true);
 
     expect(() => {
       (workflow.on as unknown as Array<{ type: string }>).push({ type: 'pull_request' });
     }).toThrow(TypeError);
     expect(() => {
-      (workflow.jobs[1]!.steps[0]!.env as Record<string, string>).CI = 'false';
+      (workflow.jobs[1]!.steps![0]!.env as Record<string, string>).CI = 'false';
     }).toThrow(TypeError);
   });
 
@@ -1784,7 +1850,7 @@ describe('workflow builder', () => {
         })
         .build();
 
-      expect(workflow.jobs[0]!.steps[0]).toMatchObject({
+      expect(workflow.jobs[0]!.steps![0]).toMatchObject({
         kind: 'run',
         id: 'build-step',
         run: 'echo building',
@@ -1802,7 +1868,7 @@ describe('workflow builder', () => {
         })
         .build();
 
-      expect(workflow.jobs[0]!.steps[0]).toMatchObject({
+      expect(workflow.jobs[0]!.steps![0]).toMatchObject({
         kind: 'uses',
         id: 'checkout-step',
         uses: 'actions/checkout@v4',
@@ -1824,9 +1890,9 @@ describe('workflow builder', () => {
         })
         .build();
 
-      expect(workflow.jobs[0]!.steps[0]!.id).toBe('step1');
-      expect(workflow.jobs[0]!.steps[1]!.id).toBe('step2');
-      expect(workflow.jobs[0]!.steps[2]!.id).toBe('checkout');
+      expect(workflow.jobs[0]!.steps![0]!.id).toBe('step1');
+      expect(workflow.jobs[0]!.steps![1]!.id).toBe('step2');
+      expect(workflow.jobs[0]!.steps![2]!.id).toBe('checkout');
     });
 
     it('builds steps without IDs (backwards compatible)', () => {
@@ -1840,7 +1906,7 @@ describe('workflow builder', () => {
         })
         .build();
 
-      expect(workflow.jobs[0]!.steps[0]).not.toHaveProperty('id');
+      expect(workflow.jobs[0]!.steps![0]).not.toHaveProperty('id');
     });
 
     it('rejects step IDs with surrounding whitespace', () => {
@@ -1932,8 +1998,8 @@ describe('workflow builder', () => {
         })
         .build();
 
-      expect(workflow.jobs[0]!.steps[0]!.id).toBe('setup');
-      expect(workflow.jobs[1]!.steps[0]!.id).toBe('setup');
+      expect(workflow.jobs[0]!.steps![0]!.id).toBe('setup');
+      expect(workflow.jobs[1]!.steps![0]!.id).toBe('setup');
     });
 
     it('builds a job with outputs referencing declared step IDs', () => {
@@ -2110,9 +2176,9 @@ describe('workflow builder', () => {
         })
         .build();
 
-      expect(Object.isFrozen(workflow.jobs[0]!.steps[0]!)).toBe(true);
+      expect(Object.isFrozen(workflow.jobs[0]!.steps![0]!)).toBe(true);
       expect(() => {
-        (workflow.jobs[0]!.steps[0] as unknown as Record<string, unknown>).id = 'hacked';
+        (workflow.jobs[0]!.steps![0] as unknown as Record<string, unknown>).id = 'hacked';
       }).toThrow(TypeError);
     });
 
@@ -2159,6 +2225,7 @@ describe('workflow builder', () => {
 
       expect(workflow.jobs).toEqual([
         {
+          kind: 'steps',
           id: 'test',
           strategy: {
             failFast: false,
@@ -2373,7 +2440,7 @@ describe('workflow builder', () => {
       })
       .build();
 
-    const steps = workflow.jobs[0]!.steps;
+    const steps = workflow.jobs[0]!.steps!;
     expect(steps[0]!.continueOnError).toBe(true);
     expect(steps[0]!.timeoutMinutes).toBe(30);
     expect(steps[1]!.continueOnError).toBe(false);
@@ -2671,6 +2738,465 @@ describe('workflow builder', () => {
     expect(Object.isFrozen(trigger.inputs)).toBe(true);
     expect(Object.isFrozen(trigger.inputs.env)).toBe(true);
     expect(Object.isFrozen(trigger.inputs.env!.options)).toBe(true);
+  });
+
+  it('builds workflow_call with inputs outputs and secrets', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_call_full'),
+      name: 'Workflow Call Full',
+    })
+      .onWorkflowCall({
+        inputs: {
+          config_path: {
+            description: 'Config path',
+            required: false,
+            default: '.github/config.json',
+            type: 'string',
+          },
+        },
+        outputs: {
+          artifact_url: {
+            description: 'Artifact URL',
+            value: '${{ jobs.publish.outputs.artifact_url }}',
+          },
+        },
+        secrets: {
+          github_token: {
+            description: 'GitHub token',
+            required: true,
+          },
+        },
+      })
+      .addJob(createJobId('publish'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun run publish');
+      })
+      .build();
+
+    expect(workflow.on).toEqual([
+      {
+        type: 'workflow_call',
+        inputs: {
+          config_path: {
+            description: 'Config path',
+            required: false,
+            default: '.github/config.json',
+            type: 'string',
+          },
+        },
+        outputs: {
+          artifact_url: {
+            description: 'Artifact URL',
+            value: '${{ jobs.publish.outputs.artifact_url }}',
+          },
+        },
+        secrets: {
+          github_token: {
+            description: 'GitHub token',
+            required: true,
+          },
+        },
+      },
+    ]);
+  });
+
+  it('rejects workflow_call unsupported filters and types', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('workflow_call_bad_filters'),
+      name: 'Workflow Call Bad Filters',
+    })
+      .onWorkflowCall()
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    (
+      builder.triggers[0] as {
+        type: 'workflow_call';
+        branches?: string[];
+        paths?: string[];
+        types?: string[];
+      }
+    ).branches = ['main'];
+    (builder.triggers[0] as { type: 'workflow_call'; paths?: string[] }).paths = ['src/**'];
+    (builder.triggers[0] as { type: 'workflow_call'; types?: string[] }).types = ['completed'];
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_call" does not support branches',
+        'trigger "workflow_call" does not support paths',
+        'trigger "workflow_call" does not support types',
+      ])
+    );
+  });
+
+  it('rejects workflow_call names that do not match the identifier format', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('workflow_call_bad_names'),
+      name: 'Workflow Call Bad Names',
+    })
+      .onWorkflowCall({
+        inputs: {
+          'input name': { type: 'string' },
+        } as unknown as import('./index.ts').WorkflowCallInputs,
+        outputs: {
+          'bad/name': { value: '${{ jobs.test.outputs.value }}' },
+        } as unknown as import('./index.ts').WorkflowCallOutputs,
+        secrets: {
+          入力: { required: true },
+        } as unknown as import('./index.ts').WorkflowCallSecrets,
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_call" input "input name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'trigger "workflow_call" output "bad/name" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+        'trigger "workflow_call" secret "入力" name must match ^[a-zA-Z_][a-zA-Z0-9_-]*$',
+      ])
+    );
+  });
+
+  it('rejects blank workflow_call input names and non-boolean required', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('workflow_call_bad_input_required'),
+      name: 'Workflow Call Bad Input Required',
+    })
+      .onWorkflowCall({
+        inputs: {
+          '': {
+            required: 'yes' as unknown as boolean,
+          },
+          valid_input: {
+            required: 'no' as unknown as boolean,
+          },
+        } as unknown as import('./index.ts').WorkflowCallInputs,
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_call" inputs must not contain blank names',
+        'trigger "workflow_call" input "valid_input" required must be a boolean',
+      ])
+    );
+  });
+
+  it('rejects unsupported workflow_call input type and options', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('workflow_call_bad_input_type'),
+      name: 'Workflow Call Bad Input Type',
+    })
+      .onWorkflowCall({
+        inputs: {
+          choice_input: {
+            type: 'choice' as unknown as 'string',
+            options: ['a', 'b'],
+          } as unknown as import('./index.ts').WorkflowCallInput,
+        },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_call" input "choice_input" type "choice" is not supported',
+        'trigger "workflow_call" input "choice_input" options is not supported',
+      ])
+    );
+  });
+
+  it('rejects invalid workflow_call input types outside the shared allowlist', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('workflow_call_invalid_input_type'),
+      name: 'Workflow Call Invalid Input Type',
+    })
+      .onWorkflowCall({
+        inputs: {
+          bad_input: {
+            type: 'invalid' as unknown as 'string',
+          },
+        },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_call" input "bad_input" type "invalid" is not a valid input type',
+      ])
+    );
+  });
+
+  it('rejects blank workflow_call output values', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('workflow_call_blank_output'),
+      name: 'Workflow Call Blank Output',
+    })
+      .onWorkflowCall({
+        outputs: {
+          artifact_url: {
+            value: '   ',
+          },
+        },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_call" output "artifact_url" value must be a non-blank string',
+      ])
+    );
+  });
+
+  it('rejects non-boolean workflow_call secret required values', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('workflow_call_bad_secret_required'),
+      name: 'Workflow Call Bad Secret Required',
+    })
+      .onWorkflowCall({
+        secrets: {
+          token: {
+            required: 'yes' as unknown as boolean,
+          },
+        },
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_call" secret "token" required must be a boolean',
+      ])
+    );
+  });
+
+  it('rejects blank workflow_call output and secret names', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('workflow_call_blank_names'),
+      name: 'Workflow Call Blank Names',
+    })
+      .onWorkflowCall({
+        outputs: {
+          '': {
+            value: '${{ jobs.test.outputs.value }}',
+          },
+        } as unknown as import('./index.ts').WorkflowCallOutputs,
+        secrets: {
+          ' ': {
+            required: true,
+          },
+        } as unknown as import('./index.ts').WorkflowCallSecrets,
+      })
+      .addJob(createJobId('test'), (job) => {
+        job.runsOn('ubuntu-latest').run('bun test');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'trigger "workflow_call" outputs must not contain blank names',
+        'trigger "workflow_call" secrets must not contain blank names',
+      ])
+    );
+  });
+
+  it('builds reusable workflow jobs with explicit secret bindings', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('caller'),
+      name: 'Caller',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .ifCondition("github.ref == 'refs/heads/main'")
+          .continueOnError(true)
+          .usesWorkflow('./.github/workflows/deploy.yml@main', {
+            with: {
+              environment: 'production',
+            },
+            secrets: {
+              token: '${{ secrets.GITHUB_TOKEN }}',
+            },
+          });
+      })
+      .build();
+
+    expect(workflow.jobs).toEqual([
+      {
+        kind: 'reusable-workflow',
+        id: 'deploy',
+        if: "github.ref == 'refs/heads/main'",
+        continueOnError: true,
+        with: {
+          environment: 'production',
+        },
+        secrets: {
+          token: '${{ secrets.GITHUB_TOKEN }}',
+        },
+        uses: './.github/workflows/deploy.yml@main',
+      },
+    ]);
+  });
+
+  it('builds reusable workflow jobs with inherit secrets shorthand', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('caller_inherit'),
+      name: 'Caller Inherit',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.usesWorkflow('./.github/workflows/deploy.yml@main', {
+          secrets: 'inherit',
+        });
+      })
+      .build();
+
+    expect(workflow.jobs[0]).toEqual({
+      kind: 'reusable-workflow',
+      id: 'deploy',
+      secrets: 'inherit',
+      uses: './.github/workflows/deploy.yml@main',
+    });
+  });
+
+  it('builds reusable workflow jobs without secrets', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('caller_without_secrets'),
+      name: 'Caller Without Secrets',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.usesWorkflow('./.github/workflows/deploy.yml@main', {
+          with: {
+            environment: 'production',
+          },
+        });
+      })
+      .build();
+
+    expect(workflow.jobs[0]).toEqual({
+      kind: 'reusable-workflow',
+      id: 'deploy',
+      with: {
+        environment: 'production',
+      },
+      uses: './.github/workflows/deploy.yml@main',
+    });
+  });
+
+  it('rejects reusable workflow jobs mixed with inline steps or runs-on', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('caller_mixed_job'),
+      name: 'Caller Mixed Job',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .run('echo deploy', {
+            workingDirectory: './scripts',
+          })
+          .usesWorkflow('./.github/workflows/deploy.yml@main');
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "deploy" reusable workflow job must not define runs-on',
+        'job "deploy" reusable workflow job must not define inline steps',
+      ])
+    );
+  });
+
+  it('rejects blank reusable workflow with keys and secret values', () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId('caller_bad_bindings'),
+      name: 'Caller Bad Bindings',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.usesWorkflow('./.github/workflows/deploy.yml@main', {
+          with: {
+            ' ': 'production',
+          },
+          secrets: {
+            token: '   ',
+          },
+        });
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "deploy" with must not contain blank keys',
+        'job "deploy" secrets key "token" must not have a blank value',
+      ])
+    );
+  });
+
+  it('rejects reusable workflow jobs with missing or blank uses values', () => {
+    const missingUsesBuilder = defineWorkflow({
+      id: createWorkflowId('caller_missing_uses'),
+      name: 'Caller Missing Uses',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.usesWorkflow(undefined as unknown as string);
+      });
+
+    const blankUsesBuilder = defineWorkflow({
+      id: createWorkflowId('caller_blank_uses'),
+      name: 'Caller Blank Uses',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.usesWorkflow('   ');
+      });
+
+    expect(() => missingUsesBuilder.build()).toThrowError(
+      new WorkflowValidationError(['job "deploy" reusable workflow job must define uses'])
+    );
+    expect(() => blankUsesBuilder.build()).toThrowError(
+      new WorkflowValidationError(['job "deploy" reusable workflow uses must not be empty'])
+    );
+  });
+
+  it('deep-freezes workflow_call triggers and reusable workflow jobs', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('workflow_call_frozen'),
+      name: 'Workflow Call Frozen',
+    })
+      .onWorkflowCall({
+        inputs: {
+          target: {
+            type: 'string',
+          },
+        },
+      })
+      .addJob(createJobId('deploy'), (job) => {
+        job.usesWorkflow('./.github/workflows/deploy.yml@main', {
+          with: { target: 'prod' },
+          secrets: 'inherit',
+        });
+      })
+      .build();
+
+    const trigger = workflow.on[0] as {
+      type: 'workflow_call';
+      inputs: Record<string, { type?: string }>;
+    };
+    const job = workflow.jobs[0]!;
+
+    expect(Object.isFrozen(trigger)).toBe(true);
+    expect(Object.isFrozen(trigger.inputs)).toBe(true);
+    expect(Object.isFrozen(trigger.inputs.target)).toBe(true);
+    expect(Object.isFrozen(job)).toBe(true);
   });
 
   it('builds job with if condition', () => {

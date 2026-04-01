@@ -1,7 +1,7 @@
 import type { JobId, WorkflowId } from '@ghawb/shared';
 
 export type FilteredTriggerType = 'push' | 'pull_request';
-export type TriggerType = FilteredTriggerType | 'workflow_dispatch' | 'schedule';
+export type TriggerType = FilteredTriggerType | 'workflow_dispatch' | 'workflow_call' | 'schedule';
 
 export const PULL_REQUEST_ACTIVITY_TYPES = [
   'assigned',
@@ -68,12 +68,46 @@ export interface WorkflowDispatchTrigger {
   readonly inputs?: WorkflowDispatchInputs;
 }
 
+export interface WorkflowCallInput {
+  readonly description?: string;
+  readonly required?: boolean;
+  readonly default?: string;
+  readonly type?: WorkflowDispatchInputType;
+}
+
+export type WorkflowCallInputs = Readonly<Record<string, WorkflowCallInput>>;
+
+export interface WorkflowCallOutput {
+  readonly description?: string;
+  readonly value: string;
+}
+
+export type WorkflowCallOutputs = Readonly<Record<string, WorkflowCallOutput>>;
+
+export interface WorkflowCallSecret {
+  readonly description?: string;
+  readonly required?: boolean;
+}
+
+export type WorkflowCallSecrets = Readonly<Record<string, WorkflowCallSecret>>;
+
+export interface WorkflowCallTrigger {
+  readonly type: 'workflow_call';
+  readonly inputs?: WorkflowCallInputs;
+  readonly outputs?: WorkflowCallOutputs;
+  readonly secrets?: WorkflowCallSecrets;
+}
+
 export interface ScheduleTrigger {
   readonly type: 'schedule';
   readonly cron: readonly [string, ...string[]];
 }
 
-export type WorkflowTrigger = FilteredWorkflowTrigger | WorkflowDispatchTrigger | ScheduleTrigger;
+export type WorkflowTrigger =
+  | FilteredWorkflowTrigger
+  | WorkflowDispatchTrigger
+  | WorkflowCallTrigger
+  | ScheduleTrigger;
 
 export interface StepMetadata {
   readonly id?: string;
@@ -155,7 +189,7 @@ export interface WorkflowConcurrency {
 export type WorkflowEnv = Readonly<Record<string, string>>;
 export type WorkflowJobOutputs = Readonly<Record<string, string>>;
 
-export interface WorkflowJob {
+export interface WorkflowJobBase {
   readonly id: JobId;
   readonly if?: string;
   readonly needs?: readonly [JobId, ...JobId[]];
@@ -168,10 +202,28 @@ export interface WorkflowJob {
   readonly concurrency?: WorkflowConcurrency;
   readonly env?: WorkflowEnv;
   readonly strategy?: WorkflowStrategy;
-  readonly runsOn: RunsOnTarget;
+  readonly runsOn?: RunsOnTarget;
   readonly outputs?: WorkflowJobOutputs;
+  readonly steps?: readonly WorkflowStep[];
+  readonly secrets?: ReusableWorkflowJobSecrets;
+  readonly with?: Readonly<Record<string, string>>;
+  readonly uses?: string;
+}
+
+export interface StepsJob extends WorkflowJobBase {
+  readonly kind: 'steps';
+  readonly runsOn: RunsOnTarget;
   readonly steps: readonly WorkflowStep[];
 }
+
+export type ReusableWorkflowJobSecrets = 'inherit' | Readonly<Record<string, string>>;
+
+export interface ReusableWorkflowJob extends WorkflowJobBase {
+  readonly kind: 'reusable-workflow';
+  readonly uses: string;
+}
+
+export type WorkflowJob = StepsJob | ReusableWorkflowJob;
 
 export interface WorkflowDefinition {
   readonly id: WorkflowId;

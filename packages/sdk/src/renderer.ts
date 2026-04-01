@@ -156,6 +156,7 @@ export interface WorkflowRenderJobPayloadBase {
 
 export interface WorkflowRenderStepsJobPayload extends WorkflowRenderJobPayloadBase {
   readonly 'runs-on': string | readonly string[];
+  readonly environment?: string | { readonly name: string; readonly url?: string };
   readonly container?: WorkflowRenderContainerPayload;
   readonly services?: Readonly<Record<string, WorkflowRenderContainerPayload>>;
   readonly steps: readonly WorkflowRenderStepPayload[];
@@ -678,6 +679,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
         'env',
         'strategy',
         'runsOn',
+        'environment',
         'container',
         'services',
         'outputs',
@@ -702,6 +704,17 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
       ...(job.env && Object.keys(job.env).length > 0 ? { env: { ...job.env } } : {}),
       ...(job.strategy ? { strategy: createStrategyPayload(job.strategy) } : {}),
       'runs-on': Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
+      ...(job.environment !== undefined
+        ? {
+            environment:
+              typeof job.environment === 'string'
+                ? job.environment
+                : {
+                    name: job.environment.name,
+                    ...(job.environment.url !== undefined ? { url: job.environment.url } : {}),
+                  },
+          }
+        : {}),
       ...(job.container ? { container: createContainerPayload(job.container) } : {}),
       ...(job.services && Object.keys(job.services).length > 0
         ? { services: createServicesPayload(job.services) }

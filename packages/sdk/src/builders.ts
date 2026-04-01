@@ -37,6 +37,7 @@ import {
   type ReusableWorkflowJobSecrets,
   type ReusableWorkflowJob,
   type StepsJob,
+  type JobEnvironment,
   type WorkflowJob,
   type WorkflowJobOutputs,
   type WorkflowMatrix,
@@ -84,6 +85,7 @@ interface StepsJobDraft extends WorkflowJobDraftBase {
     readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   readonly runsOn?: string | readonly string[];
+  readonly environment?: string | { readonly name: string; readonly url?: string };
   readonly container?: ContainerConfig;
   readonly services?: WorkflowServices;
   readonly outputs?: WorkflowJobOutputs;
@@ -97,6 +99,7 @@ interface ReusableWorkflowJobDraft extends WorkflowJobDraftBase {
   readonly uses?: string;
   readonly steps: readonly WorkflowStepDraft[];
   readonly runsOn?: string | readonly string[];
+  readonly environment?: string | { readonly name: string; readonly url?: string };
   readonly container?: ContainerConfig;
   readonly services?: WorkflowServices;
 }
@@ -795,6 +798,12 @@ function createValidationIssues(
         );
       }
 
+      if (job.environment !== undefined) {
+        issues.push(
+          `job "${jobId}" reusable workflow job must not define environment. Only step-based jobs support environment`
+        );
+      }
+
       continue;
     }
 
@@ -815,6 +824,21 @@ function createValidationIssues(
 
       if (job.runsOn.some((target) => target.trim().length === 0)) {
         issues.push(`job "${jobId}" runs-on array must not contain blank values`);
+      }
+    }
+
+    if (job.environment !== undefined) {
+      if (typeof job.environment === 'string') {
+        if (job.environment.trim().length === 0) {
+          issues.push(`job "${jobId}" environment name must not be empty`);
+        }
+      } else {
+        if (job.environment.name.trim().length === 0) {
+          issues.push(`job "${jobId}" environment name must not be empty`);
+        }
+        if (job.environment.url !== undefined && job.environment.url.trim().length === 0) {
+          issues.push(`job "${jobId}" environment url must not be empty`);
+        }
       }
     }
 
@@ -1277,6 +1301,16 @@ function finalizeRunsOn(runsOn: string | readonly string[]): RunsOnTarget {
   return runsOn.map((target) => target.trim()) as [string, ...string[]];
 }
 
+function finalizeEnvironment(
+  env: string | { readonly name: string; readonly url?: string }
+): JobEnvironment {
+  if (typeof env === 'string') return env.trim();
+  return {
+    name: env.name.trim(),
+    ...(env.url !== undefined ? { url: env.url.trim() } : {}),
+  };
+}
+
 function finalizeNeeds(needs: readonly JobId[]): readonly [JobId, ...JobId[]] {
   return [...needs] as [JobId, ...JobId[]];
 }
@@ -1369,6 +1403,7 @@ class JobBuilder {
     readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
   private jobRunsOn?: string | readonly string[];
+  private jobEnvironment?: string | { readonly name: string; readonly url?: string };
   private jobContainer?: ContainerConfig;
   private jobServices?: WorkflowServices;
   private jobOutputs?: WorkflowJobOutputs;
@@ -1474,6 +1509,11 @@ class JobBuilder {
     return this;
   }
 
+  environment(environment: string | { readonly name: string; readonly url?: string }): this {
+    this.jobEnvironment = typeof environment === 'string' ? environment : { ...environment };
+    return this;
+  }
+
   container(config: ContainerConfig): this {
     this.jobContainer = cloneContainerConfig(config);
     return this;
@@ -1552,6 +1592,14 @@ class JobBuilder {
             }
           : {}),
         ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+        ...(this.jobEnvironment !== undefined
+          ? {
+              environment:
+                typeof this.jobEnvironment === 'string'
+                  ? this.jobEnvironment
+                  : { ...this.jobEnvironment },
+            }
+          : {}),
         ...(this.jobContainer !== undefined
           ? { container: cloneContainerConfig(this.jobContainer) }
           : {}),
@@ -1609,6 +1657,14 @@ class JobBuilder {
           }
         : {}),
       ...(this.jobRunsOn !== undefined ? { runsOn: this.jobRunsOn } : {}),
+      ...(this.jobEnvironment !== undefined
+        ? {
+            environment:
+              typeof this.jobEnvironment === 'string'
+                ? this.jobEnvironment
+                : { ...this.jobEnvironment },
+          }
+        : {}),
       ...(this.jobContainer !== undefined
         ? { container: cloneContainerConfig(this.jobContainer) }
         : {}),
@@ -1806,6 +1862,9 @@ export class WorkflowBuilder {
           : {}),
         ...(job.strategy !== undefined ? { strategy: finalizeStrategy(job.strategy) } : {}),
         runsOn: finalizeRunsOn(job.runsOn!),
+        ...(job.environment !== undefined
+          ? { environment: finalizeEnvironment(job.environment) }
+          : {}),
         ...(job.container !== undefined ? { container: cloneContainerConfig(job.container) } : {}),
         ...(job.services !== undefined ? { services: cloneServices(job.services) } : {}),
         ...(job.outputs !== undefined && Object.keys(job.outputs).length > 0

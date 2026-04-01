@@ -18,10 +18,10 @@ This board tracks Scrum Master owned team-improvement follow-up items.
    Status: Concretized as product backlog Item 30 (sprint ceremony process hardening).
 5. Make it explicit that sprint execution does not stop at a response-turn boundary when committed sprint items remain.
    Scope: when using scripted sprint-execution workflows such as `do-sprint`, require the coordinator to continue to the next ready item unless a documented stop condition is hit, instead of treating a status report or turn boundary as implicit completion.
-   Status: Open.
+   Status: Concretized as product backlog Item 30 (sprint ceremony process hardening).
 6. Add sprint-summary and sprint-document synchronization to the closeout checklist.
    Scope: before calling sprint closeout complete, confirm that the sprint backlog summary status, sprint review note, retrospective note, and documentation index are all updated or intentionally deferred with a recorded reason.
-   Status: Open.
+   Status: Concretized as product backlog Item 30 (sprint ceremony process hardening).
 
 ## Closed Items
 

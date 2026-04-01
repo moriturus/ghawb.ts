@@ -170,6 +170,10 @@ Check:
 - the review or retrospective note exists or was intentionally skipped
 - any required `docs/INDEX.md` update is present
 - any sprint summary or backlog status synchronization required by the ceremony is present
+- the sprint review note is committed when review documentation was written
+- the sprint retrospective note is committed when retrospective documentation was written
+- the sprint backlog summary status is synced when the sprint state changed
+- the documentation index is synced when sprint review or retrospective docs were added
 - the resulting documentation changes are committed with a Conventional Commit message
 
 ## Escalation Rules

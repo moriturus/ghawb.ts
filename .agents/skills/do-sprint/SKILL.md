@@ -7,7 +7,7 @@ description: Execute a repository sprint backlog under explicit Scrum personas a
 
 ## Overview
 
-Execute the current sprint backlog one item at a time under explicit team personas. Gate execution on backlog readiness first, prefer sub-agent or multi-agent collaboration inside each current item, and keep Product Owner and Scrum Master personas out of implementation work. By default, continue from one backlog item to the next in sprint order until every committed item is `done` or a stop condition is hit.
+Execute the current sprint backlog one item at a time under explicit team personas. Gate execution on backlog readiness first, prefer sub-agent or multi-agent collaboration inside each current item, and keep Product Owner and Scrum Master personas out of implementation work. By default, continue from one backlog item to the next in sprint order until every committed item is `done` or a documented stop condition is hit. A response-turn boundary, status report, or progress summary is not itself a stop condition.
 
 Each sprint should normally run on a dedicated sprint branch. Each backlog item should normally be delivered on its own feature branch created from the latest sprint branch state, reviewed through its own pull request targeting the sprint branch, and the sprint branch itself should be merged back to `main` only through a final sprint-level pull request.
 
@@ -146,7 +146,7 @@ Update project records when the change requires it:
 - Publish a refreshed short plan for that next item before editing again, including a fresh explicit persona declaration.
 - Continue item-by-item until all committed sprint items are `done`.
 - After the final committed item is done, open the sprint closeout pull request from the sprint branch to `main`, verify the sprint-level hosted proof when required, and only then stop.
-- Do not stop merely because one item finished if later committed sprint items are still pending and no stop condition applies.
+- Do not stop merely because one item finished, because a status report was sent, or because one response turn ended if later committed sprint items are still pending and no stop condition applies.
 
 ## Completion Gate
 
@@ -175,6 +175,8 @@ Stop and report instead of pushing forward when any of these are true:
 - the current item's Definition of Done cannot yet be fully satisfied, even if implementation work is otherwise complete
 - all committed sprint backlog items are already `done`
 
+Anything not listed above is not a stop condition. In particular, reaching a natural response boundary, pausing to summarize progress, or finishing one item while later committed items remain does not authorize stopping sprint execution.
+
 ## Output Contract
 
 When using this skill, make the sprint state obvious in the response.
@@ -188,5 +190,6 @@ When using this skill, make the sprint state obvious in the response.
 - State explicitly whether the current item is `in progress` or `done` against its Definition of Done.
 - State whether Product Owner acceptance for the current item is still pending or completed.
 - State whether sprint execution is continuing to the next item, waiting on the sprint closeout pull request, or has stopped, and why.
+- If the response is only a status report and committed sprint items still remain, state explicitly that execution will continue after the report and name the next active step.
 - If any DoD evidence is still missing, name the missing evidence and do not present the item as complete.
 - If execution is blocked, stop there and list blockers instead of proposing implementation details.

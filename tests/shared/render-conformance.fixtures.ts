@@ -2,6 +2,7 @@ import {
   createJobId,
   createWorkflowId,
   defineWorkflow,
+  RunnerLabel,
   type PullRequestTriggerFilter,
   type WorkflowDefinition,
   type WorkflowRenderPayload,
@@ -1146,6 +1147,37 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
       jobs: {
         build: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'npm build' }] },
+      },
+    }
+  ),
+  createRenderFixture(
+    'typed_runner_labels',
+    defineWorkflow({
+      id: createWorkflowId('typed_runner_labels'),
+      name: 'Typed Runners',
+    })
+      .onPush({ branches: ['main'] })
+      .addJob(createJobId('linux'), (job) => {
+        job.runsOn(RunnerLabel.UbuntuLatest).run('echo linux');
+      })
+      .addJob(createJobId('macos'), (job) => {
+        job.runsOn(RunnerLabel.Macos15).run('echo macos');
+      })
+      .addJob(createJobId('windows'), (job) => {
+        job.runsOn(RunnerLabel.WindowsLatest).run('echo windows');
+      })
+      .addJob(createJobId('multi'), (job) => {
+        job.runsOn([RunnerLabel.UbuntuLatest, 'self-hosted']).run('echo multi');
+      })
+      .build(),
+    {
+      name: 'Typed Runners',
+      on: { push: { branches: ['main'] } },
+      jobs: {
+        linux: { 'runs-on': 'ubuntu-latest', steps: [{ run: 'echo linux' }] },
+        macos: { 'runs-on': 'macos-15', steps: [{ run: 'echo macos' }] },
+        windows: { 'runs-on': 'windows-latest', steps: [{ run: 'echo windows' }] },
+        multi: { 'runs-on': ['ubuntu-latest', 'self-hosted'], steps: [{ run: 'echo multi' }] },
       },
     }
   ),

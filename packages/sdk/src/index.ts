@@ -10,6 +10,7 @@ export {
 export { defineWorkflow, WorkflowBuilder } from './builders.ts';
 export {
   PULL_REQUEST_ACTIVITY_TYPES,
+  RunnerLabel,
   SIMPLE_EVENT_ACTIVITY_TYPES,
   WORKFLOW_DISPATCH_INPUT_TYPES,
   WORKFLOW_RUN_ACTIVITY_TYPES,
@@ -46,6 +47,7 @@ export type {
   RunStepMetadata,
   RunStep,
   RunsOnTarget as RunsOn,
+  RunsOnValue,
   SimpleEventTrigger,
   SimpleEventType,
   StepMetadata,

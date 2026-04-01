@@ -13,10 +13,6 @@ Its GitHub Actions workflow model is built in TypeScript, while YAML emission re
 - Test-driven development
 - Pure TypeScript with zero non-Node runtime dependencies
 
-## Status
-
-Sprint 3 is implemented. The repository now contains the SDK workspace, branded identifier factories without silent normalization, an immutable workflow builder with explicit `build()`-time validation, Vitest as the shared Bun/Node test platform, Deno smoke coverage, a deterministic renderer with an injected emitter boundary, a CLI that renders built workflow modules into YAML files, and self-hosted CI workflow generation through `ghawb`.
-
 ## Workspace
 
 - `packages/shared`: branded identifiers and shared validation errors

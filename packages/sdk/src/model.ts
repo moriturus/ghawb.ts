@@ -106,9 +106,15 @@ export type WorkflowPermissions = Readonly<
 export type RunsOnTarget = string | readonly [string, ...string[]];
 export type MatrixAxisValues = readonly [string, ...string[]];
 export type WorkflowMatrix = Readonly<Record<string, MatrixAxisValues>>;
+export type MatrixIncludeEntry = Readonly<Record<string, string>>;
+export type MatrixExcludeEntry = Readonly<Record<string, string>>;
 
 export interface WorkflowStrategy {
+  readonly failFast?: boolean;
+  readonly maxParallel?: number;
   readonly matrix: WorkflowMatrix;
+  readonly include?: readonly MatrixIncludeEntry[];
+  readonly exclude?: readonly MatrixExcludeEntry[];
 }
 
 export interface WorkflowDefaultsRun {

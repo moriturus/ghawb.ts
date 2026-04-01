@@ -1850,5 +1850,133 @@ describe('workflow builder', () => {
         (workflow.jobs[0]!.outputs as Record<string, string>).result = 'hacked';
       }).toThrow(TypeError);
     });
+
+    it('builds workflows with strategy fail-fast, max-parallel, include, and exclude', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('strategy_complete'),
+        name: 'Strategy Complete',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+            })
+            .strategyFailFast(false)
+            .strategyMaxParallel(2)
+            .strategyInclude([{ os: 'macos-latest', node: '22', experimental: 'true' }])
+            .strategyExclude([{ os: 'windows-latest', node: '18' }])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      expect(workflow.jobs).toEqual([
+        {
+          id: 'test',
+          strategy: {
+            failFast: false,
+            maxParallel: 2,
+            matrix: {
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+            },
+            include: [{ os: 'macos-latest', node: '22', experimental: 'true' }],
+            exclude: [{ os: 'windows-latest', node: '18' }],
+          },
+          runsOn: '${{ matrix.os }}',
+          steps: [
+            {
+              kind: 'run',
+              run: 'bun test',
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('rejects invalid strategy fail-fast, max-parallel, include, and exclude values', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('invalid_strategy'),
+        name: 'Invalid Strategy',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest'],
+              node: ['18'],
+            })
+            .strategyFailFast('yes' as unknown as boolean)
+            .strategyMaxParallel(0)
+            .strategyInclude([{ count: 42 as unknown as string }])
+            .strategyExclude([{ runtime: 'bun' }])
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "test" strategy.fail-fast must be a boolean',
+          'job "test" strategy.max-parallel must be a positive integer',
+          'job "test" strategy.matrix include entry 1 key "count" must be a string value',
+          'job "test" strategy.matrix exclude entry 1 references undeclared axis "runtime"',
+        ])
+      );
+    });
+
+    it('omits empty include and exclude arrays from built strategy', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('empty_include_exclude'),
+        name: 'Empty Include Exclude',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest'],
+            })
+            .strategyInclude([])
+            .strategyExclude([])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const strategy = workflow.jobs[0]!.strategy!;
+      expect(strategy.matrix).toEqual({ os: ['ubuntu-latest'] });
+      expect('include' in strategy).toBe(false);
+      expect('exclude' in strategy).toBe(false);
+    });
+
+    it('freezes strategy fail-fast, max-parallel, include, and exclude deeply', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('frozen_strategy'),
+        name: 'Frozen Strategy',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+            })
+            .strategyFailFast(false)
+            .strategyMaxParallel(2)
+            .strategyInclude([{ os: 'macos-latest', node: '22', experimental: 'true' }])
+            .strategyExclude([{ os: 'windows-latest', node: '18' }])
+            .runsOn('${{ matrix.os }}')
+            .run('bun test');
+        })
+        .build();
+
+      const strategy = workflow.jobs[0]!.strategy!;
+      expect(Object.isFrozen(strategy)).toBe(true);
+      expect(Object.isFrozen(strategy.include)).toBe(true);
+      expect(Object.isFrozen(strategy.exclude)).toBe(true);
+      expect(Object.isFrozen(strategy.include![0])).toBe(true);
+      expect(Object.isFrozen(strategy.exclude![0])).toBe(true);
+    });
   });
 });

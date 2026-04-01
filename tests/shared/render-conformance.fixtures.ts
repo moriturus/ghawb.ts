@@ -461,6 +461,54 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'strategy_full_surface',
+    defineWorkflow({
+      id: createWorkflowId('strategy_full_surface'),
+      name: 'Strategy Full Surface',
+    })
+      .onPush()
+      .addJob(createJobId('test'), (job) => {
+        job
+          .strategyFailFast(false)
+          .strategyMaxParallel(2)
+          .strategyMatrix({
+            os: ['ubuntu-latest', 'windows-latest'],
+            node: ['18', '20'],
+          })
+          .strategyInclude([{ os: 'macos-latest', node: '22', experimental: 'true' }])
+          .strategyExclude([{ os: 'windows-latest', node: '18' }])
+          .runsOn('${{ matrix.os }}')
+          .run('bun test');
+      })
+      .build(),
+    {
+      name: 'Strategy Full Surface',
+      on: {
+        push: null,
+      },
+      jobs: {
+        test: {
+          strategy: {
+            'fail-fast': false,
+            'max-parallel': 2,
+            matrix: {
+              os: ['ubuntu-latest', 'windows-latest'],
+              node: ['18', '20'],
+              include: [{ os: 'macos-latest', node: '22', experimental: 'true' }],
+              exclude: [{ os: 'windows-latest', node: '18' }],
+            },
+          },
+          'runs-on': '${{ matrix.os }}',
+          steps: [
+            {
+              run: 'bun test',
+            },
+          ],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -572,5 +620,27 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         })
         .build(),
     expectedIssues: ['job "build" outputs key "result" references undeclared step id "missing"'],
+  },
+  {
+    name: 'strategy_exclude_undeclared_axis',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('strategy_exclude_bad'),
+        name: 'Strategy Exclude Bad',
+      })
+        .onPush()
+        .addJob(createJobId('test'), (job) => {
+          job
+            .strategyMatrix({
+              os: ['ubuntu-latest'],
+            })
+            .strategyExclude([{ os: 'ubuntu-latest', runtime: 'node' }])
+            .runsOn('ubuntu-latest')
+            .run('bun test');
+        })
+        .build(),
+    expectedIssues: [
+      'job "test" strategy.matrix exclude entry 1 references undeclared axis "runtime"',
+    ],
   },
 ];

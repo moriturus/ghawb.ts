@@ -1161,7 +1161,7 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
         job.runsOn(RunnerLabel.UbuntuLatest).run('echo linux');
       })
       .addJob(createJobId('macos'), (job) => {
-        job.runsOn(RunnerLabel.macOS15).run('echo macos');
+        job.runsOn(RunnerLabel.MacOS15).run('echo macos');
       })
       .addJob(createJobId('windows'), (job) => {
         job.runsOn(RunnerLabel.WindowsLatest).run('echo windows');

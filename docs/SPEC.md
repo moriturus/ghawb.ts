@@ -36,7 +36,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - job-level `needs` dependencies referencing one or more previously declared job identifiers
   - job-level `strategy.matrix` objects whose axis keys must match `^[a-zA-Z_][a-zA-Z0-9_-]*$` and map to non-empty string arrays, with optional `include` entries (arbitrary string key-value records), `exclude` entries (records referencing only declared axis keys), `failFast` (boolean), and `maxParallel` (positive integer)
   - discriminated job variants: step-based jobs with `runs-on` in string or string-array form plus inline `steps`, and reusable-workflow jobs with job-level `uses`, optional `with`, and `secrets` as either an explicit map or the shorthand `inherit`
-  - typed runner labels via a `RunnerLabel` const object providing known GitHub-hosted runner constants (e.g., `RunnerLabel.UbuntuLatest`, `RunnerLabel.macOS15`, `RunnerLabel.WindowsLatest`) with IDE autocomplete support; custom or self-hosted string labels remain accepted through `string` fallback
+  - typed runner labels via a `RunnerLabel` const object providing known GitHub-hosted runner constants (e.g., `RunnerLabel.UbuntuLatest`, `RunnerLabel.MacOS15`, `RunnerLabel.WindowsLatest`) with IDE autocomplete support; custom or self-hosted string labels remain accepted through `string` fallback
   - steps using either `uses` or `run`
   - step metadata fields `name`, `env`, `with`, `if`, `continue-on-error` (boolean), and `timeout-minutes` (positive integer)
   - optional step `id` field whose value must match `^[a-zA-Z_][a-zA-Z0-9_-]*$`, with uniqueness enforcement within a job and explicit rejection of surrounding whitespace instead of trimming

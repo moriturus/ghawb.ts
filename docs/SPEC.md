@@ -91,7 +91,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 ## Quality Requirements
 
 - Follow test-driven development as the default implementation approach.
-- Target 100% code coverage.
+- Target 100% SDK line coverage. The "100% coverage" claim refers specifically to line, statement, and function coverage of `packages/sdk/src/` as measured by `bun run coverage` using Vitest's v8 provider. Branch coverage has a known exception: defensive branches in type-narrowed union code that are unreachable by design (e.g., exhaustive discriminant checks) are not counted as missing coverage.
 - Measure `packages/sdk/src/` coverage with `bun run coverage` using Vitest's v8 provider, emit lcov output to `coverage/lcov.info`, and fail CI when configured coverage thresholds regress.
 - Ensure generated workflow output is deterministic and idempotent.
 - Favor explicit validation and failure modes over silent coercion.

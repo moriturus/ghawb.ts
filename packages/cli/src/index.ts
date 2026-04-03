@@ -1,13 +1,13 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
-import { stringify } from 'yaml';
+import { stringify } from "yaml";
 
-import { renderWorkflow, type WorkflowDefinition, type WorkflowRenderPayload } from '@ghawb/sdk';
+import { renderWorkflow, type WorkflowDefinition, type WorkflowRenderPayload } from "@ghawb/sdk";
 
-export const CLI_PACKAGE_NAME = '@ghawb/cli';
-export const CLI_DELIVERY_STATUS = 'implemented';
+export const CLI_PACKAGE_NAME = "@ghawb/cli";
+export const CLI_DELIVERY_STATUS = "implemented";
 
 export interface CliIo {
   readonly stdout: (message: string) => void;
@@ -27,26 +27,26 @@ interface RenderTarget {
 export class CliUsageError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'CliUsageError';
+    this.name = "CliUsageError";
   }
 }
 
 function emitWorkflowYaml(payload: WorkflowRenderPayload): string {
   return `${stringify(payload, {
-    defaultStringType: 'PLAIN',
+    defaultStringType: "PLAIN",
     lineWidth: 0,
     simpleKeys: true,
   })}`;
 }
 
 function isWorkflowDefinition(value: unknown): value is WorkflowDefinition {
-  if (value === null || typeof value !== 'object') {
+  if (value === null || typeof value !== "object") {
     return false;
   }
 
   const candidate = value as Partial<WorkflowDefinition>;
   return (
-    typeof candidate.name === 'string' &&
+    typeof candidate.name === "string" &&
     Array.isArray(candidate.on) &&
     Array.isArray(candidate.jobs)
   );
@@ -59,13 +59,13 @@ function parseRenderArguments(args: readonly string[]): RenderTarget {
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
-    if (arg === '--input') {
+    if (arg === "--input") {
       inputPath = args[index + 1];
       index += 1;
       continue;
     }
 
-    if (arg === '--output') {
+    if (arg === "--output") {
       outputPath = args[index + 1];
       index += 1;
       continue;
@@ -75,11 +75,11 @@ function parseRenderArguments(args: readonly string[]): RenderTarget {
   }
 
   if (!inputPath) {
-    throw new CliUsageError('missing required --input argument');
+    throw new CliUsageError("missing required --input argument");
   }
 
   if (!outputPath) {
-    throw new CliUsageError('missing required --output argument');
+    throw new CliUsageError("missing required --output argument");
   }
 
   return {
@@ -95,7 +95,7 @@ function parseRenderBatchArguments(args: readonly string[]): readonly RenderTarg
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
-    if (arg === '--input') {
+    if (arg === "--input") {
       if (pendingInputPath) {
         throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
       }
@@ -104,18 +104,18 @@ function parseRenderBatchArguments(args: readonly string[]): readonly RenderTarg
       index += 1;
 
       if (!pendingInputPath) {
-        throw new CliUsageError('missing required value after --input');
+        throw new CliUsageError("missing required value after --input");
       }
 
       continue;
     }
 
-    if (arg === '--output') {
+    if (arg === "--output") {
       const outputPath = args[index + 1];
       index += 1;
 
       if (!pendingInputPath) {
-        throw new CliUsageError('batch render requires --input before --output');
+        throw new CliUsageError("batch render requires --input before --output");
       }
 
       if (!outputPath) {
@@ -138,7 +138,7 @@ function parseRenderBatchArguments(args: readonly string[]): readonly RenderTarg
   }
 
   if (targets.length === 0) {
-    throw new CliUsageError('missing required batch render targets');
+    throw new CliUsageError("missing required batch render targets");
   }
 
   return targets;
@@ -150,20 +150,20 @@ async function defaultImportModule(modulePath: string): Promise<unknown> {
 
 async function defaultWriteOutputFile(outputPath: string, contents: string): Promise<void> {
   await mkdir(dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, contents, 'utf8');
+  await writeFile(outputPath, contents, "utf8");
 }
 
 function usage(): string {
   return [
-    'Usage: ghawb render --input <workflow.ts> --output <workflow.yml>',
-    '       ghawb render-batch --input <workflow.ts> --output <workflow.yml> [--input <workflow.ts> --output <workflow.yml> ...]',
-  ].join('\n');
+    "Usage: ghawb render --input <workflow.ts> --output <workflow.yml>",
+    "       ghawb render-batch --input <workflow.ts> --output <workflow.yml> [--input <workflow.ts> --output <workflow.yml> ...]",
+  ].join("\n");
 }
 
 async function renderTarget(
   target: RenderTarget,
-  importModule: CliRunDependencies['importModule'],
-  writeOutputFile: CliRunDependencies['writeOutputFile']
+  importModule: CliRunDependencies["importModule"],
+  writeOutputFile: CliRunDependencies["writeOutputFile"]
 ): Promise<string> {
   const resolvedInputPath = resolve(target.inputPath);
   const resolvedOutputPath = resolve(target.outputPath);
@@ -171,7 +171,7 @@ async function renderTarget(
   const workflow = (loadedModule as { default?: unknown }).default;
 
   if (!isWorkflowDefinition(workflow)) {
-    throw new Error('default export must be a built workflow definition');
+    throw new Error("default export must be a built workflow definition");
   }
 
   const renderedYaml = renderWorkflow(workflow, emitWorkflowYaml);
@@ -190,7 +190,7 @@ export async function runCli(
   try {
     const [command, ...rest] = args;
 
-    if (command === 'render') {
+    if (command === "render") {
       const outputPath = await renderTarget(
         parseRenderArguments(rest),
         importModule,
@@ -200,7 +200,7 @@ export async function runCli(
       return 0;
     }
 
-    if (command === 'render-batch') {
+    if (command === "render-batch") {
       const targets = parseRenderBatchArguments(rest);
       const failures: string[] = [];
 
@@ -215,14 +215,14 @@ export async function runCli(
       }
 
       if (failures.length > 0) {
-        io.stderr(`Batch render failed:\n- ${failures.join('\n- ')}`);
+        io.stderr(`Batch render failed:\n- ${failures.join("\n- ")}`);
         return 1;
       }
 
       return 0;
     }
 
-    throw new CliUsageError(command ? `unknown command "${command}"` : 'missing command');
+    throw new CliUsageError(command ? `unknown command "${command}"` : "missing command");
   } catch (error) {
     if (error instanceof CliUsageError) {
       io.stderr(`${error.message}\n${usage()}`);

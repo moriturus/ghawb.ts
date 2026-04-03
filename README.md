@@ -5,21 +5,21 @@
 `ghawb` replaces hand-written YAML with a fluent TypeScript builder that validates your workflows at construction time, catches mistakes before CI ever runs, and renders deterministic YAML you can commit alongside your source.
 
 ```ts
-import { createJobId, createWorkflowId, defineWorkflow } from '@ghawb/sdk';
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
 
 const workflow = defineWorkflow({
-  id: createWorkflowId('ci'),
-  name: 'CI',
+  id: createWorkflowId("ci"),
+  name: "CI",
 })
-  .onPush({ branches: ['main'] })
-  .onPullRequest({ branches: ['main'] })
-  .addJob(createJobId('test'), (job) => {
+  .onPush({ branches: ["main"] })
+  .onPullRequest({ branches: ["main"] })
+  .addJob(createJobId("test"), (job) => {
     job
-      .runsOn('ubuntu-latest')
-      .uses('actions/checkout@v4')
-      .uses('actions/setup-node@v4', { with: { 'node-version': '22' } })
-      .run('npm ci', { name: 'Install' })
-      .run('npm test', { name: 'Test' });
+      .runsOn("ubuntu-latest")
+      .uses("actions/checkout@v4")
+      .uses("actions/setup-node@v4", { with: { "node-version": "22" } })
+      .run("npm ci", { name: "Install" })
+      .run("npm test", { name: "Test" });
   })
   .build();
 
@@ -58,20 +58,20 @@ npm install @ghawb/cli    # or pnpm / yarn / bun
 Create a file (e.g. `workflows/ci.ts`):
 
 ```ts
-import { createJobId, createWorkflowId, defineWorkflow } from '@ghawb/sdk';
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
 
 export default defineWorkflow({
-  id: createWorkflowId('ci'),
-  name: 'CI',
+  id: createWorkflowId("ci"),
+  name: "CI",
 })
-  .onPush({ branches: ['main'] })
-  .addJob(createJobId('build'), (job) => {
+  .onPush({ branches: ["main"] })
+  .addJob(createJobId("build"), (job) => {
     job
-      .runsOn('ubuntu-latest')
-      .uses('actions/checkout@v4')
-      .run('npm ci')
-      .run('npm run build')
-      .run('npm test');
+      .runsOn("ubuntu-latest")
+      .uses("actions/checkout@v4")
+      .run("npm ci")
+      .run("npm run build")
+      .run("npm test");
   })
   .build();
 ```
@@ -91,25 +91,25 @@ Treat the `.yml` as generated output from your TypeScript source.
 ### CI with Concurrency
 
 ```ts
-import { createJobId, createWorkflowId, defineWorkflow } from '@ghawb/sdk';
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
 
 export default defineWorkflow({
-  id: createWorkflowId('ci'),
-  name: 'CI',
+  id: createWorkflowId("ci"),
+  name: "CI",
 })
-  .onPush({ branches: ['main'] })
-  .onPullRequest({ branches: ['main'] })
+  .onPush({ branches: ["main"] })
+  .onPullRequest({ branches: ["main"] })
   .concurrency({
-    group: 'ci-${{ github.ref }}',
+    group: "ci-${{ github.ref }}",
     cancelInProgress: true,
   })
-  .addJob(createJobId('check'), (job) => {
+  .addJob(createJobId("check"), (job) => {
     job
-      .runsOn('ubuntu-latest')
-      .permissions({ contents: 'read' })
-      .uses('actions/checkout@v4')
-      .run('npm ci')
-      .run('npm test');
+      .runsOn("ubuntu-latest")
+      .permissions({ contents: "read" })
+      .uses("actions/checkout@v4")
+      .run("npm ci")
+      .run("npm test");
   })
   .build();
 ```
@@ -117,22 +117,22 @@ export default defineWorkflow({
 ### Deployment with Environment
 
 ```ts
-import { createJobId, createWorkflowId, defineWorkflow } from '@ghawb/sdk';
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
 
 export default defineWorkflow({
-  id: createWorkflowId('deploy'),
-  name: 'Deploy',
+  id: createWorkflowId("deploy"),
+  name: "Deploy",
 })
-  .onPush({ branches: ['main'] })
-  .addJob(createJobId('deploy'), (job) => {
+  .onPush({ branches: ["main"] })
+  .addJob(createJobId("deploy"), (job) => {
     job
-      .runsOn('ubuntu-latest')
-      .environment({ name: 'production', url: 'https://example.com' })
-      .permissions({ contents: 'read', deployments: 'write' })
-      .uses('actions/checkout@v4')
-      .run('npm ci')
-      .run('npm run build')
-      .run('npm run deploy');
+      .runsOn("ubuntu-latest")
+      .environment({ name: "production", url: "https://example.com" })
+      .permissions({ contents: "read", deployments: "write" })
+      .uses("actions/checkout@v4")
+      .run("npm ci")
+      .run("npm run build")
+      .run("npm run deploy");
   })
   .build();
 ```
@@ -140,26 +140,26 @@ export default defineWorkflow({
 ### Matrix Build
 
 ```ts
-import { createJobId, createWorkflowId, defineWorkflow } from '@ghawb/sdk';
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
 
 export default defineWorkflow({
-  id: createWorkflowId('matrix'),
-  name: 'Matrix CI',
+  id: createWorkflowId("matrix"),
+  name: "Matrix CI",
 })
-  .onPush({ branches: ['main'] })
-  .addJob(createJobId('test'), (job) => {
+  .onPush({ branches: ["main"] })
+  .addJob(createJobId("test"), (job) => {
     job
-      .runsOn('ubuntu-latest')
+      .runsOn("ubuntu-latest")
       .strategyMatrix({
-        node: ['20', '22', '24'],
-        os: ['ubuntu-latest', 'windows-latest'],
+        node: ["20", "22", "24"],
+        os: ["ubuntu-latest", "windows-latest"],
       })
-      .uses('actions/checkout@v4')
-      .uses('actions/setup-node@v4', {
-        with: { 'node-version': '${{ matrix.node }}' },
+      .uses("actions/checkout@v4")
+      .uses("actions/setup-node@v4", {
+        with: { "node-version": "${{ matrix.node }}" },
       })
-      .run('npm ci')
-      .run('npm test');
+      .run("npm ci")
+      .run("npm test");
   })
   .build();
 ```
@@ -167,19 +167,19 @@ export default defineWorkflow({
 ### Reusable Workflow
 
 ```ts
-import { createJobId, createWorkflowId, defineWorkflow } from '@ghawb/sdk';
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
 
 export default defineWorkflow({
-  id: createWorkflowId('release'),
-  name: 'Release',
+  id: createWorkflowId("release"),
+  name: "Release",
 })
-  .onPush({ tags: ['v*'] })
-  .addJob(createJobId('publish'), (job) => {
+  .onPush({ tags: ["v*"] })
+  .addJob(createJobId("publish"), (job) => {
     job
-      .permissions({ contents: 'read', packages: 'write' })
-      .usesWorkflow('octo-org/shared-workflows/.github/workflows/publish.yml@main', {
-        with: { artifact: 'dist' },
-        secrets: 'inherit',
+      .permissions({ contents: "read", packages: "write" })
+      .usesWorkflow("octo-org/shared-workflows/.github/workflows/publish.yml@main", {
+        with: { artifact: "dist" },
+        secrets: "inherit",
       });
   })
   .build();

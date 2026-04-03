@@ -1,44 +1,44 @@
-import { createJobId, createWorkflowId, defineWorkflow } from '@ghawb/sdk';
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
 
 export default defineWorkflow({
-  id: createWorkflowId('release'),
-  name: 'Release',
+  id: createWorkflowId("release"),
+  name: "Release",
 })
   .onPush({
-    branches: ['main'],
+    branches: ["main"],
   })
-  .permissions('read-all')
-  .addJob(createJobId('release'), (job) => {
+  .permissions("read-all")
+  .addJob(createJobId("release"), (job) => {
     job
-      .runsOn('ubuntu-latest')
+      .runsOn("ubuntu-latest")
       .permissions({
-        contents: 'write',
-        'pull-requests': 'write',
+        contents: "write",
+        "pull-requests": "write",
       })
-      .uses('actions/checkout@v4', {
-        name: 'Checkout',
+      .uses("actions/checkout@v4", {
+        name: "Checkout",
       })
-      .uses('actions/setup-node@v4', {
-        name: 'Setup Node',
+      .uses("actions/setup-node@v4", {
+        name: "Setup Node",
         with: {
-          'node-version': '24',
-          'registry-url': 'https://registry.npmjs.org',
+          "node-version": "24",
+          "registry-url": "https://registry.npmjs.org",
         },
       })
-      .run('npm install -g @changesets/cli', {
-        name: 'Install Changesets CLI',
+      .run("npm install -g @changesets/cli", {
+        name: "Install Changesets CLI",
       })
-      .run('npm ci', {
-        name: 'Install Dependencies',
+      .run("npm ci", {
+        name: "Install Dependencies",
       })
-      .uses('changesets/action@v1', {
-        name: 'Create Release Pull Request',
+      .uses("changesets/action@v1", {
+        name: "Create Release Pull Request",
         with: {
-          title: 'chore(release): version packages',
-          commit: 'chore(release): version packages',
+          title: "chore(release): version packages",
+          commit: "chore(release): version packages",
         },
         env: {
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
         },
       });
   })

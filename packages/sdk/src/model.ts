@@ -1,56 +1,56 @@
-import type { JobId, WorkflowId } from '@ghawb/shared';
+import type { JobId, WorkflowId } from "@ghawb/shared";
 
-export type FilteredTriggerType = 'push' | 'pull_request' | 'pull_request_target';
+export type FilteredTriggerType = "push" | "pull_request" | "pull_request_target";
 
 export type SimpleEventType =
-  | 'check_run'
-  | 'check_suite'
-  | 'create'
-  | 'delete'
-  | 'deployment'
-  | 'deployment_status'
-  | 'discussion'
-  | 'discussion_comment'
-  | 'fork'
-  | 'gollum'
-  | 'issue_comment'
-  | 'issues'
-  | 'label'
-  | 'member'
-  | 'merge_group'
-  | 'milestone'
-  | 'page_build'
-  | 'public'
-  | 'registry_package'
-  | 'release'
-  | 'repository_dispatch'
-  | 'status'
-  | 'watch';
+  | "check_run"
+  | "check_suite"
+  | "create"
+  | "delete"
+  | "deployment"
+  | "deployment_status"
+  | "discussion"
+  | "discussion_comment"
+  | "fork"
+  | "gollum"
+  | "issue_comment"
+  | "issues"
+  | "label"
+  | "member"
+  | "merge_group"
+  | "milestone"
+  | "page_build"
+  | "public"
+  | "registry_package"
+  | "release"
+  | "repository_dispatch"
+  | "status"
+  | "watch";
 
 const SIMPLE_EVENT_TYPES: readonly string[] = [
-  'check_run',
-  'check_suite',
-  'create',
-  'delete',
-  'deployment',
-  'deployment_status',
-  'discussion',
-  'discussion_comment',
-  'fork',
-  'gollum',
-  'issue_comment',
-  'issues',
-  'label',
-  'member',
-  'merge_group',
-  'milestone',
-  'page_build',
-  'public',
-  'registry_package',
-  'release',
-  'repository_dispatch',
-  'status',
-  'watch',
+  "check_run",
+  "check_suite",
+  "create",
+  "delete",
+  "deployment",
+  "deployment_status",
+  "discussion",
+  "discussion_comment",
+  "fork",
+  "gollum",
+  "issue_comment",
+  "issues",
+  "label",
+  "member",
+  "merge_group",
+  "milestone",
+  "page_build",
+  "public",
+  "registry_package",
+  "release",
+  "repository_dispatch",
+  "status",
+  "watch",
 ];
 
 export function isSimpleEventType(value: string): value is SimpleEventType {
@@ -60,50 +60,50 @@ export function isSimpleEventType(value: string): value is SimpleEventType {
 export const SIMPLE_EVENT_ACTIVITY_TYPES: Readonly<
   Partial<Record<SimpleEventType, readonly string[]>>
 > = {
-  check_run: ['created', 'rerequested', 'completed', 'requested_action'],
-  check_suite: ['completed', 'requested', 'rerequested'],
+  check_run: ["created", "rerequested", "completed", "requested_action"],
+  check_suite: ["completed", "requested", "rerequested"],
   discussion: [
-    'created',
-    'edited',
-    'deleted',
-    'transferred',
-    'pinned',
-    'unpinned',
-    'labeled',
-    'unlabeled',
-    'locked',
-    'unlocked',
-    'category_changed',
-    'answered',
-    'unanswered',
+    "created",
+    "edited",
+    "deleted",
+    "transferred",
+    "pinned",
+    "unpinned",
+    "labeled",
+    "unlabeled",
+    "locked",
+    "unlocked",
+    "category_changed",
+    "answered",
+    "unanswered",
   ],
-  discussion_comment: ['created', 'edited', 'deleted'],
-  issue_comment: ['created', 'edited', 'deleted'],
+  discussion_comment: ["created", "edited", "deleted"],
+  issue_comment: ["created", "edited", "deleted"],
   issues: [
-    'opened',
-    'edited',
-    'deleted',
-    'transferred',
-    'pinned',
-    'unpinned',
-    'closed',
-    'reopened',
-    'assigned',
-    'unassigned',
-    'labeled',
-    'unlabeled',
-    'locked',
-    'unlocked',
-    'milestoned',
-    'demilestoned',
+    "opened",
+    "edited",
+    "deleted",
+    "transferred",
+    "pinned",
+    "unpinned",
+    "closed",
+    "reopened",
+    "assigned",
+    "unassigned",
+    "labeled",
+    "unlabeled",
+    "locked",
+    "unlocked",
+    "milestoned",
+    "demilestoned",
   ],
-  label: ['created', 'edited', 'deleted'],
-  member: ['added', 'edited', 'removed'],
-  merge_group: ['checks_requested', 'destroyed'],
-  milestone: ['created', 'closed', 'opened', 'edited', 'deleted'],
-  registry_package: ['published', 'updated'],
-  release: ['published', 'unpublished', 'created', 'edited', 'deleted', 'prereleased', 'released'],
-  watch: ['started'],
+  label: ["created", "edited", "deleted"],
+  member: ["added", "edited", "removed"],
+  merge_group: ["checks_requested", "destroyed"],
+  milestone: ["created", "closed", "opened", "edited", "deleted"],
+  registry_package: ["published", "updated"],
+  release: ["published", "unpublished", "created", "edited", "deleted", "prereleased", "released"],
+  watch: ["started"],
 };
 
 export interface SimpleEventTrigger {
@@ -113,30 +113,30 @@ export interface SimpleEventTrigger {
 
 export type TriggerType =
   | FilteredTriggerType
-  | 'workflow_dispatch'
-  | 'workflow_call'
-  | 'workflow_run'
-  | 'schedule'
+  | "workflow_dispatch"
+  | "workflow_call"
+  | "workflow_run"
+  | "schedule"
   | SimpleEventType;
 
 export const PULL_REQUEST_ACTIVITY_TYPES = [
-  'assigned',
-  'unassigned',
-  'labeled',
-  'unlabeled',
-  'opened',
-  'edited',
-  'closed',
-  'reopened',
-  'synchronize',
-  'converted_to_draft',
-  'ready_for_review',
-  'locked',
-  'unlocked',
-  'review_requested',
-  'review_request_removed',
-  'auto_merge_enabled',
-  'auto_merge_disabled',
+  "assigned",
+  "unassigned",
+  "labeled",
+  "unlabeled",
+  "opened",
+  "edited",
+  "closed",
+  "reopened",
+  "synchronize",
+  "converted_to_draft",
+  "ready_for_review",
+  "locked",
+  "unlocked",
+  "review_requested",
+  "review_request_removed",
+  "auto_merge_enabled",
+  "auto_merge_disabled",
 ] as const;
 
 export type PullRequestActivityType = (typeof PULL_REQUEST_ACTIVITY_TYPES)[number];
@@ -160,11 +160,11 @@ export interface FilteredWorkflowTrigger extends TriggerFilter {
 }
 
 export const WORKFLOW_DISPATCH_INPUT_TYPES = [
-  'string',
-  'boolean',
-  'choice',
-  'number',
-  'environment',
+  "string",
+  "boolean",
+  "choice",
+  "number",
+  "environment",
 ] as const;
 
 export type WorkflowDispatchInputType = (typeof WORKFLOW_DISPATCH_INPUT_TYPES)[number];
@@ -180,7 +180,7 @@ export interface WorkflowDispatchInput {
 export type WorkflowDispatchInputs = Readonly<Record<string, WorkflowDispatchInput>>;
 
 export interface WorkflowDispatchTrigger {
-  readonly type: 'workflow_dispatch';
+  readonly type: "workflow_dispatch";
   readonly inputs?: WorkflowDispatchInputs;
 }
 
@@ -208,22 +208,22 @@ export interface WorkflowCallSecret {
 export type WorkflowCallSecrets = Readonly<Record<string, WorkflowCallSecret>>;
 
 export interface WorkflowCallTrigger {
-  readonly type: 'workflow_call';
+  readonly type: "workflow_call";
   readonly inputs?: WorkflowCallInputs;
   readonly outputs?: WorkflowCallOutputs;
   readonly secrets?: WorkflowCallSecrets;
 }
 
 export interface ScheduleTrigger {
-  readonly type: 'schedule';
+  readonly type: "schedule";
   readonly cron: readonly [string, ...string[]];
 }
 
-export const WORKFLOW_RUN_ACTIVITY_TYPES = ['completed', 'requested', 'in_progress'] as const;
+export const WORKFLOW_RUN_ACTIVITY_TYPES = ["completed", "requested", "in_progress"] as const;
 export type WorkflowRunActivityType = (typeof WORKFLOW_RUN_ACTIVITY_TYPES)[number];
 
 export interface WorkflowRunTrigger {
-  readonly type: 'workflow_run';
+  readonly type: "workflow_run";
   readonly workflows: readonly [string, ...string[]];
   readonly types?: readonly WorkflowRunActivityType[];
   readonly branches?: readonly string[];
@@ -260,61 +260,61 @@ export interface ScriptReference {
 }
 
 export interface RunStep extends RunStepMetadata {
-  readonly kind: 'run';
+  readonly kind: "run";
   readonly run: string;
   readonly scriptReference?: ScriptReference;
 }
 
 export interface UsesStep extends StepMetadata {
-  readonly kind: 'uses';
+  readonly kind: "uses";
   readonly uses: ActionRef;
 }
 
 export type WorkflowStep = RunStep | UsesStep;
 
 export const WORKFLOW_PERMISSION_KEYS = [
-  'actions',
-  'artifact-metadata',
-  'attestations',
-  'checks',
-  'contents',
-  'deployments',
-  'discussions',
-  'id-token',
-  'issues',
-  'models',
-  'packages',
-  'pages',
-  'pull-requests',
-  'security-events',
-  'statuses',
+  "actions",
+  "artifact-metadata",
+  "attestations",
+  "checks",
+  "contents",
+  "deployments",
+  "discussions",
+  "id-token",
+  "issues",
+  "models",
+  "packages",
+  "pages",
+  "pull-requests",
+  "security-events",
+  "statuses",
 ] as const;
 
 export type WorkflowPermissionKey = (typeof WORKFLOW_PERMISSION_KEYS)[number];
-export type WorkflowPermissionLevel = 'read' | 'write' | 'none';
-export type WorkflowPermissionShorthand = 'read-all' | 'write-all';
+export type WorkflowPermissionLevel = "read" | "write" | "none";
+export type WorkflowPermissionShorthand = "read-all" | "write-all";
 export type WorkflowPermissionMap = Readonly<
   Partial<Record<WorkflowPermissionKey, WorkflowPermissionLevel>>
 >;
 export type WorkflowPermissions = WorkflowPermissionMap | WorkflowPermissionShorthand;
 
 export const RunnerLabel = {
-  UbuntuLatest: 'ubuntu-latest',
-  Ubuntu2404: 'ubuntu-24.04',
-  Ubuntu2204: 'ubuntu-22.04',
-  WindowsLatest: 'windows-latest',
-  Windows2025: 'windows-2025',
-  Windows2022: 'windows-2022',
-  MacOSLatest: 'macos-latest',
-  MacOS15: 'macos-15',
-  MacOS14: 'macos-14',
-  MacOS13: 'macos-13',
-  MacOSLarge15: 'macos-15-large',
-  MacOSLarge14: 'macos-14-large',
-  MacOSLarge13: 'macos-13-large',
-  MacOSXlarge15: 'macos-15-xlarge',
-  MacOSXlarge14: 'macos-14-xlarge',
-  MacOSXlarge13: 'macos-13-xlarge',
+  UbuntuLatest: "ubuntu-latest",
+  Ubuntu2404: "ubuntu-24.04",
+  Ubuntu2204: "ubuntu-22.04",
+  WindowsLatest: "windows-latest",
+  Windows2025: "windows-2025",
+  Windows2022: "windows-2022",
+  MacOSLatest: "macos-latest",
+  MacOS15: "macos-15",
+  MacOS14: "macos-14",
+  MacOS13: "macos-13",
+  MacOSLarge15: "macos-15-large",
+  MacOSLarge14: "macos-14-large",
+  MacOSLarge13: "macos-13-large",
+  MacOSXlarge15: "macos-15-xlarge",
+  MacOSXlarge14: "macos-14-xlarge",
+  MacOSXlarge13: "macos-13-xlarge",
 } as const;
 
 export type RunnerLabel = (typeof RunnerLabel)[keyof typeof RunnerLabel];
@@ -355,7 +355,7 @@ export function actionRef(ref: string): ActionRef {
   const trimmed = ref.trim();
   if (trimmed.length === 0) {
     throw new Error(
-      'actionRef value must not be empty. Expected: owner/repo@ref, ./path, or docker://image'
+      "actionRef value must not be empty. Expected: owner/repo@ref, ./path, or docker://image"
     );
   }
   if (!isValidActionRef(trimmed)) {
@@ -370,7 +370,7 @@ export function workflowRef(ref: string): WorkflowRef {
   const trimmed = ref.trim();
   if (trimmed.length === 0) {
     throw new Error(
-      'workflowRef value must not be empty. Expected: owner/repo/.github/workflows/file@ref or ./.github/workflows/file'
+      "workflowRef value must not be empty. Expected: owner/repo/.github/workflows/file@ref or ./.github/workflows/file"
     );
   }
   if (!isValidWorkflowRef(trimmed)) {
@@ -455,7 +455,7 @@ export interface WorkflowJobBase {
 export type JobEnvironment = string | { readonly name: string; readonly url?: string };
 
 export interface StepsJob extends WorkflowJobBase {
-  readonly kind: 'steps';
+  readonly kind: "steps";
   readonly runsOn: RunsOnTarget;
   readonly environment?: JobEnvironment;
   readonly container?: ContainerConfig;
@@ -463,10 +463,10 @@ export interface StepsJob extends WorkflowJobBase {
   readonly steps: readonly WorkflowStep[];
 }
 
-export type ReusableWorkflowJobSecrets = 'inherit' | Readonly<Record<string, string>>;
+export type ReusableWorkflowJobSecrets = "inherit" | Readonly<Record<string, string>>;
 
 export interface ReusableWorkflowJob extends WorkflowJobBase {
-  readonly kind: 'reusable-workflow';
+  readonly kind: "reusable-workflow";
   readonly uses: WorkflowRef;
 }
 

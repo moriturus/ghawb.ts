@@ -1,7 +1,7 @@
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
-import { join, parse, relative, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
-import { spawn } from 'node:child_process';
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { join, parse, relative, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { spawn } from "node:child_process";
 
 export interface WorkflowMapping {
   readonly sourcePath: string;
@@ -17,11 +17,11 @@ export interface ValidateWorkflowLayoutOptions {
   readonly requireGeneratedOutputs?: boolean;
 }
 
-const SUPPORTED_SOURCE_EXTENSION = '.ts';
-const SUPPORTED_OUTPUT_EXTENSION = '.yml';
+const SUPPORTED_SOURCE_EXTENSION = ".ts";
+const SUPPORTED_OUTPUT_EXTENSION = ".yml";
 
 function relativeFromCwd(cwd: string, target: string): string {
-  return relative(cwd, target) || '.';
+  return relative(cwd, target) || ".";
 }
 
 async function runCommand(
@@ -32,22 +32,22 @@ async function runCommand(
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
 
-    child.stdout.on('data', (chunk: Buffer) => {
+    child.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString();
     });
 
-    child.stderr.on('data', (chunk: Buffer) => {
+    child.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString();
     });
 
-    child.on('error', reject);
-    child.on('close', (exitCode) => {
+    child.on("error", reject);
+    child.on("close", (exitCode) => {
       resolvePromise({
         exitCode: exitCode ?? 1,
         stdout,
@@ -62,8 +62,8 @@ export async function validateWorkflowLayout(
   options: ValidateWorkflowLayoutOptions = {}
 ): Promise<WorkflowLayoutResult> {
   const requireGeneratedOutputs = options.requireGeneratedOutputs ?? true;
-  const sourceDirectory = resolve(cwd, 'workflows');
-  const outputDirectory = resolve(cwd, '.github', 'workflows');
+  const sourceDirectory = resolve(cwd, "workflows");
+  const outputDirectory = resolve(cwd, ".github", "workflows");
   const sourceEntries = (await readdir(sourceDirectory, { withFileTypes: true })).sort(
     (left, right) => left.name.localeCompare(right.name)
   );
@@ -91,7 +91,7 @@ export async function validateWorkflowLayout(
   }
 
   for (const entry of outputFiles) {
-    if (entry.name.endsWith('.ts')) {
+    if (entry.name.endsWith(".ts")) {
       issues.push(
         `unsupported workflow source placement: ${relativeFromCwd(cwd, join(outputDirectory, entry.name))}`
       );
@@ -111,7 +111,7 @@ export async function validateWorkflowLayout(
     .sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
 
   if (mappings.length === 0) {
-    issues.push('no supported workflow source files were found under workflows/');
+    issues.push("no supported workflow source files were found under workflows/");
   }
 
   if (requireGeneratedOutputs) {
@@ -155,34 +155,34 @@ export async function verifyWorkflowGuardrails(cwd: string): Promise<readonly Wo
   const { mappings, issues } = await validateWorkflowLayout(cwd);
 
   if (issues.length > 0) {
-    throw new Error(`Workflow guardrails failed:\n- ${issues.join('\n- ')}`);
+    throw new Error(`Workflow guardrails failed:\n- ${issues.join("\n- ")}`);
   }
 
-  const tempDir = await mkdtemp(join(tmpdir(), 'ghawb-workflow-guardrails-'));
+  const tempDir = await mkdtemp(join(tmpdir(), "ghawb-workflow-guardrails-"));
 
   try {
     for (const mapping of mappings) {
       const renderedOutputPath = join(tempDir, parse(mapping.outputPath).base);
-      const renderResult = await runCommand(cwd, 'bun', [
-        'run',
-        'packages/cli/src/bin.ts',
-        'render',
-        '--input',
+      const renderResult = await runCommand(cwd, "bun", [
+        "run",
+        "packages/cli/src/bin.ts",
+        "render",
+        "--input",
         mapping.sourcePath,
-        '--output',
+        "--output",
         renderedOutputPath,
       ]);
 
       if (renderResult.exitCode !== 0) {
-        const detail = renderResult.stderr || renderResult.stdout || 'unknown render failure';
+        const detail = renderResult.stderr || renderResult.stdout || "unknown render failure";
         throw new Error(
           `Workflow guardrails failed while rendering ${relativeFromCwd(cwd, mapping.sourcePath)}:\n${detail.trim()}`
         );
       }
 
       const [expectedContents, renderedContents] = await Promise.all([
-        readFile(mapping.outputPath, 'utf8'),
-        readFile(renderedOutputPath, 'utf8'),
+        readFile(mapping.outputPath, "utf8"),
+        readFile(renderedOutputPath, "utf8"),
       ]);
 
       if (expectedContents !== renderedContents) {
@@ -202,7 +202,7 @@ if (import.meta.main) {
   try {
     const mappings = await verifyWorkflowGuardrails(process.cwd());
     const outputs = mappings.map((mapping) => relativeFromCwd(process.cwd(), mapping.outputPath));
-    console.log(`Verified workflow guardrails for ${outputs.join(', ')}`);
+    console.log(`Verified workflow guardrails for ${outputs.join(", ")}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(message);

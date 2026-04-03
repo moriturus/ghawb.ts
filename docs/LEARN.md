@@ -120,3 +120,12 @@ Use this document to capture durable lessons discovered during implementation.
 - Why it matters: This split lets the repository support mainstream npm publishing without giving up source-first development ergonomics or JSR publishing.
 - Recommendation: When adding or changing release packaging, keep three surfaces aligned in the same change: source imports, build output (`dist/`), and source-first manifests (`jsr.json` / `package.json` source conditions). Make the CLI entry’s Node shebang explicit at the same time.
 - Links: [packages/sdk/package.json](../packages/sdk/package.json), [packages/cli/package.json](../packages/cli/package.json), [packages/shared/package.json](../packages/shared/package.json), [packages/*/tsconfig.build.json](../packages)
+
+### Bun runtime accepts mismatched constructor argument types that strict tsc rejects
+
+- Date: 2026-04-06
+- Context: Sprint 14, Item 47 (run script reference support).
+- What happened: `runScript()` passed a plain `string` to `new WorkflowValidationError(...)` which expects `readonly string[]`. Bun's runtime TypeScript execution accepted this silently, so all local tests passed. CI's `tsc` step (TypeScript 5.9.3 strict mode) caught the type mismatch and failed.
+- Why it matters: Bun transpiles TypeScript to JavaScript without full type checking, so constructor argument mismatches and other type-level errors are invisible at runtime. The CI pipeline runs `tsc` with strict settings, creating a gap between local development and CI.
+- Recommendation: Run `npx tsc -p tsconfig.build.json` locally before pushing changes that create new error-throwing call sites or modify constructor signatures. Consider adding a pre-push hook for `tsc` to catch these mismatches before they reach CI.
+- Links: [packages/sdk/src/builders.ts](../packages/sdk/src/builders.ts), [packages/shared/src/errors.ts](../packages/shared/src/errors.ts)

@@ -1,5 +1,5 @@
-import { createJobId, createWorkflowId, WorkflowValidationError } from '@ghawb/shared';
-import { defineWorkflow } from '@ghawb/sdk';
+import { createJobId, createWorkflowId, WorkflowValidationError } from "@ghawb/shared";
+import { defineWorkflow } from "@ghawb/sdk";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -7,24 +7,24 @@ function assert(condition: unknown, message: string): asserts condition {
   }
 }
 
-Deno.test('Deno can execute the Sprint 1 workflow builder', () => {
+Deno.test("Deno can execute the Sprint 1 workflow builder", () => {
   const workflow = defineWorkflow({
-    id: createWorkflowId('deno-ci'),
-    name: 'Deno CI',
+    id: createWorkflowId("deno-ci"),
+    name: "Deno CI",
   })
     .onPush()
-    .addJob(createJobId('test'), (job) => {
-      job.runsOn('ubuntu-latest').run('deno test');
+    .addJob(createJobId("test"), (job) => {
+      job.runsOn("ubuntu-latest").run("deno test");
     })
     .build();
 
-  assert(workflow.jobs[0]?.id === 'test', 'expected built workflow job id');
+  assert(workflow.jobs[0]?.id === "test", "expected built workflow job id");
 });
 
-Deno.test('Deno sees the shared validation error type', () => {
+Deno.test("Deno sees the shared validation error type", () => {
   const builder = defineWorkflow({
-    id: createWorkflowId('broken'),
-    name: 'Broken',
+    id: createWorkflowId("broken"),
+    name: "Broken",
   });
 
   let thrown: unknown;
@@ -35,5 +35,5 @@ Deno.test('Deno sees the shared validation error type', () => {
     thrown = error;
   }
 
-  assert(thrown instanceof WorkflowValidationError, 'expected validation error');
+  assert(thrown instanceof WorkflowValidationError, "expected validation error");
 });

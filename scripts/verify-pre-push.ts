@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn } from "node:child_process";
 
 interface CommandResult {
   readonly exitCode: number;
@@ -10,22 +10,22 @@ async function runCommand(command: string, args: readonly string[]): Promise<Com
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd: process.cwd(),
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
 
-    child.stdout.on('data', (chunk: Buffer) => {
+    child.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString();
     });
 
-    child.stderr.on('data', (chunk: Buffer) => {
+    child.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString();
     });
 
-    child.on('error', reject);
-    child.on('close', (exitCode) => {
+    child.on("error", reject);
+    child.on("close", (exitCode) => {
       resolvePromise({
         exitCode: exitCode ?? 1,
         stdout,
@@ -36,19 +36,19 @@ async function runCommand(command: string, args: readonly string[]): Promise<Com
 }
 
 async function ensureCleanWorktree(): Promise<void> {
-  const statusResult = await runCommand('git', ['status', '--short', '--untracked-files=all']);
+  const statusResult = await runCommand("git", ["status", "--short", "--untracked-files=all"]);
 
   if (statusResult.exitCode !== 0) {
-    throw new Error(statusResult.stderr.trim() || 'failed to inspect git status');
+    throw new Error(statusResult.stderr.trim() || "failed to inspect git status");
   }
 
   if (statusResult.stdout.trim().length > 0) {
-    throw new Error('verify:pre-push requires a clean worktree');
+    throw new Error("verify:pre-push requires a clean worktree");
   }
 }
 
 async function runScript(scriptName: string): Promise<void> {
-  const result = await runCommand('bun', ['run', scriptName]);
+  const result = await runCommand("bun", ["run", scriptName]);
 
   if (result.exitCode !== 0) {
     const detail = result.stderr || result.stdout || `script "${scriptName}" failed`;
@@ -59,11 +59,11 @@ async function runScript(scriptName: string): Promise<void> {
 if (import.meta.main) {
   try {
     await ensureCleanWorktree();
-    await runScript('verify:workflows');
-    await runScript('check');
-    await runScript('coverage');
-    await runScript('test:vitest:node');
-    console.log('Verified pre-push workflow checks');
+    await runScript("verify:workflows");
+    await runScript("check");
+    await runScript("coverage");
+    await runScript("test:vitest:node");
+    console.log("Verified pre-push workflow checks");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(message);

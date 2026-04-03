@@ -1,0 +1,138 @@
+/**
+ * Verify that every code example in the README compiles and produces
+ * a valid WorkflowDefinition that can be rendered without errors.
+ */
+import { describe, expect, it } from "vitest";
+import {
+  createJobId,
+  createWorkflowId,
+  createWorkflowRenderPayload,
+  defineWorkflow,
+} from "@ghawb/sdk";
+
+describe("README examples", () => {
+  it("hero example: basic CI", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("ci"),
+      name: "CI",
+    })
+      .onPush({ branches: ["main"] })
+      .onPullRequest({ branches: ["main"] })
+      .addJob(createJobId("test"), (job) => {
+        job
+          .runsOn("ubuntu-latest")
+          .uses("actions/checkout@v4")
+          .uses("actions/setup-node@v4", { with: { "node-version": "22" } })
+          .run("npm ci", { name: "Install" })
+          .run("npm test", { name: "Test" });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.name).toBe("CI");
+    expect(Object.keys(payload.jobs)).toHaveLength(1);
+    expect(payload.jobs["test"]).toBeDefined();
+  });
+
+  it("CI with concurrency", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("ci"),
+      name: "CI",
+    })
+      .onPush({ branches: ["main"] })
+      .onPullRequest({ branches: ["main"] })
+      .concurrency({
+        group: "ci-${{ github.ref }}",
+        cancelInProgress: true,
+      })
+      .addJob(createJobId("check"), (job) => {
+        job
+          .runsOn("ubuntu-latest")
+          .permissions({ contents: "read" })
+          .uses("actions/checkout@v4")
+          .run("npm ci")
+          .run("npm test");
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.name).toBe("CI");
+    expect(payload.concurrency).toBeDefined();
+    expect(payload.concurrency!.group).toBe("ci-${{ github.ref }}");
+  });
+
+  it("deployment with environment", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("deploy"),
+      name: "Deploy",
+    })
+      .onPush({ branches: ["main"] })
+      .addJob(createJobId("deploy"), (job) => {
+        job
+          .runsOn("ubuntu-latest")
+          .environment({ name: "production", url: "https://example.com" })
+          .permissions({ contents: "read", deployments: "write" })
+          .uses("actions/checkout@v4")
+          .run("npm ci")
+          .run("npm run build")
+          .run("npm run deploy");
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.name).toBe("Deploy");
+    expect(Object.keys(payload.jobs)).toHaveLength(1);
+  });
+
+  it("matrix build", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("matrix"),
+      name: "Matrix CI",
+    })
+      .onPush({ branches: ["main"] })
+      .addJob(createJobId("test"), (job) => {
+        job
+          .runsOn("ubuntu-latest")
+          .strategyMatrix({
+            node: ["20", "22", "24"],
+            os: ["ubuntu-latest", "windows-latest"],
+          })
+          .uses("actions/checkout@v4")
+          .uses("actions/setup-node@v4", {
+            with: { "node-version": "${{ matrix.node }}" },
+          })
+          .run("npm ci")
+          .run("npm test");
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.name).toBe("Matrix CI");
+    expect(payload.jobs["test"]).toBeDefined();
+  });
+
+  it("reusable workflow", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("release"),
+      name: "Release",
+    })
+      .onPush({ tags: ["v*"] })
+      .addJob(createJobId("publish"), (job) => {
+        job
+          .permissions({ contents: "read", packages: "write" })
+          .usesWorkflow("octo-org/shared-workflows/.github/workflows/publish.yml@main", {
+            with: { artifact: "dist" },
+            secrets: "inherit",
+          });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.name).toBe("Release");
+    const publishJob = payload.jobs["publish"];
+    expect(publishJob).toBeDefined();
+    expect(publishJob!["uses"]).toBe(
+      "octo-org/shared-workflows/.github/workflows/publish.yml@main"
+    );
+  });
+});

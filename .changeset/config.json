@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "moriturus/ghawb.ts" }],
+  "commit": false,
+  "fixed": [["@ghawb/sdk", "@ghawb/shared", "@ghawb/cli"]],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}

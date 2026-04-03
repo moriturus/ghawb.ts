@@ -42,6 +42,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - steps using either `uses` (typed as `ActionRef`) or `run`
   - step metadata fields `name`, `env`, `with`, `if`, `continue-on-error` (boolean), and `timeout-minutes` (positive integer)
   - optional step `id` field whose value must match `^[a-zA-Z_][a-zA-Z0-9_-]*$`, with uniqueness enforcement within a job and explicit rejection of surrounding whitespace instead of trimming
+  - run-step script references via `runScript()` supporting local file paths (relative or absolute), optional shell-prefix execution (`run: "{shell} {path}"`), and optional expand mode that reads the referenced file body into the emitted `run` value at construction time; script references are stored on the built step as `scriptReference` metadata for traceability but are not emitted into the rendered workflow payload; `build()` rejects double shell specification when both the script-reference config and step metadata define `shell`; blank script-reference paths and blank script-reference shells are rejected at build time; Windows-specific quoting is not supported in this slice
   - job-level `outputs` maps (`Readonly<Record<string, string>>`) with blank key/value rejection and `steps.<id>` referential validation against declared step IDs in the same job; non-step expression forms are accepted without referential validation
 - Validation occurs at `build()` time and fails through explicit exceptions for invalid definitions.
 - Validation error messages follow the convention `[scope] [field] [constraint]. Expected: [format/values]`. The `[scope] [field] [constraint]` prefix is preserved for programmatic compatibility. Format, type, value-constraint, and unsupported-feature messages include expected values or alternatives. Blank/empty and boolean messages are enriched only when added guidance is non-trivial.
@@ -108,7 +109,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 
 - Locking a final public API surface before implementation begins
 - Documenting every GitHub Actions syntax detail up front
-- Defining packaging, versioning, or release automation in detail before the core model exists
+- Defining packaging, versioning, or release automation in detail before the core model exists (now implemented — see [Distribution](#distribution))
 
 ## Planned Core Responsibilities
 
@@ -153,8 +154,9 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - Each package has a `tsconfig.build.json` that extends the root `tsconfig.json` and adds `declaration: true`, `noEmit: false`, and `outDir: ./dist` for npm build output. The root `tsconfig.json` retains `noEmit: true` for source-first development.
 - Each package defines `prepublishOnly: tsc -p tsconfig.build.json` to ensure build artifacts are generated before publishing.
 - CI verifies the build step (`tsc -p tsconfig.build.json` in each package) before tests, simulating publish-time verification on every push.
-- Version `0.1.0` is the initial release, covering all Sprint 1–13 deliverables. Release automation is deferred to post-sprint work.
-- Governance documents (`CHANGELOG.md`, `SECURITY.md`, `SUPPORT.md`) are maintained in the repository root.
+- Version `0.1.0` is the initial release, covering all Sprint 1–13 deliverables.
+- Release automation uses [Changesets](https://github.com/changesets/changesets) for version management and changelog generation. All three packages are in a fixed version group (lockstep versioning). The release flow is: add changesets → merge to main → release PR created automatically → merge release PR → create git tag → tag-triggered publish workflow publishes to npm, JSR, and creates a GitHub Release. See [RELEASING.md](../RELEASING.md) for the full workflow.
+- Governance documents (`CHANGELOG.md`, `SECURITY.md`, `SUPPORT.md`, `RELEASING.md`) are maintained in the repository root.
 - Compatibility policy: Node 24+, Bun 1.x, Deno 2.x.
 
 ## Open Questions

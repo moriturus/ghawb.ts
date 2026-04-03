@@ -22,6 +22,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_backlogs/sp11.md](./sprint_backlogs/sp11.md): Sprint 11 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp12.md](./sprint_backlogs/sp12.md): Sprint 12 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp13.md](./sprint_backlogs/sp13.md): Sprint 13 backlog record, planning notes, and committed items.
+- [sprint_backlogs/sp14.md](./sprint_backlogs/sp14.md): Sprint 14 backlog record, planning notes, and committed items.
 - [scrum_master/BOARD.md](./scrum_master/BOARD.md): Scrum Master owned team-improvement follow-ups in priority order.
 - [scrum_master/PLAYBOOK.md](./scrum_master/PLAYBOOK.md): Scrum Master operating guide for sprint start, planning, and closeout improvements.
 - [TEAM.md](./TEAM.md): Scrum team roles and working personas.
@@ -50,6 +51,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp10.md](./sprint_retrospectives/sp10.md): Sprint 10 retrospective summary, role reflections, sprint-execution continuity friction, and routed follow-up actions.
 - [sprint_retrospectives/sp11.md](./sprint_retrospectives/sp11.md): Sprint 11 retrospective summary, role reflections, sub-agent delegation friction, and final-sprint closeout observations.
 - [sprint_retrospectives/sp12.md](./sprint_retrospectives/sp12.md): Sprint 12 retrospective summary, role reflections, job builder naming, RunnerLabel casing, branch coverage documentation, and capacity baseline discipline.
+- [sprint_retrospectives/sp13.md](./sprint_retrospectives/sp13.md): Sprint 13 retrospective summary, typed `uses` helpers, npm packaging, governance documents, and follow-up routing.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 - [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
 - [SECURITY.md](../SECURITY.md) — Security vulnerability reporting policy.

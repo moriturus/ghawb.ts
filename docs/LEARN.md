@@ -111,3 +111,12 @@ Use this document to capture durable lessons discovered during implementation.
 - Why it matters: The naming asymmetry — `.runName()` at workflow level vs. `.displayName()` at job level — is not obvious from the render key names (`run-name` and `name` respectively). Without documentation, SDK consumers will hit a runtime "not a function" error rather than a type error.
 - Recommendation: Document the `displayName()` naming decision explicitly in SPEC.md and in API-facing documentation. When future builder methods could collide with standard JavaScript property or method names, use a disambiguating prefix and document the rationale in the same commit.
 - Links: [packages/sdk/src/builders.ts](../packages/sdk/src/builders.ts), [docs/SPEC.md](./SPEC.md)
+
+### Keep npm build output separate from source-first exports
+
+- Date: 2026-04-03
+- Context: Sprint 13, Item 41 (release packaging for npm consumers).
+- What happened: The packaging slice used `.js`-extension imports, per-package `tsconfig.build.json` files, `dist/` output, and dual exports so npm consumers get built JavaScript while Bun, Deno, and JSR keep resolving source files directly.
+- Why it matters: This split lets the repository support mainstream npm publishing without giving up source-first development ergonomics or JSR publishing.
+- Recommendation: When adding or changing release packaging, keep three surfaces aligned in the same change: source imports, build output (`dist/`), and source-first manifests (`jsr.json` / `package.json` source conditions). Make the CLI entry’s Node shebang explicit at the same time.
+- Links: [packages/sdk/package.json](../packages/sdk/package.json), [packages/cli/package.json](../packages/cli/package.json), [packages/shared/package.json](../packages/shared/package.json), [packages/*/tsconfig.build.json](../packages)

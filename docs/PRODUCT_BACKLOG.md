@@ -33,7 +33,32 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-(No unselected items remain. Sprint 14 committed the remaining backlog: Items 43, 47, and 45.)
+### Item 48: Reusable workflow object injection in usesWorkflow()
+
+- Why: Currently `usesWorkflow()` only accepts a `WorkflowRef` string. Allowing a built `WorkflowDefinition` object to be passed directly improves ergonomics and enables compile-time safety — the SDK can verify the target workflow declares a `workflow_call` trigger before wiring the reference.
+- Prerequisites: None (reusable workflow support is already complete via Item 32).
+- Implementation Plan:
+  - Extend `usesWorkflow()` signature to accept `WorkflowRef | WorkflowDefinition`.
+  - When a `WorkflowDefinition` is provided, derive the local ref as `./.github/workflows/${id}.yml`.
+  - Validate that the provided workflow has a `workflow_call` trigger; throw `WorkflowValidationError` if not.
+  - Add builder tests for object injection (happy path, missing trigger, with/secrets forwarding).
+  - Add conformance fixture for object-injected reusable workflow rendering.
+  - Update SPEC.md with the new overload.
+- Definition of Done:
+  - `usesWorkflow()` accepts both `WorkflowRef` and `WorkflowDefinition`.
+  - Passing a workflow without `workflow_call` trigger throws a validation error.
+  - Rendered output is identical to string-ref usage (`./.github/workflows/{id}.yml`).
+  - 100% line coverage maintained.
+  - SPEC.md updated.
+  - Code review completed.
+- Acceptance Criteria:
+  - `job.usesWorkflow(builtWorkflow, { secrets: "inherit" })` compiles and renders correct `uses:` value.
+  - Passing a non-reusable workflow to `usesWorkflow()` produces a clear error message.
+  - All existing `usesWorkflow(stringRef)` usage continues to work unchanged.
+- Story Points: 3
+- Status: new
+- Completed At: N/A
+- Notes/Links: Requested during Sprint 14 execution. Enhances the reusable workflow API surface (Item 32).
 
 - Team intake decision: After Sprint 7 closeout exhausted the previously planned backlog, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, SDK completeness, and distribution readiness. Sprint 8 committed `Item 20` through `Item 23`. Sprint 9 committed `Item 24` through `Item 27`.
 - Product Owner intake rationale (Aoi Sakamoto): Prioritize filling the most impactful SDK feature gaps first — `env` maps and trigger completeness are table-stakes for real workflow authoring. Cross-job data flow (`step id` + `job outputs`) and strategy completion follow because they unlock materially new workflow patterns. Distribution readiness is last because the SDK surface must stabilize before external consumers arrive.

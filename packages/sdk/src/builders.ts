@@ -1788,10 +1788,25 @@ class JobBuilder {
     config: Readonly<{ path: string; shell?: string; expand?: boolean }>,
     metadata: RunStepMetadata = {}
   ): this {
+    if (config.path.trim().length === 0) {
+      throw new WorkflowValidationError('runScript() requires "path" to be a non-empty string.');
+    }
+
+    if (config.shell !== undefined && config.shell.trim().length === 0) {
+      throw new WorkflowValidationError('runScript() requires "shell" to be omitted or a non-empty string.');
+    }
+
     let run: string;
 
     if (config.expand) {
-      run = readFileSync(config.path, "utf-8");
+      try {
+        run = readFileSync(config.path, "utf-8");
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new WorkflowValidationError(
+          `runScript() could not read script at "${config.path}": ${reason}`
+        );
+      }
     } else {
       run = config.shell ? `${config.shell} ${config.path}` : config.path;
     }

@@ -2328,9 +2328,7 @@ describe('workflow renderer', () => {
     })
       .onPush()
       .addJob(createJobId('deploy'), (job) => {
-        job
-          .runsOn('ubuntu-latest')
-          .runScript({ path: './scripts/deploy.sh', shell: 'bash' });
+        job.runsOn('ubuntu-latest').runScript({ path: './scripts/deploy.sh', shell: 'bash' });
       })
       .build();
 
@@ -2346,9 +2344,7 @@ describe('workflow renderer', () => {
     })
       .onPush()
       .addJob(createJobId('deploy'), (job) => {
-        job
-          .runsOn('ubuntu-latest')
-          .runScript({ path: './scripts/deploy.sh' }, { shell: 'bash' });
+        job.runsOn('ubuntu-latest').runScript({ path: './scripts/deploy.sh' }, { shell: 'bash' });
       })
       .build();
 
@@ -2358,10 +2354,8 @@ describe('workflow renderer', () => {
   });
 
   it('renders a script reference step with expand mode', () => {
-    const fixturePath = new URL(
-      '../../../tests/fixtures/sample-script.sh',
-      import.meta.url
-    ).pathname;
+    const fixturePath = new URL('../../../tests/fixtures/sample-script.sh', import.meta.url)
+      .pathname;
 
     const workflow = defineWorkflow({
       id: createWorkflowId('ci'),
@@ -2369,9 +2363,7 @@ describe('workflow renderer', () => {
     })
       .onPush()
       .addJob(createJobId('deploy'), (job) => {
-        job
-          .runsOn('ubuntu-latest')
-          .runScript({ path: fixturePath, shell: 'bash', expand: true });
+        job.runsOn('ubuntu-latest').runScript({ path: fixturePath, shell: 'bash', expand: true });
       })
       .build();
 
@@ -2409,13 +2401,7 @@ describe('workflow renderer', () => {
     expect(step.run).toBe('bash ./scripts/deploy.sh');
 
     const keys = Object.keys(step);
-    expect(keys).toEqual([
-      'name',
-      'id',
-      'env',
-      'working-directory',
-      'run',
-    ]);
+    expect(keys).toEqual(['name', 'id', 'env', 'working-directory', 'run']);
   });
 
   it('does not emit scriptReference into the render payload', () => {

@@ -3887,9 +3887,7 @@ describe('workflow builder', () => {
       })
         .onPush()
         .addJob(createJobId('deploy'), (job) => {
-          job
-            .runsOn('ubuntu-latest')
-            .runScript({ path: './scripts/deploy.sh' }, { shell: 'bash' });
+          job.runsOn('ubuntu-latest').runScript({ path: './scripts/deploy.sh' }, { shell: 'bash' });
         })
         .build();
 
@@ -3930,9 +3928,7 @@ describe('workflow builder', () => {
       })
         .onPush()
         .addJob(createJobId('deploy'), (job) => {
-          job
-            .runsOn('ubuntu-latest')
-            .runScript({ path: './deploy.py', shell: 'python3' });
+          job.runsOn('ubuntu-latest').runScript({ path: './deploy.py', shell: 'python3' });
         })
         .build();
 
@@ -3944,10 +3940,8 @@ describe('workflow builder', () => {
     });
 
     it('builds a script reference step with expand mode reading file contents', () => {
-      const fixturePath = new URL(
-        '../../../tests/fixtures/sample-script.sh',
-        import.meta.url
-      ).pathname;
+      const fixturePath = new URL('../../../tests/fixtures/sample-script.sh', import.meta.url)
+        .pathname;
 
       const workflow = defineWorkflow({
         id: createWorkflowId('ci'),
@@ -3955,9 +3949,7 @@ describe('workflow builder', () => {
       })
         .onPush()
         .addJob(createJobId('deploy'), (job) => {
-          job
-            .runsOn('ubuntu-latest')
-            .runScript({ path: fixturePath, expand: true });
+          job.runsOn('ubuntu-latest').runScript({ path: fixturePath, expand: true });
         })
         .build();
 
@@ -3970,10 +3962,8 @@ describe('workflow builder', () => {
     });
 
     it('builds a script reference step with expand mode and script-reference shell', () => {
-      const fixturePath = new URL(
-        '../../../tests/fixtures/sample-script.sh',
-        import.meta.url
-      ).pathname;
+      const fixturePath = new URL('../../../tests/fixtures/sample-script.sh', import.meta.url)
+        .pathname;
 
       const workflow = defineWorkflow({
         id: createWorkflowId('ci'),
@@ -3981,9 +3971,7 @@ describe('workflow builder', () => {
       })
         .onPush()
         .addJob(createJobId('deploy'), (job) => {
-          job
-            .runsOn('ubuntu-latest')
-            .runScript({ path: fixturePath, shell: 'bash', expand: true });
+          job.runsOn('ubuntu-latest').runScript({ path: fixturePath, shell: 'bash', expand: true });
         })
         .build();
 
@@ -4000,10 +3988,8 @@ describe('workflow builder', () => {
     });
 
     it('builds a script reference step with expand mode and metadata shell', () => {
-      const fixturePath = new URL(
-        '../../../tests/fixtures/sample-script.sh',
-        import.meta.url
-      ).pathname;
+      const fixturePath = new URL('../../../tests/fixtures/sample-script.sh', import.meta.url)
+        .pathname;
 
       const workflow = defineWorkflow({
         id: createWorkflowId('ci'),

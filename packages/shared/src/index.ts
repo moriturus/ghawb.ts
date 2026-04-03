@@ -1,5 +1,5 @@
-export type { Brand } from './brand.ts';
-export { InvalidIdentifierError, WorkflowValidationError } from './errors.ts';
+export type { Brand } from './brand.js';
+export { InvalidIdentifierError, WorkflowValidationError } from './errors.js';
 export {
   createJobId,
   createWorkflowId,
@@ -9,4 +9,4 @@ export {
   matchesIdentifierFormat,
   type JobId,
   type WorkflowId,
-} from './identifiers.ts';
+} from './identifiers.js';

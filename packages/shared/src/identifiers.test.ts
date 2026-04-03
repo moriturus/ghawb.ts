@@ -6,7 +6,7 @@ import {
   createJobId,
   createWorkflowId,
   matchesIdentifierFormat,
-} from './index.ts';
+} from './index.js';
 
 describe('identifier factories', () => {
   it('preserves valid values without normalization', () => {

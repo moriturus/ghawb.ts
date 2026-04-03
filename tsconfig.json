@@ -6,13 +6,17 @@
     "lib": ["ES2023"],
     "strict": true,
     "noEmit": true,
-    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "exactOptionalPropertyTypes": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@ghawb/shared": ["./packages/shared/src/index.ts"],
+      "@ghawb/sdk": ["./packages/sdk/src/index.ts"],
+      "@ghawb/cli": ["./packages/cli/src/index.ts"]
+    }
   },
   "include": [
     "packages/**/*.ts",

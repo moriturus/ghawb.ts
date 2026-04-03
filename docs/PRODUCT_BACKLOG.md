@@ -33,62 +33,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-### Item 48: Reusable workflow object injection in usesWorkflow()
-
-- Why: Currently `usesWorkflow()` only accepts a `WorkflowRef` string. Allowing a `WorkflowBuilder` (unbuilt) or `WorkflowDefinition` (built) to be passed directly improves ergonomics and enables safety — the SDK can verify the target workflow declares a `workflow_call` trigger at the caller's `build()` time without imposing definition-order constraints.
-- Prerequisites: None (reusable workflow support is already complete via Item 32).
-- Implementation Plan:
-  - Define a `ReusableWorkflowSource` union type: `WorkflowRef | WorkflowBuilder | WorkflowDefinition`.
-  - Extend `usesWorkflow()` signature to accept `ReusableWorkflowSource`.
-  - When a `WorkflowBuilder` or `WorkflowDefinition` is provided, derive the local ref as `./.github/workflows/${id}.yml`.
-  - Store a reference to the builder/definition alongside the derived ref so `build()` can inspect triggers later.
-  - At the caller's `build()` time (not at `usesWorkflow()` call time), validate that the target workflow has a `workflow_call` trigger. This avoids definition-order constraints — `onWorkflowCall()` may be called after `usesWorkflow()`.
-  - Add builder tests for object injection (happy path with builder, happy path with definition, missing trigger error, with/secrets forwarding, definition-order independence).
-  - Add conformance fixture for object-injected reusable workflow rendering.
-  - Update SPEC.md with the new overload.
-- Definition of Done:
-  - `usesWorkflow()` accepts `WorkflowRef`, `WorkflowBuilder`, and `WorkflowDefinition`.
-  - Passing a workflow without `workflow_call` trigger produces a validation error at the caller's `build()` time.
-  - Rendered output is identical to string-ref usage (`./.github/workflows/{id}.yml`).
-  - Definition order is unconstrained — `usesWorkflow(builder)` works even if `builder.onWorkflowCall()` is called later.
-  - 100% line coverage maintained.
-  - SPEC.md updated.
-  - Code review completed.
-- Acceptance Criteria:
-  - `job.usesWorkflow(unbuiltBuilder, { secrets: "inherit" })` compiles and renders correct `uses:` value.
-  - `job.usesWorkflow(builtDefinition, { secrets: "inherit" })` also works.
-  - Passing a workflow without `workflow_call` trigger to `usesWorkflow()` is accepted, but `build()` produces a clear validation error.
-  - All existing `usesWorkflow(stringRef)` usage continues to work unchanged.
-- Story Points: 3
-- Status: new
-- Completed At: N/A
-- Notes/Links: Requested during Sprint 14 execution. Enhances the reusable workflow API surface (Item 32). Validation deferred to caller `build()` time per design decision.
-
-### Item 49: Fix npm install/ci failure caused by workspace: protocol
-
-- Why: `npm install` and `npm ci` fail with `EUNSUPPORTEDPROTOCOL` because `package.json` files use `workspace:*` for inter-package dependencies. The `workspace:` protocol is supported by pnpm, yarn, and bun, but not by npm. Since the project aims to maintain package manager compatibility across npm, yarn, and pnpm (per AGENTS.md), npm must work.
-- Prerequisites: None.
-- Implementation Plan:
-  - Investigate viable workspace dependency strategies that work across npm, pnpm, yarn, and bun simultaneously.
-  - Likely approach: replace `workspace:*` with `file:../shared` or similar npm-compatible references, or adopt npm workspaces configuration in root `package.json`.
-  - Verify that the chosen strategy does not break `npm publish` — published packages must reference registry versions, not local paths.
-  - Verify `bun install`, `pnpm install`, `yarn install`, and `npm install` all succeed.
-  - Verify `npm publish --dry-run` still produces correct dependency references for each package.
-  - Update RELEASING.md if the publish flow is affected.
-- Definition of Done:
-  - `npm install` and `npm ci` succeed without errors.
-  - `bun install`, `pnpm install`, and `yarn install` continue to work.
-  - Published packages reference correct registry versions (not local paths).
-  - All tests pass after the change.
-  - Code review completed.
-- Acceptance Criteria:
-  - `npm install` exits 0 in a clean checkout.
-  - `npm ci` exits 0 with a valid lockfile.
-  - `npm publish --dry-run` for each package shows correct dependency versions.
-- Story Points: 2
-- Status: new
-- Completed At: N/A
-- Notes/Links: Root cause is `workspace:*` in `package.json` (root), `packages/cli/package.json`, and `packages/sdk/package.json`. Reported during Sprint 14.
+The product backlog is currently empty. All items have been committed to sprints.
 
 - Team intake decision: After Sprint 7 closeout exhausted the previously planned backlog, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, SDK completeness, and distribution readiness. Sprint 8 committed `Item 20` through `Item 23`. Sprint 9 committed `Item 24` through `Item 27`.
 - Product Owner intake rationale (Aoi Sakamoto): Prioritize filling the most impactful SDK feature gaps first — `env` maps and trigger completeness are table-stakes for real workflow authoring. Cross-job data flow (`step id` + `job outputs`) and strategy completion follow because they unlock materially new workflow patterns. Distribution readiness is last because the SDK surface must stabilize before external consumers arrive.
@@ -114,6 +59,8 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Sprint 14 Item 43 refinement decision: The README rewrite must explicitly reflect the Node 24+ support baseline, clarify the phrase "100% SDK line coverage", include at least four minimal examples (CI, deployment, matrix, reusable workflow), and document `actionlint` as complementary YAML-level validation rather than as a competing authoring tool.
 - Sprint 14 Item 47 intake decision: Added as a new SDK feature item after Sprint 14 refinement. `run` steps will support local file references and shell-prefixed file references in the same slice, plus an optional script-expansion mode that reads a local script file into the emitted `run` body. Supported `path` values include both relative and absolute paths. `shell` accepts any non-blank string. Double specification of `shell` across script-reference config and existing run-step metadata is rejected at build time. Windows-specific quoting remains explicitly unsupported in this slice.
 - Sprint 14 Item 45 refinement decision: The release automation implementation will use Changesets as the versioning and release-PR system. The release state machine is fixed as release PR from `main` → merge release PR → create git tag → tag-triggered publish workflow for npm, JSR, and GitHub Release notes. Closeout proof is a dry-run path rather than a real publish. User-facing release operations documentation will live in `RELEASING.md`. Workflow automation introduced in this item must align the repository's Node setup to the documented 24+ support baseline.
+- Sprint 15 selection decision: Sprint 15 commits Item 49 (2 SP), Item 50 (1 SP), and Item 48 (3 SP) for 6 SP under a 20 SP capacity (14 SP buffer). The buffer reflects genuine backlog exhaustion after 14 sprints and 49 delivered items. The Product Owner confirmed the execution order: Item 49 → Item 50 → Item 48. Item 49 lands first per the PO's Sprint 14 review decision — `npm install` failure blocks npm consumers. Item 50 is a new intake item that closes the Scrum Master BOARD item from the Sprint 14 retrospective (tsc build-config gap). Item 48 lands last as the SDK feature enhancement. Item 49's acceptance criteria were refined to include a CI `npm install` verification step per Yui Morita's Sprint 14 retrospective recommendation.
+- Sprint 15 Item 50 intake decision: Item 50 was created during Sprint 15 planning to formally close the tsc build-config gap identified in the Sprint 14 retrospective. The root cause — `bun run check` includes `tsc -p tsconfig.json --noEmit` but does not include per-package `tsc -p packages/*/tsconfig.build.json` build compilation that CI runs — was confirmed during planning. The team agreed to track this as a formal backlog item (1 SP) following the convention where process improvements involving code changes are tracked as backlog items (e.g., Item 30, Item 34).
 - Post-Sprint 11 GPT review intake decision: A second external GPT review evaluated the project after all 35 items were delivered. The overall score rose from 6.6/10 to 8/10, confirming that the core implementation quality is high. The review identified three gap themes: (1) syntax coverage breadth (60% practical / 30% full GitHub Docs surface), (2) commercial release maturity (packaging, governance, documentation — rated "medium-low"), and (3) type-safety depth (runner labels, uses references, expression helpers still string-typed). The review's #1 recommendation is to prepare the project for external consumption rather than continuing to refine only the core. The team conducted a full intake discussion below. A subsequent coverage audit identified five additional gaps in the initial intake; the team added Items 45–46 and amended Items 42–43 to achieve full review coverage.
 - Sprint 13 review decision: no backlog reprioritization is needed after the packaging/governance increment. Keep Item 43 (README rewrite) ahead of Item 45 (release automation) in the current backlog order; Item 45 remains the next infrastructure follow-up once the README refresh is complete.
 - Team GPT review discussion (Mio Kanda — SDK/Architecture): The syntax coverage items are mechanically familiar — they follow the same model/builder/validation/rendering/conformance pattern used for the last 20+ items. `pull_request_target` directly reuses `pull_request` infrastructure. `workflow_run` introduces a new trigger shape (required `workflows` list) but nothing architecturally novel. The simple event triggers batch (Item 40) is large in count (~23 events) but low in per-event complexity — most are "event name + optional types allowlist." Display names and environment are single-field additions. Release packaging (Item 41) is the only architecturally significant change: it introduces a build step for the first time, which changes the development and publishing workflow. This should be scoped carefully so the source-first development experience (Bun/JSR/Deno) is not degraded. Typed runner labels (Item 44) are a modest type-safety improvement — they add a known-label union type without breaking the existing string fallback. The deeper type-safety items (Item 46 — typed `uses` helpers, expression helpers, typed action wrappers) are architecturally more ambitious. They require careful API design to preserve backward compatibility while adding genuine compile-time safety. A phased approach with Phase 1 (`uses` helpers) delivered first and Phases 2–3 scoped during implementation is the right way to manage design risk. Release automation (Item 45) is tooling infrastructure that wraps the packaging pipeline from Item 41 — it should come after packaging and governance are established.
@@ -138,3 +85,4 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - [Sprint 12 Backlog](./sprint_backlogs/sp12.md)
 - [Sprint 13 Backlog](./sprint_backlogs/sp13.md)
 - [Sprint 14 Backlog](./sprint_backlogs/sp14.md)
+- [Sprint 15 Backlog](./sprint_backlogs/sp15.md)

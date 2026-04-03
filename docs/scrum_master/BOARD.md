@@ -4,7 +4,7 @@ This board tracks Scrum Master owned team-improvement follow-up items.
 
 ## Priority-Ordered TODO
 
-(No open items.)
+- (Sprint 14 retrospective) Consider adding `tsc` compilation to `bun run check` or a pre-push hook to close the Bun-vs-tsc type checking gap that caused a CI failure in Sprint 14. See [LEARN.md](../LEARN.md) for the recorded lesson.
 
 ## Closed Items
 

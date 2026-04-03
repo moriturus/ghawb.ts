@@ -39,6 +39,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp11.md](./sprint_reviews/sp11.md): Sprint 11 review summary, container/services, validation diagnostics, ceremony hardening, self-hosting expansion, distribution readiness, and Product Owner decision.
 - [sprint_reviews/sp12.md](./sprint_reviews/sp12.md): Sprint 12 review summary, display names, environment, pull_request_target, workflow_run, simple event triggers, typed runner labels, and Product Owner decision.
 - [sprint_reviews/sp13.md](./sprint_reviews/sp13.md): Sprint 13 review summary, typed `uses` helpers, npm packaging, governance documents, and Product Owner decision.
+- [sprint_reviews/sp14.md](./sprint_reviews/sp14.md): Sprint 14 review summary, run script references, README rewrite, release automation, CI fix findings, and Product Owner decision.
 - [sprint_retrospectives/sp1.md](./sprint_retrospectives/sp1.md): Sprint 1 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp2.md](./sprint_retrospectives/sp2.md): Sprint 2 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp3.md](./sprint_retrospectives/sp3.md): Sprint 3 retrospective summary, role reflections, and routed improvement actions.
@@ -52,6 +53,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp11.md](./sprint_retrospectives/sp11.md): Sprint 11 retrospective summary, role reflections, sub-agent delegation friction, and final-sprint closeout observations.
 - [sprint_retrospectives/sp12.md](./sprint_retrospectives/sp12.md): Sprint 12 retrospective summary, role reflections, job builder naming, RunnerLabel casing, branch coverage documentation, and capacity baseline discipline.
 - [sprint_retrospectives/sp13.md](./sprint_retrospectives/sp13.md): Sprint 13 retrospective summary, typed `uses` helpers, npm packaging, governance documents, and follow-up routing.
+- [sprint_retrospectives/sp14.md](./sprint_retrospectives/sp14.md): Sprint 14 retrospective summary, Bun-vs-tsc gap, validation enforcement points, npm compatibility, and follow-up routing.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 - [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
 - [RELEASING.md](../RELEASING.md) — Release workflow and publishing documentation.

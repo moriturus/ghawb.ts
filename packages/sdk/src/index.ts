@@ -9,6 +9,20 @@ export {
 } from "@ghawb/shared";
 export { defineWorkflow, WorkflowBuilder, type ReusableWorkflowSource } from "./builders.js";
 export {
+  expr,
+  github,
+  env,
+  secrets,
+  matrix,
+  inputs,
+  steps,
+  success,
+  always,
+  cancelled,
+  failure,
+  type StepOutputRef,
+} from "./expressions.js";
+export {
   actionRef,
   workflowRef,
   isValidActionRef,

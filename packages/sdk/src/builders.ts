@@ -63,7 +63,7 @@ import {
   type WorkflowStrategy,
   type WorkflowStep,
   type WorkflowTrigger,
-} from './model.ts';
+} from './model.js';
 
 interface WorkflowStepDraft extends StepMetadata {
   readonly kind: 'run' | 'uses';

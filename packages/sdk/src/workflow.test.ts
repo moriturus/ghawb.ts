@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { createJobId, createWorkflowId, WorkflowValidationError } from '@ghawb/shared';
 
-import { defineWorkflow, createWorkflowRenderPayload, actionRef, workflowRef } from './index.ts';
-import type { ActionRef, WorkflowRef } from './index.ts';
+import { defineWorkflow, createWorkflowRenderPayload, actionRef, workflowRef } from './index.js';
+import type { ActionRef, WorkflowRef } from './index.js';
 
 describe('workflow builder', () => {
   it('builds a representative Sprint 1 workflow model', () => {

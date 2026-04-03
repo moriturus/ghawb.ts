@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import {
   validateWorkflowLayout,
   verifyWorkflowGuardrails,
-} from '../../scripts/verify-workflows.ts';
+} from '../../scripts/verify-workflows.js';
 
 describe('workflow guardrails', () => {
   const tempDirs: string[] = [];

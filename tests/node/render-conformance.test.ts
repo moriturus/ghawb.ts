@@ -5,7 +5,7 @@ import { createWorkflowRenderPayload, WorkflowValidationError } from '@ghawb/sdk
 import {
   renderConformanceFixtures,
   validationConformanceFixtures,
-} from '../shared/render-conformance.fixtures.ts';
+} from '../shared/render-conformance.fixtures.js';
 
 describe('cross-runtime render conformance', () => {
   for (const fixture of renderConformanceFixtures) {

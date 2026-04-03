@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { createJobId, createWorkflowId } from '@ghawb/shared';
 
-import type { WorkflowDefinition, WorkflowRenderPayload } from './index.ts';
+import type { WorkflowDefinition, WorkflowRenderPayload } from './index.js';
 import {
   WorkflowRenderError,
   createWorkflowRenderPayload,
   defineWorkflow,
   renderWorkflow,
-} from './index.ts';
+} from './index.js';
 
 function emitPseudoYaml(payload: WorkflowRenderPayload): string {
   return JSON.stringify(payload, null, 2);

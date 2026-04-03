@@ -146,10 +146,13 @@ The project is intended to make workflow construction type-safe, robust, and ide
 ## Distribution
 
 - The SDK is published as three packages: `@ghawb/sdk` (core workflow builder and renderer), `@ghawb/shared` (shared types, identifiers, and errors), and `@ghawb/cli` (YAML generation CLI).
-- Each package declares exports through both `package.json` (npm) and `jsr.json` (JSR) manifests, pointing to TypeScript source entries under `src/`.
+- Each package declares exports through both `package.json` (npm) and `jsr.json` (JSR) manifests. The `package.json` exports map uses `dist/` for npm consumers (`types`, `import`, `default` conditions) and `src/` for source-first runtimes (`bun`, `deno` conditions). The `jsr.json` exports continue to point to `src/` for JSR/Bun/Deno source-first publishing.
 - The root `jsr.json` uses JSR workspace configuration to coordinate multi-package publishing.
-- Package entry points: `@ghawb/sdk` exports from `./src/index.ts`, `@ghawb/shared` exports from `./src/index.ts`, `@ghawb/cli` exports from `./src/index.ts` and provides a `ghawb` binary entry at `./src/bin.ts`.
-- All packages use `"type": "module"` and ship TypeScript source directly (no build step required for Bun, Deno, or TypeScript-aware Node tooling).
+- Package entry points: `@ghawb/sdk` exports from `./src/index.ts` (source) and `./dist/index.js` (built), `@ghawb/shared` exports from `./src/index.ts` and `./dist/index.js`, `@ghawb/cli` exports from `./src/index.ts` and `./dist/index.js` and provides a `ghawb` binary entry at `./dist/bin.js` with a `#!/usr/bin/env node` shebang.
+- All packages use `"type": "module"`. Source files use `.js`-extension imports (TypeScript standard interop style) for compatibility with `tsc` emit. Bun resolves `./foo.js` to `./foo.ts` in source-first mode.
+- Each package has a `tsconfig.build.json` that extends the root `tsconfig.json` and adds `declaration: true`, `noEmit: false`, and `outDir: ./dist` for npm build output. The root `tsconfig.json` retains `noEmit: true` for source-first development.
+- Each package defines `prepublishOnly: tsc -p tsconfig.build.json` to ensure build artifacts are generated before publishing.
+- CI verifies the build step (`tsc -p tsconfig.build.json` in each package) before tests, simulating publish-time verification on every push.
 - Version `0.0.0` is used during development. Versioning and release automation are deferred to post-sprint work.
 
 ## Open Questions

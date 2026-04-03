@@ -22,7 +22,7 @@ import {
   type WorkflowStep,
   type WorkflowStrategy,
   type WorkflowTrigger,
-} from './model.ts';
+} from './model.js';
 
 const WORKFLOW_PERMISSION_LEVELS = ['read', 'write', 'none'] as const;
 

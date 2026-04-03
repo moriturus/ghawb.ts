@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { generateWorkflows } from '../../scripts/generate-workflows.ts';
+import { generateWorkflows } from '../../scripts/generate-workflows.js';
 
 describe('workflow generation script', () => {
   it('renders every committed workflow module to its matching generated output', async () => {

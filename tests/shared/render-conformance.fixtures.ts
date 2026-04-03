@@ -1181,6 +1181,63 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    'all_action_ref_forms',
+    defineWorkflow({
+      id: createWorkflowId('all_action_ref_forms'),
+      name: 'All Action Ref Forms',
+    })
+      .onPush()
+      .addJob(createJobId('build'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .uses('actions/checkout@v4', { name: 'External' })
+          .uses('./my-action', { name: 'Local' })
+          .uses('docker://alpine:3.8', { name: 'Docker' });
+      })
+      .build(),
+    {
+      name: 'All Action Ref Forms',
+      on: { push: null },
+      jobs: {
+        build: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            { name: 'External', uses: 'actions/checkout@v4' },
+            { name: 'Local', uses: './my-action' },
+            { name: 'Docker', uses: 'docker://alpine:3.8' },
+          ],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
+    'all_workflow_ref_forms',
+    defineWorkflow({
+      id: createWorkflowId('all_workflow_ref_forms'),
+      name: 'All Workflow Ref Forms',
+    })
+      .onPush()
+      .addJob(createJobId('external'), (job) => {
+        job.usesWorkflow('org/repo/.github/workflows/ci.yml@main');
+      })
+      .addJob(createJobId('local'), (job) => {
+        job.usesWorkflow('./.github/workflows/deploy.yml');
+      })
+      .build(),
+    {
+      name: 'All Workflow Ref Forms',
+      on: { push: null },
+      jobs: {
+        external: {
+          uses: 'org/repo/.github/workflows/ci.yml@main',
+        },
+        local: {
+          uses: './.github/workflows/deploy.yml',
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [

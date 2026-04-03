@@ -129,3 +129,12 @@ Use this document to capture durable lessons discovered during implementation.
 - Why it matters: Bun transpiles TypeScript to JavaScript without full type checking, so constructor argument mismatches and other type-level errors are invisible at runtime. The CI pipeline runs `tsc` with strict settings, creating a gap between local development and CI.
 - Recommendation: Run `npx tsc -p tsconfig.build.json` locally before pushing changes that create new error-throwing call sites or modify constructor signatures. Consider adding a pre-push hook for `tsc` to catch these mismatches before they reach CI.
 - Links: [packages/sdk/src/builders.ts](../packages/sdk/src/builders.ts), [packages/shared/src/errors.ts](../packages/shared/src/errors.ts)
+
+### npm arborist crashes on bun's node_modules layout
+
+- Date: 2026-04-03
+- Context: Sprint 15, Item 49 (fix npm install/ci failure caused by workspace: protocol).
+- What happened: Running `npm install` in a repository where `node_modules` was previously populated by `bun install` caused npm's arborist to crash with `Cannot read properties of null (reading 'matches')`. The root cause is bun's `.bun/` directory layout inside `node_modules`, which npm's dependency tree walker does not expect.
+- Why it matters: The project's primary development environment uses Bun, but npm compatibility is a stated goal. Switching between package managers without a clean slate creates silent failures that are difficult to diagnose.
+- Recommendation: Always run `rm -rf node_modules packages/*/node_modules` before switching from `bun install` to `npm install` or vice versa. Do not assume that one package manager can operate on another's `node_modules` tree.
+- Links: [package.json](../package.json), [package-lock.json](../package-lock.json)

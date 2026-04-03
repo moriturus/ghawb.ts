@@ -1404,6 +1404,43 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+
+  createRenderFixture(
+    "runs_on_object_forms",
+    defineWorkflow({
+      id: createWorkflowId("runs_on_object"),
+      name: "Runs On Object Forms",
+    })
+      .onPush()
+      .addJob(createJobId("group_only"), (job) => {
+        job.runsOn({ group: "production" }).run("echo group");
+      })
+      .addJob(createJobId("labels_only"), (job) => {
+        job.runsOn({ labels: ["self-hosted", "linux"] }).run("echo labels");
+      })
+      .addJob(createJobId("group_and_labels"), (job) => {
+        job.runsOn({ group: "staging", labels: ["x64"] }).run("echo both");
+      })
+      .build(),
+    {
+      name: "Runs On Object Forms",
+      on: { push: null },
+      jobs: {
+        group_only: {
+          "runs-on": { group: "production" },
+          steps: [{ run: "echo group" }],
+        },
+        labels_only: {
+          "runs-on": { labels: ["self-hosted", "linux"] },
+          steps: [{ run: "echo labels" }],
+        },
+        group_and_labels: {
+          "runs-on": { group: "staging", labels: ["x64"] },
+          steps: [{ run: "echo both" }],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [

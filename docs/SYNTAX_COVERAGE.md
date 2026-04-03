@@ -94,7 +94,7 @@ All use `.onEvent(type, { types? })`.
 | `name` | ✅ | `.displayName(str)` | Optional display name |
 | `if` | ✅ | `.ifCondition(expr)` | |
 | `needs` | ✅ | `.needs(deps)` | Referential validation against declared jobs |
-| `runs-on` | ✅ | `.runsOn(target)` | String or string array; `RunnerLabel` constants available |
+| `runs-on` | ✅ | `.runsOn(target)` | String, string array, or object `{ group?, labels? }`; `RunnerLabel` constants available |
 | `environment` | ✅ | `.environment(env)` | String or `{ name, url? }` |
 | `concurrency` | ✅ | `.concurrency(config)` | `{ group, cancelInProgress? }` |
 | `outputs` | ✅ | `.outputs(map)` | `steps.<id>` referential validation |
@@ -241,6 +241,5 @@ All existing raw `string` entry points remain backward compatible. Empty or blan
 |---------|-------|
 | Typed action wrappers (`actions/checkout`, etc.) | Backlog Item 46 |
 | Composite actions | Actions-level construct, not workflow-level |
-| `runs-on.group` / `runs-on.labels` object form | |
 | Reusable workflow `outputs` at caller side | |
 | Step-level `uses` type-safe `with` | Backlog Item 46 |

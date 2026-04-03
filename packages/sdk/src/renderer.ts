@@ -1,9 +1,11 @@
 import {
   WORKFLOW_PERMISSION_KEYS,
+  isRunsOnObject,
   isSimpleEventType,
   type ActionRef,
   type ContainerConfig,
   type FilteredWorkflowTrigger,
+  type RunsOnObject,
   type SimpleEventTrigger,
   type TriggerType,
   type WorkflowDefinition,
@@ -132,7 +134,12 @@ export interface WorkflowRenderContainerPayload {
   readonly options?: string;
 }
 
-export interface WorkflowRenderJobPayloadBase {
+export interface WorkflowRenderRunsOnObjectPayload {
+  readonly group?: string;
+  readonly labels?: readonly string[];
+}
+
+interface WorkflowRenderJobPayloadBase {
   readonly name?: string;
   readonly if?: string;
   readonly needs?: readonly string[];
@@ -157,7 +164,7 @@ export interface WorkflowRenderJobPayloadBase {
       Record<string, readonly string[] | readonly Readonly<Record<string, string>>[]>
     >;
   };
-  readonly "runs-on"?: string | readonly string[];
+  readonly "runs-on"?: string | readonly string[] | WorkflowRenderRunsOnObjectPayload;
   readonly container?: WorkflowRenderContainerPayload;
   readonly services?: Readonly<Record<string, WorkflowRenderContainerPayload>>;
   readonly outputs?: Readonly<Record<string, string>>;
@@ -168,7 +175,7 @@ export interface WorkflowRenderJobPayloadBase {
 }
 
 export interface WorkflowRenderStepsJobPayload extends WorkflowRenderJobPayloadBase {
-  readonly "runs-on": string | readonly string[];
+  readonly "runs-on": string | readonly string[] | WorkflowRenderRunsOnObjectPayload;
   readonly environment?: string | { readonly name: string; readonly url?: string };
   readonly container?: WorkflowRenderContainerPayload;
   readonly services?: Readonly<Record<string, WorkflowRenderContainerPayload>>;
@@ -597,6 +604,13 @@ function createStrategyPayload(strategy: WorkflowStrategy): {
   };
 }
 
+function createRunsOnObjectPayload(obj: RunsOnObject): WorkflowRenderRunsOnObjectPayload {
+  return {
+    ...(obj.group !== undefined ? { group: obj.group } : {}),
+    ...(obj.labels !== undefined ? { labels: [...obj.labels] } : {}),
+  };
+}
+
 function createContainerPayload(container: ContainerConfig): WorkflowRenderContainerPayload {
   return {
     image: container.image,
@@ -775,7 +789,11 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
         : {}),
       ...(job.env && Object.keys(job.env).length > 0 ? { env: { ...job.env } } : {}),
       ...(job.strategy ? { strategy: createStrategyPayload(job.strategy) } : {}),
-      "runs-on": Array.isArray(job.runsOn) ? [...job.runsOn] : job.runsOn,
+      "runs-on": isRunsOnObject(job.runsOn!)
+        ? createRunsOnObjectPayload(job.runsOn as RunsOnObject)
+        : Array.isArray(job.runsOn)
+          ? [...job.runsOn]
+          : job.runsOn,
       ...(job.environment !== undefined
         ? {
             environment:

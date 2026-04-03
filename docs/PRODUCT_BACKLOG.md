@@ -45,6 +45,8 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: [commercial-readiness.md](../gpt_reviews/commercial-readiness.md), [overview.md](../gpt_reviews/overview.md)
 
+- Product Owner support policy decision: the minimum supported Node runtime is now 24+. This supersedes the prior 22+ policy and should be reflected in SUPPORT.md, SPEC.md, the README rewrite, and any future release notes.
+
 ### Item 45: Release automation workflow
 
 - Why: The GPT review's Release Improvement Proposal recommends an automated release workflow covering changesets or equivalent versioning, release PRs, tagged npm/JSR publishing, and GitHub Releases with changelog notes. Without this, every release requires manual version bumps, manual publishing, and manual changelog updates — which is error-prone and scales poorly.

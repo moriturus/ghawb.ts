@@ -155,7 +155,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - CI verifies the build step (`tsc -p tsconfig.build.json` in each package) before tests, simulating publish-time verification on every push.
 - Version `0.1.0` is the initial release, covering all Sprint 1–13 deliverables. Release automation is deferred to post-sprint work.
 - Governance documents (`CHANGELOG.md`, `SECURITY.md`, `SUPPORT.md`) are maintained in the repository root.
-- Compatibility policy: Node 22+, Bun 1.x, Deno 2.x.
+- Compatibility policy: Node 24+, Bun 1.x, Deno 2.x.
 
 ## Open Questions
 

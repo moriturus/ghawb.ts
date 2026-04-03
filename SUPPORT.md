@@ -13,7 +13,7 @@ This is a volunteer-maintained open-source project. There is no SLA — response
 
 | Runtime | Minimum Version |
 | ------- | --------------- |
-| Node    | 22+             |
+| Node    | 24+             |
 | Bun     | 1.x             |
 | Deno    | 2.x             |
 

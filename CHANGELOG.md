@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Raised the minimum supported Node runtime from 22+ to 24+.
+
 ## [0.1.0] - 2026-04-03
 
 ### Added

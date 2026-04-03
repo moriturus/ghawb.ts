@@ -1497,7 +1497,7 @@ function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
 
     return {
       kind: "run",
-      run: step.run!.trim(),
+      run: step.scriptReference?.expand ? step.run! : step.run!.trim(),
       ...(resolvedShell !== undefined ? { shell: resolvedShell } : {}),
       ...(step.workingDirectory !== undefined
         ? { workingDirectory: step.workingDirectory.trim() }

@@ -3961,6 +3961,27 @@ describe("workflow builder", () => {
       }
     });
 
+    it("preserves trailing newline in expand mode (does not trim expanded script body)", () => {
+      const fixturePath = new URL("../../../tests/fixtures/sample-script.sh", import.meta.url)
+        .pathname;
+
+      const workflow = defineWorkflow({
+        id: createWorkflowId("ci"),
+        name: "CI",
+      })
+        .onPush()
+        .addJob(createJobId("deploy"), (job) => {
+          job.runsOn("ubuntu-latest").runScript({ path: fixturePath, expand: true });
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      if (step.kind === "run") {
+        // Expanded file content must be preserved as-is; trailing newline must not be stripped.
+        expect(step.run.endsWith("\n")).toBe(true);
+      }
+    });
+
     it("builds a script reference step with expand mode and script-reference shell", () => {
       const fixturePath = new URL("../../../tests/fixtures/sample-script.sh", import.meta.url)
         .pathname;

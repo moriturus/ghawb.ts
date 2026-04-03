@@ -7,7 +7,7 @@ export {
   type JobId,
   type WorkflowId,
 } from "@ghawb/shared";
-export { defineWorkflow, WorkflowBuilder } from "./builders.js";
+export { defineWorkflow, WorkflowBuilder, type ReusableWorkflowSource } from "./builders.js";
 export {
   actionRef,
   workflowRef,

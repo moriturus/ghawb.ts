@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createJobId, createWorkflowId, WorkflowValidationError } from "@ghawb/shared";
 
 import { defineWorkflow, createWorkflowRenderPayload, actionRef, workflowRef } from "./index.js";
-import type { ActionRef, WorkflowRef } from "./index.js";
+import type { ActionRef, ReusableWorkflowJob, WorkflowRef } from "./index.js";
 
 describe("workflow builder", () => {
   it("builds a representative Sprint 1 workflow model", () => {
@@ -4221,6 +4221,169 @@ describe("workflow builder", () => {
           })
           .build();
       }).toThrow(WorkflowValidationError);
+    });
+  });
+
+  describe("usesWorkflow object injection", () => {
+    it("accepts a WorkflowBuilder and derives local workflow ref", () => {
+      const reusable = defineWorkflow({
+        id: createWorkflowId("deploy"),
+        name: "Deploy",
+      }).onWorkflowCall();
+
+      const result = defineWorkflow({
+        id: createWorkflowId("caller"),
+        name: "Caller",
+      })
+        .onPush()
+        .addJob(createJobId("call_deploy"), (job) => {
+          job.usesWorkflow(reusable, { secrets: "inherit" });
+        })
+        .build();
+
+      const reusableJob = result.jobs[0] as ReusableWorkflowJob;
+      expect(reusableJob.uses).toBe("./.github/workflows/deploy.yml");
+      expect(reusableJob.secrets).toBe("inherit");
+    });
+
+    it("accepts a WorkflowDefinition and derives local workflow ref", () => {
+      const reusableDefinition = defineWorkflow({
+        id: createWorkflowId("shared_ci"),
+        name: "Shared CI",
+      })
+        .onWorkflowCall()
+        .addJob(createJobId("test"), (job) => {
+          job.runsOn("ubuntu-latest").run("bun test");
+        })
+        .build();
+
+      const result = defineWorkflow({
+        id: createWorkflowId("caller"),
+        name: "Caller",
+      })
+        .onPush()
+        .addJob(createJobId("run_ci"), (job) => {
+          job.usesWorkflow(reusableDefinition);
+        })
+        .build();
+
+      const reusableJob = result.jobs[0] as ReusableWorkflowJob;
+      expect(reusableJob.uses).toBe("./.github/workflows/shared_ci.yml");
+    });
+
+    it("rejects a WorkflowBuilder without workflow_call trigger at build time", () => {
+      const notReusable = defineWorkflow({
+        id: createWorkflowId("not_reusable"),
+        name: "Not Reusable",
+      }).onPush();
+
+      expect(() =>
+        defineWorkflow({
+          id: createWorkflowId("caller"),
+          name: "Caller",
+        })
+          .onPush()
+          .addJob(createJobId("call_it"), (job) => {
+            job.usesWorkflow(notReusable);
+          })
+          .build()
+      ).toThrow(/does not declare a workflow_call trigger/);
+    });
+
+    it("rejects a WorkflowDefinition without workflow_call trigger at build time", () => {
+      const notReusable = defineWorkflow({
+        id: createWorkflowId("not_reusable"),
+        name: "Not Reusable",
+      })
+        .onPush()
+        .addJob(createJobId("test"), (job) => {
+          job.runsOn("ubuntu-latest").run("echo test");
+        })
+        .build();
+
+      expect(() =>
+        defineWorkflow({
+          id: createWorkflowId("caller"),
+          name: "Caller",
+        })
+          .onPush()
+          .addJob(createJobId("call_it"), (job) => {
+            job.usesWorkflow(notReusable);
+          })
+          .build()
+      ).toThrow(/does not declare a workflow_call trigger/);
+    });
+
+    it("forwards with and secrets when using a WorkflowBuilder", () => {
+      const reusable = defineWorkflow({
+        id: createWorkflowId("deploy"),
+        name: "Deploy",
+      }).onWorkflowCall({
+        inputs: { environment: { type: "string", required: true } },
+        secrets: { token: { required: true } },
+      });
+
+      const result = defineWorkflow({
+        id: createWorkflowId("caller"),
+        name: "Caller",
+      })
+        .onPush()
+        .addJob(createJobId("call_deploy"), (job) => {
+          job.usesWorkflow(reusable, {
+            with: { environment: "production" },
+            secrets: { token: "${{ secrets.DEPLOY_TOKEN }}" },
+          });
+        })
+        .build();
+
+      const reusableJob = result.jobs[0] as ReusableWorkflowJob;
+      expect(reusableJob.uses).toBe("./.github/workflows/deploy.yml");
+      expect(reusableJob.with).toEqual({ environment: "production" });
+      expect(reusableJob.secrets).toEqual({ token: "${{ secrets.DEPLOY_TOKEN }}" });
+    });
+
+    it("allows onWorkflowCall to be called after usesWorkflow (definition-order independence)", () => {
+      const reusable = defineWorkflow({
+        id: createWorkflowId("deploy"),
+        name: "Deploy",
+      });
+
+      // usesWorkflow first, onWorkflowCall later
+      const caller = defineWorkflow({
+        id: createWorkflowId("caller"),
+        name: "Caller",
+      })
+        .onPush()
+        .addJob(createJobId("call_deploy"), (job) => {
+          job.usesWorkflow(reusable, { secrets: "inherit" });
+        });
+
+      // Add workflow_call trigger AFTER usesWorkflow was called
+      reusable.onWorkflowCall();
+
+      const result = caller.build();
+      const reusableJob = result.jobs[0] as ReusableWorkflowJob;
+      expect(reusableJob.uses).toBe("./.github/workflows/deploy.yml");
+    });
+
+    it("continues to accept WorkflowRef strings unchanged", () => {
+      const result = defineWorkflow({
+        id: createWorkflowId("caller"),
+        name: "Caller",
+      })
+        .onPush()
+        .addJob(createJobId("external"), (job) => {
+          job.usesWorkflow("org/repo/.github/workflows/ci.yml@main");
+        })
+        .addJob(createJobId("local"), (job) => {
+          job.usesWorkflow("./.github/workflows/deploy.yml");
+        })
+        .build();
+
+      expect((result.jobs[0] as ReusableWorkflowJob).uses).toBe(
+        "org/repo/.github/workflows/ci.yml@main"
+      );
+      expect((result.jobs[1] as ReusableWorkflowJob).uses).toBe("./.github/workflows/deploy.yml");
     });
   });
 });

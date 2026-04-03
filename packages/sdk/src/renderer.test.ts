@@ -2419,4 +2419,49 @@ describe("workflow renderer", () => {
     const step = payload.jobs.deploy!.steps![0]!;
     expect(step).not.toHaveProperty("scriptReference");
   });
+
+  it("renders runs-on object with group only", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("runs_on_obj"),
+      name: "Runs On Object",
+    })
+      .onPush()
+      .addJob(createJobId("deploy"), (job) => {
+        job.runsOn({ group: "production" }).run("echo deploy");
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.jobs.deploy!["runs-on"]).toEqual({ group: "production" });
+  });
+
+  it("renders runs-on object with labels only", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("runs_on_obj"),
+      name: "Runs On Object",
+    })
+      .onPush()
+      .addJob(createJobId("deploy"), (job) => {
+        job.runsOn({ labels: ["self-hosted", "linux"] }).run("echo deploy");
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.jobs.deploy!["runs-on"]).toEqual({ labels: ["self-hosted", "linux"] });
+  });
+
+  it("renders runs-on object with group and labels", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("runs_on_obj"),
+      name: "Runs On Object",
+    })
+      .onPush()
+      .addJob(createJobId("deploy"), (job) => {
+        job.runsOn({ group: "staging", labels: ["x64", "gpu"] }).run("echo deploy");
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.jobs.deploy!["runs-on"]).toEqual({ group: "staging", labels: ["x64", "gpu"] });
+  });
 });

@@ -27,6 +27,7 @@ export {
   workflowRef,
   isValidActionRef,
   isValidWorkflowRef,
+  isRunsOnObject,
   PULL_REQUEST_ACTIVITY_TYPES,
   RunnerLabel,
   SIMPLE_EVENT_ACTIVITY_TYPES,
@@ -48,6 +49,7 @@ export {
   type WorkflowRenderPayload,
   type WorkflowRenderStepPayload,
   type WorkflowRenderTriggerPayload,
+  type WorkflowRenderRunsOnObjectPayload,
   type WorkflowRenderWorkflowCallPayload,
   type WorkflowRenderWorkflowRunPayload,
 } from "./renderer.js";
@@ -67,6 +69,7 @@ export type {
   RunStep,
   ScriptReference,
   RunsOnTarget as RunsOn,
+  RunsOnObject,
   RunsOnValue,
   SimpleEventTrigger,
   SimpleEventType,

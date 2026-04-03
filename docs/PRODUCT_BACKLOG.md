@@ -33,7 +33,17 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-The product backlog is currently empty. All remaining items (Items 51–55) were selected into Sprint 16.
+### Item 56: String shorthand for step name in `uses()` and `run()`
+
+- Why: `uses()` と `run()` の第二パラメータは `StepMetadata` オブジェクトだが、実際の使用で最も頻繁に指定されるフィールドは `name` のみである。`job.uses("actions/checkout@v4", { name: "Checkout" })` のようなボイラープレートを `job.uses("actions/checkout@v4", "Checkout")` と短縮できれば、日常的なワークフロー記述の可読性と簡潔さが向上する。
+- Prerequisites: None.
+- Implementation Plan: `uses()` と `run()` の第二パラメータの型を `StepMetadata | string` に拡張し、文字列が渡された場合は `{ name: value }` として解釈する。既存の `StepMetadata` オブジェクト渡しは後方互換で維持する。`runScript()` も同様のメタデータパラメータを持つため、スコープに含めるか判断する。バリデーション（空文字列拒否など）は既存の `name` フィールドのルールに従う。
+- Definition of Done: `uses()` と `run()` が第二パラメータとして文字列を受け付け `name` として解釈する。既存のオブジェクト渡しが後方互換で動作する。テストとコードレビューが完了している。
+- Acceptance Criteria: `job.uses("actions/checkout@v4", "Checkout")` が `{ name: "Checkout", uses: "actions/checkout@v4" }` と等価に動作する。`job.run("npm test", "Run tests")` が `{ name: "Run tests", run: "npm test" }` と等価に動作する。既存の `StepMetadata` オブジェクト渡しは変更なく動作する。
+- Story Points: 2
+- Status: new
+- Completed At: N/A
+- Notes/Links: Sprint 16 review後のPOフィードバックから発案。`runScript()` への適用は実装時に判断する。
 
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.
 - Sprint 16 selection note: Items 51–55 (19 SP total) were committed to Sprint 16 after estimate validation and acceptance-criteria refinement. See [Sprint 16 Backlog](./sprint_backlogs/sp16.md) for committed scope and planning notes.

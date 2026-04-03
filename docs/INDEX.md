@@ -54,6 +54,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp13.md](./sprint_retrospectives/sp13.md): Sprint 13 retrospective summary, typed `uses` helpers, npm packaging, governance documents, and follow-up routing.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 - [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
+- [RELEASING.md](../RELEASING.md) — Release workflow and publishing documentation.
 - [SECURITY.md](../SECURITY.md) — Security vulnerability reporting policy.
 - [SUPPORT.md](../SUPPORT.md) — Support channels and compatibility policy.
 

@@ -293,6 +293,7 @@ Author committed workflow source modules inside the repository under [`workflows
 - [Syntax Coverage](docs/SYNTAX_COVERAGE.md) — supported/unsupported workflow syntax matrix
 - [Contributing](docs/CONTRIBUTING.md) — verification flow and workflow authoring guidance
 - [Changelog](CHANGELOG.md) — release history
+- [Releasing](RELEASING.md) — release workflow and publishing
 - [Security](SECURITY.md) — vulnerability reporting policy
 - [Support](SUPPORT.md) — support channels and compatibility policy
 - [Documentation Index](docs/INDEX.md) — full list of project docs

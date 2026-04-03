@@ -29,6 +29,14 @@ describe('workflow guardrails', () => {
         sourcePath: join(process.cwd(), 'workflows', 'manual-verify.ts'),
         outputPath: join(process.cwd(), '.github', 'workflows', 'manual-verify.yml'),
       },
+      {
+        sourcePath: join(process.cwd(), 'workflows', 'publish.ts'),
+        outputPath: join(process.cwd(), '.github', 'workflows', 'publish.yml'),
+      },
+      {
+        sourcePath: join(process.cwd(), 'workflows', 'release.ts'),
+        outputPath: join(process.cwd(), '.github', 'workflows', 'release.yml'),
+      },
     ]);
     await expect(verifyWorkflowGuardrails(process.cwd())).resolves.toEqual(layout.mappings);
   });

@@ -260,7 +260,7 @@ export interface RunStep extends RunStepMetadata {
 
 export interface UsesStep extends StepMetadata {
   readonly kind: 'uses';
-  readonly uses: string;
+  readonly uses: ActionRef;
 }
 
 export type WorkflowStep = RunStep | UsesStep;
@@ -311,6 +311,68 @@ export const RunnerLabel = {
 } as const;
 
 export type RunnerLabel = (typeof RunnerLabel)[keyof typeof RunnerLabel];
+
+// -- ActionRef and WorkflowRef typed reference types --
+
+type ExternalActionRef = `${string}/${string}@${string}`;
+type LocalActionRef = `./${string}`;
+type DockerActionRef = `docker://${string}`;
+
+export type ActionRef = ExternalActionRef | LocalActionRef | DockerActionRef;
+
+type ExternalWorkflowRef = `${string}/${string}/.github/workflows/${string}@${string}`;
+type LocalWorkflowRef = `./.github/workflows/${string}`;
+
+export type WorkflowRef = ExternalWorkflowRef | LocalWorkflowRef;
+
+const EXTERNAL_ACTION_REF_PATTERN = /^[^/]+\/[^@]+@.+$/;
+const LOCAL_ACTION_REF_PATTERN = /^\.\/.+$/;
+const DOCKER_ACTION_REF_PATTERN = /^docker:\/\/.+$/;
+
+export function isValidActionRef(value: string): value is ActionRef {
+  return (
+    EXTERNAL_ACTION_REF_PATTERN.test(value) ||
+    LOCAL_ACTION_REF_PATTERN.test(value) ||
+    DOCKER_ACTION_REF_PATTERN.test(value)
+  );
+}
+
+const EXTERNAL_WORKFLOW_REF_PATTERN = /^[^/]+\/[^/]+\/\.github\/workflows\/[^@]+@.+$/;
+const LOCAL_WORKFLOW_REF_PATTERN = /^\.\/\.github\/workflows\/.+$/;
+
+export function isValidWorkflowRef(value: string): value is WorkflowRef {
+  return EXTERNAL_WORKFLOW_REF_PATTERN.test(value) || LOCAL_WORKFLOW_REF_PATTERN.test(value);
+}
+
+export function actionRef(ref: string): ActionRef {
+  const trimmed = ref.trim();
+  if (trimmed.length === 0) {
+    throw new Error(
+      'actionRef value must not be empty. Expected: owner/repo@ref, ./path, or docker://image'
+    );
+  }
+  if (!isValidActionRef(trimmed)) {
+    throw new Error(
+      `actionRef value "${trimmed}" is not a valid action reference. Expected: owner/repo@ref, ./path, or docker://image`
+    );
+  }
+  return trimmed as ActionRef;
+}
+
+export function workflowRef(ref: string): WorkflowRef {
+  const trimmed = ref.trim();
+  if (trimmed.length === 0) {
+    throw new Error(
+      'workflowRef value must not be empty. Expected: owner/repo/.github/workflows/file@ref or ./.github/workflows/file'
+    );
+  }
+  if (!isValidWorkflowRef(trimmed)) {
+    throw new Error(
+      `workflowRef value "${trimmed}" is not a valid workflow reference. Expected: owner/repo/.github/workflows/file@ref or ./.github/workflows/file`
+    );
+  }
+  return trimmed as WorkflowRef;
+}
 
 export type RunsOnValue = RunnerLabel | (string & {});
 export type RunsOnTarget = RunsOnValue | readonly [RunsOnValue, ...RunsOnValue[]];
@@ -380,7 +442,7 @@ export interface WorkflowJobBase {
   readonly steps?: readonly WorkflowStep[];
   readonly secrets?: ReusableWorkflowJobSecrets;
   readonly with?: Readonly<Record<string, string>>;
-  readonly uses?: string;
+  readonly uses?: WorkflowRef;
 }
 
 export type JobEnvironment = string | { readonly name: string; readonly url?: string };
@@ -398,7 +460,7 @@ export type ReusableWorkflowJobSecrets = 'inherit' | Readonly<Record<string, str
 
 export interface ReusableWorkflowJob extends WorkflowJobBase {
   readonly kind: 'reusable-workflow';
-  readonly uses: string;
+  readonly uses: WorkflowRef;
 }
 
 export type WorkflowJob = StepsJob | ReusableWorkflowJob;

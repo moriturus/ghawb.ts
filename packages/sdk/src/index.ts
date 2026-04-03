@@ -9,6 +9,10 @@ export {
 } from '@ghawb/shared';
 export { defineWorkflow, WorkflowBuilder } from './builders.ts';
 export {
+  actionRef,
+  workflowRef,
+  isValidActionRef,
+  isValidWorkflowRef,
   PULL_REQUEST_ACTIVITY_TYPES,
   RunnerLabel,
   SIMPLE_EVENT_ACTIVITY_TYPES,
@@ -34,6 +38,7 @@ export {
   type WorkflowRenderWorkflowRunPayload,
 } from './renderer.ts';
 export type {
+  ActionRef,
   ContainerConfig,
   ContainerCredentials,
   ContainerPort,
@@ -77,6 +82,7 @@ export type {
   WorkflowPermissions,
   ReusableWorkflowJob,
   ReusableWorkflowJobSecrets,
+  WorkflowRef,
   StepsJob,
   WorkflowRunActivityType,
   WorkflowRunTrigger,

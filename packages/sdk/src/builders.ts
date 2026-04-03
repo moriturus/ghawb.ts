@@ -1488,11 +1488,12 @@ function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   };
 
   if (step.kind === 'run') {
-    const resolvedShell = step.scriptReference?.expand && step.scriptReference?.shell !== undefined
-      ? step.scriptReference.shell.trim()
-      : step.shell !== undefined
-        ? step.shell.trim()
-        : undefined;
+    const resolvedShell =
+      step.scriptReference?.expand && step.scriptReference?.shell !== undefined
+        ? step.scriptReference.shell.trim()
+        : step.shell !== undefined
+          ? step.shell.trim()
+          : undefined;
 
     return {
       kind: 'run',

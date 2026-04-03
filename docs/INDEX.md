@@ -9,6 +9,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [SYNTAX_COVERAGE.md](./SYNTAX_COVERAGE.md): GitHub Actions workflow syntax support/non-support matrix.
 - [CONTRIBUTING.md](./CONTRIBUTING.md): Supported contributor verification flow and workflow authoring guidance.
 - [PRODUCT_BACKLOG.md](./PRODUCT_BACKLOG.md): Prioritized product backlog and delivery order.
+- [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md): Historical backlog intake notes, prior priority adjustments, and old selection decisions moved out of the active backlog.
 - [sprint_backlogs/sp1.md](./sprint_backlogs/sp1.md): Sprint 1 backlog record, planning notes, and delivered items.
 - [sprint_backlogs/sp2.md](./sprint_backlogs/sp2.md): Sprint 2 backlog record, planning notes, and delivered items.
 - [sprint_backlogs/sp3.md](./sprint_backlogs/sp3.md): Sprint 3 backlog record, planning notes, and committed items.

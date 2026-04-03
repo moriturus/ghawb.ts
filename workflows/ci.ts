@@ -63,6 +63,9 @@ export default defineWorkflow({
       })
       .run("bun run test:vitest:node", {
         name: "Run Node Compatibility Tests",
+      })
+      .run("npm install --dry-run", {
+        name: "Verify npm Compatibility",
       });
   })
   .build();

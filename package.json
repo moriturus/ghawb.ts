@@ -18,12 +18,13 @@
     "format": "oxfmt -c oxfmt.config.ts .",
     "format:check": "oxfmt -c oxfmt.config.ts --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "check": "bun run format:check && bun run lint && bun run typecheck && bun run test"
+    "build:check": "tsc -p packages/shared/tsconfig.build.json && tsc -p packages/sdk/tsconfig.build.json && tsc -p packages/cli/tsconfig.build.json",
+    "check": "bun run format:check && bun run lint && bun run typecheck && bun run build:check && bun run test"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.30.0",
-    "@ghawb/sdk": "workspace:*",
+    "@ghawb/sdk": "^0.1.0",
     "@types/node": "^24.6.0",
     "@vitest/coverage-v8": "^3.2.4",
     "oxfmt": "^0.42.0",

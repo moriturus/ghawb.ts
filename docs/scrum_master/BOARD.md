@@ -4,10 +4,11 @@ This board tracks Scrum Master owned team-improvement follow-up items.
 
 ## Priority-Ordered TODO
 
-- (Sprint 14 retrospective) Consider adding `tsc` compilation to `bun run check` or a pre-push hook to close the Bun-vs-tsc type checking gap that caused a CI failure in Sprint 14. See [LEARN.md](../LEARN.md) for the recorded lesson.
+(No open items.)
 
 ## Closed Items
 
+- (Closed during Sprint 15 — Item 50) Consider adding `tsc` compilation to `bun run check` or a pre-push hook to close the Bun-vs-tsc type checking gap that caused a CI failure in Sprint 14. See [LEARN.md](../LEARN.md) for the recorded lesson. Closed: per-package `tsconfig.build.json` compilation added to `bun run check` via `build:check` script.
 - (Closed during Sprint 11 — Item 30) Make sprint closeout waiting behavior explicit when hosted proof is still pending on the sprint-level PR. Closed as codified in PLAYBOOK.md — Closeout Protocol step 5 defines the waiting behavior decision tree.
 - (Closed during Sprint 11 — Item 30) Require sprint review and retrospective notes to reference either a clean review snapshot or an explicitly scoped working-tree evidence note. Closed as codified in PLAYBOOK.md — Closeout Protocol step 4 requires evidence provenance statements.
 - (Closed during Sprint 11 — Item 30) Add an explicit clean-branch or scoped-verification gate to sprint closeout. Closed as codified in PLAYBOOK.md — Closeout Protocol step 0 defines verification target identification.

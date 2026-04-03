@@ -18,6 +18,7 @@ describe("self-hosted workflow output", () => {
     expect(ciContents).toContain("uses: actions/upload-artifact@v4");
     expect(ciContents).toContain("path: coverage/lcov.info");
     expect(ciContents).toContain("run: bun run test:vitest:node");
+    expect(ciContents).toContain("run: npm install --dry-run");
     expect(manualContents).toContain("name: Manual Verify");
     expect(manualContents).toContain("workflow_dispatch: null");
     expect(manualContents).toContain("run: bun run verify:pre-push");
@@ -29,7 +30,9 @@ describe("self-hosted workflow output", () => {
       devDependencies?: Record<string, string>;
     };
 
-    expect(packageJson.devDependencies?.["@ghawb/sdk"]).toBe("workspace:*");
+    const sdkVersion = packageJson.devDependencies?.["@ghawb/sdk"];
+    expect(sdkVersion).toBeDefined();
+    expect(sdkVersion).not.toMatch(/^workspace:/);
   });
 
   it("documents the supported pre-push verification command and workflow authoring convention", async () => {

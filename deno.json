@@ -1,4 +1,5 @@
 {
+  "unstable": ["sloppy-imports"],
   "imports": {
     "@ghawb/shared": "./packages/shared/src/index.ts",
     "@ghawb/sdk": "./packages/sdk/src/index.ts",

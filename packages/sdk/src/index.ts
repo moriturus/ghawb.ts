@@ -7,15 +7,19 @@ export {
   type JobId,
   type WorkflowId,
 } from '@ghawb/shared';
-export { defineWorkflow, WorkflowBuilder } from './builders.ts';
+export { defineWorkflow, WorkflowBuilder } from './builders.js';
 export {
+  actionRef,
+  workflowRef,
+  isValidActionRef,
+  isValidWorkflowRef,
   PULL_REQUEST_ACTIVITY_TYPES,
   RunnerLabel,
   SIMPLE_EVENT_ACTIVITY_TYPES,
   WORKFLOW_DISPATCH_INPUT_TYPES,
   WORKFLOW_RUN_ACTIVITY_TYPES,
   isSimpleEventType,
-} from './model.ts';
+} from './model.js';
 export {
   createWorkflowRenderPayload,
   renderWorkflow,
@@ -32,8 +36,9 @@ export {
   type WorkflowRenderTriggerPayload,
   type WorkflowRenderWorkflowCallPayload,
   type WorkflowRenderWorkflowRunPayload,
-} from './renderer.ts';
+} from './renderer.js';
 export type {
+  ActionRef,
   ContainerConfig,
   ContainerCredentials,
   ContainerPort,
@@ -77,6 +82,7 @@ export type {
   WorkflowPermissions,
   ReusableWorkflowJob,
   ReusableWorkflowJobSecrets,
+  WorkflowRef,
   StepsJob,
   WorkflowRunActivityType,
   WorkflowRunTrigger,
@@ -84,4 +90,4 @@ export type {
   WorkflowStrategy,
   WorkflowStep,
   WorkflowTrigger,
-} from './model.ts';
+} from './model.js';

@@ -102,3 +102,12 @@ Use this document to capture durable lessons discovered during implementation.
 - Why it matters: Temporary artifacts in commits create noise in reviews and can break CI if they contain invalid imports or duplicate test names. The cleanup cost is small but avoidable.
 - Recommendation: Add an explicit cleanup instruction to sub-agent prompts: "Before committing, verify that `git status` shows only files that are part of the deliverable. Remove any temporary test or scratch files."
 - Links: [AGENTS.md](../AGENTS.md)
+
+### Job builder method is `displayName()`, not `name()`
+
+- Date: 2026-04-02
+- Context: Sprint 12, Item 36 (display name fields).
+- What happened: The job-level `name` field is set via `.displayName()` on the job builder, not `.name()`. The method was named `displayName` to avoid a collision with the built-in `Function.name` property on class instances. Developers exploring the API naturally try `.name()` first, which does not exist.
+- Why it matters: The naming asymmetry — `.runName()` at workflow level vs. `.displayName()` at job level — is not obvious from the render key names (`run-name` and `name` respectively). Without documentation, SDK consumers will hit a runtime "not a function" error rather than a type error.
+- Recommendation: Document the `displayName()` naming decision explicitly in SPEC.md and in API-facing documentation. When future builder methods could collide with standard JavaScript property or method names, use a disambiguating prefix and document the rationale in the same commit.
+- Links: [packages/sdk/src/builders.ts](../packages/sdk/src/builders.ts), [docs/SPEC.md](./SPEC.md)

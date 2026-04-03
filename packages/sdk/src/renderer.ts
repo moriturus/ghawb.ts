@@ -1,6 +1,7 @@
 import {
   WORKFLOW_PERMISSION_KEYS,
   isSimpleEventType,
+  type ActionRef,
   type ContainerConfig,
   type FilteredWorkflowTrigger,
   type SimpleEventTrigger,
@@ -15,12 +16,13 @@ import {
   type WorkflowPermissionLevel,
   type WorkflowPermissionShorthand,
   type WorkflowPermissions,
+  type WorkflowRef,
   type WorkflowRunTrigger,
   type WorkflowServices,
   type WorkflowStep,
   type WorkflowStrategy,
   type WorkflowTrigger,
-} from './model.ts';
+} from './model.js';
 
 const WORKFLOW_PERMISSION_LEVELS = ['read', 'write', 'none'] as const;
 
@@ -108,7 +110,7 @@ export interface WorkflowRenderStepPayload {
   readonly shell?: string;
   readonly with?: Readonly<Record<string, string>>;
   readonly run?: string;
-  readonly uses?: string;
+  readonly uses?: ActionRef;
   readonly 'working-directory'?: string;
   readonly 'continue-on-error'?: boolean;
   readonly 'timeout-minutes'?: number;
@@ -162,7 +164,7 @@ export interface WorkflowRenderJobPayloadBase {
   readonly steps?: readonly WorkflowRenderStepPayload[];
   readonly secrets?: 'inherit' | Readonly<Record<string, string>>;
   readonly with?: Readonly<Record<string, string>>;
-  readonly uses?: string;
+  readonly uses?: WorkflowRef;
 }
 
 export interface WorkflowRenderStepsJobPayload extends WorkflowRenderJobPayloadBase {
@@ -174,7 +176,7 @@ export interface WorkflowRenderStepsJobPayload extends WorkflowRenderJobPayloadB
 }
 
 export interface WorkflowRenderReusableWorkflowJobPayload extends WorkflowRenderJobPayloadBase {
-  readonly uses: string;
+  readonly uses: WorkflowRef;
 }
 
 export type WorkflowRenderJobPayload =

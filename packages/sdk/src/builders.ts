@@ -13,6 +13,9 @@ import {
   WORKFLOW_RUN_ACTIVITY_TYPES,
   SIMPLE_EVENT_ACTIVITY_TYPES,
   isSimpleEventType,
+  isValidActionRef,
+  isValidWorkflowRef,
+  type ActionRef,
   type ContainerConfig,
   type FilteredTriggerType,
   type FilteredWorkflowTrigger,
@@ -53,13 +56,14 @@ import {
   type WorkflowPermissionMap,
   type WorkflowPermissionShorthand,
   type WorkflowPermissions,
+  type WorkflowRef,
   type WorkflowRunActivityType,
   type WorkflowRunTrigger,
   type WorkflowServices,
   type WorkflowStrategy,
   type WorkflowStep,
   type WorkflowTrigger,
-} from './model.ts';
+} from './model.js';
 
 interface WorkflowStepDraft extends StepMetadata {
   readonly kind: 'run' | 'uses';
@@ -923,6 +927,10 @@ function createValidationIssues(
         );
       } else if (job.uses.trim().length === 0) {
         issues.push(`job "${jobId}" reusable workflow uses must not be empty`);
+      } else if (!isValidWorkflowRef(job.uses.trim())) {
+        issues.push(
+          `job "${jobId}" reusable workflow uses value is not a valid workflow reference. Expected: owner/repo/.github/workflows/file@ref or ./.github/workflows/file`
+        );
       }
 
       if (job.runsOn !== undefined) {
@@ -1194,6 +1202,14 @@ function createValidationIssues(
         issues.push(`${location} must define a non-empty ${step.kind} value`);
       }
 
+      if (step.kind === 'uses' && step.uses !== undefined && step.uses.trim().length > 0) {
+        if (!isValidActionRef(step.uses.trim())) {
+          issues.push(
+            `${location} uses value is not a valid action reference. Expected: owner/repo@ref, ./path, or docker://image`
+          );
+        }
+      }
+
       if (step.id !== undefined) {
         if (step.id.trim().length === 0) {
           issues.push(`${location} id must not be empty`);
@@ -1454,7 +1470,7 @@ function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
 
   return {
     kind: 'uses',
-    uses: step.uses!.trim(),
+    uses: step.uses!.trim() as ActionRef,
     ...base,
   };
 }
@@ -1696,7 +1712,7 @@ class JobBuilder {
   }
 
   usesWorkflow(
-    workflow: string,
+    workflow: WorkflowRef,
     options: Readonly<{
       with?: Readonly<Record<string, string>>;
       secrets?: ReusableWorkflowJobSecrets;
@@ -1727,7 +1743,7 @@ class JobBuilder {
     return this;
   }
 
-  uses(action: string, metadata: StepMetadata = {}): this {
+  uses(action: ActionRef, metadata: StepMetadata = {}): this {
     this.jobSteps.push({
       kind: 'uses',
       uses: action,
@@ -2039,7 +2055,7 @@ export class WorkflowBuilder {
           ...(job.with !== undefined && Object.keys(job.with).length > 0
             ? { with: { ...job.with } }
             : {}),
-          uses: job.uses!.trim(),
+          uses: job.uses!.trim() as WorkflowRef,
         } satisfies ReusableWorkflowJob;
       }
 

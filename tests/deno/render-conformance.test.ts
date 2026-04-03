@@ -3,7 +3,7 @@ import { createWorkflowRenderPayload, WorkflowValidationError } from '@ghawb/sdk
 import {
   renderConformanceFixtures,
   validationConformanceFixtures,
-} from '../shared/render-conformance.fixtures.ts';
+} from '../shared/render-conformance.fixtures.js';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {

@@ -1,21 +1,26 @@
 {
   "name": "@ghawb/cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "bin": {
-    "ghawb": "./src/bin.ts"
+    "ghawb": "./dist/bin.js"
   },
   "files": [
-    "src"
+    "src",
+    "dist"
   ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
       "deno": "./src/index.ts",
-      "import": "./src/index.ts",
-      "default": "./src/index.ts"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
+  },
+  "scripts": {
+    "prepublishOnly": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@ghawb/sdk": "workspace:*",

@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { relative } from 'node:path';
 
-import { type WorkflowMapping, validateWorkflowLayout } from './verify-workflows.ts';
+import { type WorkflowMapping, validateWorkflowLayout } from './verify-workflows.js';
 
 function relativeFromCwd(cwd: string, target: string): string {
   return relative(cwd, target) || '.';

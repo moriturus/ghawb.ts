@@ -21,6 +21,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_backlogs/sp10.md](./sprint_backlogs/sp10.md): Sprint 10 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp11.md](./sprint_backlogs/sp11.md): Sprint 11 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp12.md](./sprint_backlogs/sp12.md): Sprint 12 backlog record, planning notes, and committed items.
+- [sprint_backlogs/sp13.md](./sprint_backlogs/sp13.md): Sprint 13 backlog record, planning notes, and committed items.
 - [scrum_master/BOARD.md](./scrum_master/BOARD.md): Scrum Master owned team-improvement follow-ups in priority order.
 - [scrum_master/PLAYBOOK.md](./scrum_master/PLAYBOOK.md): Scrum Master operating guide for sprint start, planning, and closeout improvements.
 - [TEAM.md](./TEAM.md): Scrum team roles and working personas.
@@ -35,6 +36,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp9.md](./sprint_reviews/sp9.md): Sprint 9 review summary, strategy completion, step/job modifiers, dispatch inputs demo scope, findings, and Product Owner decision.
 - [sprint_reviews/sp10.md](./sprint_reviews/sp10.md): Sprint 10 review summary, workflow defaults, identifier validation, coverage gate, reusable workflow demo scope, findings, and Product Owner decision.
 - [sprint_reviews/sp11.md](./sprint_reviews/sp11.md): Sprint 11 review summary, container/services, validation diagnostics, ceremony hardening, self-hosting expansion, distribution readiness, and Product Owner decision.
+- [sprint_reviews/sp12.md](./sprint_reviews/sp12.md): Sprint 12 review summary, display names, environment, pull_request_target, workflow_run, simple event triggers, typed runner labels, and Product Owner decision.
 - [sprint_retrospectives/sp1.md](./sprint_retrospectives/sp1.md): Sprint 1 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp2.md](./sprint_retrospectives/sp2.md): Sprint 2 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp3.md](./sprint_retrospectives/sp3.md): Sprint 3 retrospective summary, role reflections, and routed improvement actions.
@@ -46,7 +48,11 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp9.md](./sprint_retrospectives/sp9.md): Sprint 9 retrospective summary, role reflections, formatting friction, BOARD triage follow-through, and routed improvement actions.
 - [sprint_retrospectives/sp10.md](./sprint_retrospectives/sp10.md): Sprint 10 retrospective summary, role reflections, sprint-execution continuity friction, and routed follow-up actions.
 - [sprint_retrospectives/sp11.md](./sprint_retrospectives/sp11.md): Sprint 11 retrospective summary, role reflections, sub-agent delegation friction, and final-sprint closeout observations.
+- [sprint_retrospectives/sp12.md](./sprint_retrospectives/sp12.md): Sprint 12 retrospective summary, role reflections, job builder naming, RunnerLabel casing, branch coverage documentation, and capacity baseline discipline.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
+- [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
+- [SECURITY.md](../SECURITY.md) — Security vulnerability reporting policy.
+- [SUPPORT.md](../SUPPORT.md) — Support channels and compatibility policy.
 
 ## Notes
 

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { createJobId, createWorkflowId, WorkflowValidationError } from '@ghawb/shared';
 
-import { defineWorkflow, createWorkflowRenderPayload } from './index.ts';
+import { defineWorkflow, createWorkflowRenderPayload, actionRef, workflowRef } from './index.js';
+import type { ActionRef, WorkflowRef } from './index.js';
 
 describe('workflow builder', () => {
   it('builds a representative Sprint 1 workflow model', () => {
@@ -3165,7 +3166,7 @@ describe('workflow builder', () => {
     })
       .onPush()
       .addJob(createJobId('deploy'), (job) => {
-        job.usesWorkflow(undefined as unknown as string);
+        job.usesWorkflow(undefined as unknown as WorkflowRef);
       });
 
     const blankUsesBuilder = defineWorkflow({
@@ -3174,7 +3175,7 @@ describe('workflow builder', () => {
     })
       .onPush()
       .addJob(createJobId('deploy'), (job) => {
-        job.usesWorkflow('   ');
+        job.usesWorkflow('   ' as unknown as WorkflowRef);
       });
 
     expect(() => missingUsesBuilder.build()).toThrowError(
@@ -3695,5 +3696,146 @@ describe('workflow builder', () => {
         })
         .build()
     ).toThrow(WorkflowValidationError);
+  });
+
+  describe('actionRef factory', () => {
+    it('accepts a valid external action reference', () => {
+      expect(actionRef('actions/checkout@v4')).toBe('actions/checkout@v4');
+    });
+
+    it('accepts a valid local action reference', () => {
+      expect(actionRef('./my-action')).toBe('./my-action');
+    });
+
+    it('accepts a valid Docker action reference', () => {
+      expect(actionRef('docker://alpine:3.8')).toBe('docker://alpine:3.8');
+    });
+
+    it('rejects an empty string', () => {
+      expect(() => actionRef('')).toThrow(Error);
+    });
+
+    it('rejects a blank string', () => {
+      expect(() => actionRef('   ')).toThrow(Error);
+    });
+
+    it('rejects an invalid format without slash and at', () => {
+      expect(() => actionRef('just-a-string')).toThrow(Error);
+    });
+
+    it('rejects an invalid format without at sign', () => {
+      expect(() => actionRef('no-slash-no-at')).toThrow(Error);
+    });
+  });
+
+  describe('workflowRef factory', () => {
+    it('accepts a valid external workflow reference', () => {
+      expect(workflowRef('org/repo/.github/workflows/ci.yml@main')).toBe(
+        'org/repo/.github/workflows/ci.yml@main'
+      );
+    });
+
+    it('accepts a valid local workflow reference', () => {
+      expect(workflowRef('./.github/workflows/deploy.yml')).toBe('./.github/workflows/deploy.yml');
+    });
+
+    it('rejects an empty string', () => {
+      expect(() => workflowRef('')).toThrow(Error);
+    });
+
+    it('rejects a blank string', () => {
+      expect(() => workflowRef('   ')).toThrow(Error);
+    });
+
+    it('rejects an action reference format', () => {
+      expect(() => workflowRef('actions/checkout@v4')).toThrow(Error);
+    });
+
+    it('rejects an invalid format', () => {
+      expect(() => workflowRef('just-a-string')).toThrow(Error);
+    });
+  });
+
+  describe('build validation for uses references', () => {
+    it('rejects a step with an invalid uses format', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('invalid_step_uses'),
+        name: 'Invalid Step Uses',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job.runsOn('ubuntu-latest').uses('just-a-string' as unknown as ActionRef);
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "build" step 1 uses value is not a valid action reference. Expected: owner/repo@ref, ./path, or docker://image',
+        ])
+      );
+    });
+
+    it('rejects a reusable workflow job with an invalid uses format', () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId('invalid_workflow_uses'),
+        name: 'Invalid Workflow Uses',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.usesWorkflow('actions/checkout@v4' as unknown as WorkflowRef);
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError([
+          'job "deploy" reusable workflow uses value is not a valid workflow reference. Expected: owner/repo/.github/workflows/file@ref or ./.github/workflows/file',
+        ])
+      );
+    });
+
+    it('builds steps with all valid ActionRef forms', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('all_action_ref_forms'),
+        name: 'All Action Ref Forms',
+      })
+        .onPush()
+        .addJob(createJobId('build'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .uses('actions/checkout@v4')
+            .uses('./my-action')
+            .uses('docker://alpine:3.8');
+        })
+        .build();
+
+      expect(workflow.jobs[0]!.steps).toEqual([
+        { kind: 'uses', uses: 'actions/checkout@v4' },
+        { kind: 'uses', uses: './my-action' },
+        { kind: 'uses', uses: 'docker://alpine:3.8' },
+      ]);
+    });
+
+    it('builds reusable workflow jobs with all valid WorkflowRef forms', () => {
+      const externalWorkflow = defineWorkflow({
+        id: createWorkflowId('external_workflow_ref'),
+        name: 'External Workflow Ref',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.usesWorkflow('org/repo/.github/workflows/ci.yml@main');
+        })
+        .build();
+
+      const localWorkflow = defineWorkflow({
+        id: createWorkflowId('local_workflow_ref'),
+        name: 'Local Workflow Ref',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.usesWorkflow('./.github/workflows/deploy.yml');
+        })
+        .build();
+
+      expect(externalWorkflow.jobs[0]!.uses).toBe('org/repo/.github/workflows/ci.yml@main');
+      expect(localWorkflow.jobs[0]!.uses).toBe('./.github/workflows/deploy.yml');
+    });
   });
 });

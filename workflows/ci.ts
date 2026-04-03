@@ -42,6 +42,12 @@ export default defineWorkflow({
       .run('bun run verify:workflows', {
         name: 'Verify Workflow Guardrails',
       })
+      .run(
+        'tsc -p packages/shared/tsconfig.build.json && tsc -p packages/sdk/tsconfig.build.json && tsc -p packages/cli/tsconfig.build.json',
+        {
+          name: 'Build Packages',
+        }
+      )
       .run('bun run check', {
         name: 'Run Bun Checks',
       })

@@ -1,5 +1,5 @@
-import type { Brand } from './brand.ts';
-import { InvalidIdentifierError } from './errors.ts';
+import type { Brand } from './brand.js';
+import { InvalidIdentifierError } from './errors.js';
 
 export const IDENTIFIER_FORMAT_SOURCE = '^[a-zA-Z_][a-zA-Z0-9_-]*$';
 export const IDENTIFIER_FORMAT_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;

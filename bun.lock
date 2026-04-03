@@ -7,7 +7,7 @@
       "devDependencies": {
         "@changesets/changelog-github": "^0.6.0",
         "@changesets/cli": "^2.30.0",
-        "@ghawb/sdk": "workspace:*",
+        "@ghawb/sdk": "^0.1.0",
         "@types/node": "^24.6.0",
         "@vitest/coverage-v8": "^3.2.4",
         "oxfmt": "^0.42.0",
@@ -31,12 +31,20 @@
       "name": "@ghawb/sdk",
       "version": "0.1.0",
       "dependencies": {
-        "@ghawb/shared": "workspace:*",
+        "@ghawb/shared": "^0.1.0",
       },
     },
     "packages/shared": {
       "name": "@ghawb/shared",
       "version": "0.1.0",
+    },
+    "packages/yaml-import": {
+      "name": "@ghawb/yaml-import",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ghawb/sdk": "^0.1.0",
+        "yaml": "^2.8.1",
+      },
     },
   },
   "packages": {
@@ -149,6 +157,8 @@
     "@ghawb/sdk": ["@ghawb/sdk@workspace:packages/sdk"],
 
     "@ghawb/shared": ["@ghawb/shared@workspace:packages/shared"],
+
+    "@ghawb/yaml-import": ["@ghawb/yaml-import@workspace:packages/yaml-import"],
 
     "@inquirer/external-editor": ["@inquirer/external-editor@1.0.3", "", { "dependencies": { "chardet": "^2.1.1", "iconv-lite": "^0.7.0" }, "peerDependencies": { "@types/node": ">=18" }, "optionalPeers": ["@types/node"] }, "sha512-RWbSrDiYmO4LbejWY7ttpxczuwQyZLBUyygsA9Nsv95hpzUWwnNTVQmAq3xuh7vNwCp07UTmE5i11XAEExx4RA=="],
 

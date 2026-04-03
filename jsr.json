@@ -1,3 +1,3 @@
 {
-  "workspace": ["./packages/sdk", "./packages/shared", "./packages/cli"]
+  "workspace": ["./packages/sdk", "./packages/shared", "./packages/cli", "./packages/yaml-import"]
 }

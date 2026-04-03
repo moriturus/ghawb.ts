@@ -10,6 +10,7 @@ export default defineConfig({
       "@ghawb/shared": resolve(root, "packages/shared/src/index.ts"),
       "@ghawb/sdk": resolve(root, "packages/sdk/src/index.ts"),
       "@ghawb/cli": resolve(root, "packages/cli/src/index.ts"),
+      "@ghawb/yaml-import": resolve(root, "packages/yaml-import/src/index.ts"),
     },
   },
   test: {
@@ -18,6 +19,7 @@ export default defineConfig({
       "packages/cli/src/**/*.test.ts",
       "packages/shared/src/**/*.test.ts",
       "packages/sdk/src/**/*.test.ts",
+      "packages/yaml-import/src/**/*.test.ts",
       "tests/node/**/*.test.ts",
     ],
     coverage: {

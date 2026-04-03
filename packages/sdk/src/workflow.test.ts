@@ -3838,4 +3838,359 @@ describe('workflow builder', () => {
       expect(localWorkflow.jobs[0]!.uses).toBe('./.github/workflows/deploy.yml');
     });
   });
+
+  describe('script reference steps', () => {
+    it('builds a run step from a local script path without shell', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('ci'),
+        name: 'CI',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').runScript({ path: './scripts/deploy.sh' });
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      expect(step.kind).toBe('run');
+      if (step.kind === 'run') {
+        expect(step.run).toBe('./scripts/deploy.sh');
+        expect(step.scriptReference).toEqual({ path: './scripts/deploy.sh' });
+        expect(step.shell).toBeUndefined();
+      }
+    });
+
+    it('builds a run step from a script path with shell prefix', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('ci'),
+        name: 'CI',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').runScript({ path: './scripts/deploy.sh', shell: 'bash' });
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      expect(step.kind).toBe('run');
+      if (step.kind === 'run') {
+        expect(step.run).toBe('bash ./scripts/deploy.sh');
+        expect(step.scriptReference).toEqual({ path: './scripts/deploy.sh', shell: 'bash' });
+        expect(step.shell).toBeUndefined();
+      }
+    });
+
+    it('builds a run step from a script path with metadata shell (step-level)', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('ci'),
+        name: 'CI',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .runScript({ path: './scripts/deploy.sh' }, { shell: 'bash' });
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      expect(step.kind).toBe('run');
+      if (step.kind === 'run') {
+        expect(step.run).toBe('./scripts/deploy.sh');
+        expect(step.shell).toBe('bash');
+        expect(step.scriptReference).toEqual({ path: './scripts/deploy.sh' });
+      }
+    });
+
+    it('accepts an absolute path for script references', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('ci'),
+        name: 'CI',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').runScript({ path: '/opt/scripts/deploy.sh', shell: 'bash' });
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      if (step.kind === 'run') {
+        expect(step.run).toBe('bash /opt/scripts/deploy.sh');
+        expect(step.scriptReference).toEqual({
+          path: '/opt/scripts/deploy.sh',
+          shell: 'bash',
+        });
+      }
+    });
+
+    it('accepts any non-blank shell string for script references', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('ci'),
+        name: 'CI',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .runScript({ path: './deploy.py', shell: 'python3' });
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      if (step.kind === 'run') {
+        expect(step.run).toBe('python3 ./deploy.py');
+        expect(step.scriptReference).toEqual({ path: './deploy.py', shell: 'python3' });
+      }
+    });
+
+    it('builds a script reference step with expand mode reading file contents', () => {
+      const fixturePath = new URL(
+        '../../../tests/fixtures/sample-script.sh',
+        import.meta.url
+      ).pathname;
+
+      const workflow = defineWorkflow({
+        id: createWorkflowId('ci'),
+        name: 'CI',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .runScript({ path: fixturePath, expand: true });
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      if (step.kind === 'run') {
+        expect(step.run).toContain('echo "Hello from script"');
+        expect(step.scriptReference).toEqual({ path: fixturePath, expand: true });
+        expect(step.shell).toBeUndefined();
+      }
+    });
+
+    it('builds a script reference step with expand mode and script-reference shell', () => {
+      const fixturePath = new URL(
+        '../../../tests/fixtures/sample-script.sh',
+        import.meta.url
+      ).pathname;
+
+      const workflow = defineWorkflow({
+        id: createWorkflowId('ci'),
+        name: 'CI',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .runScript({ path: fixturePath, shell: 'bash', expand: true });
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      if (step.kind === 'run') {
+        expect(step.run).toContain('echo "Hello from script"');
+        expect(step.shell).toBe('bash');
+        expect(step.scriptReference).toEqual({
+          path: fixturePath,
+          shell: 'bash',
+          expand: true,
+        });
+      }
+    });
+
+    it('builds a script reference step with expand mode and metadata shell', () => {
+      const fixturePath = new URL(
+        '../../../tests/fixtures/sample-script.sh',
+        import.meta.url
+      ).pathname;
+
+      const workflow = defineWorkflow({
+        id: createWorkflowId('ci'),
+        name: 'CI',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .runScript({ path: fixturePath, expand: true }, { shell: 'sh' });
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      if (step.kind === 'run') {
+        expect(step.run).toContain('echo "Hello from script"');
+        expect(step.shell).toBe('sh');
+        expect(step.scriptReference).toEqual({ path: fixturePath, expand: true });
+      }
+    });
+
+    it('preserves step metadata on script reference steps', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('ci'),
+        name: 'CI',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').runScript(
+            { path: './scripts/deploy.sh', shell: 'bash' },
+            {
+              name: 'Deploy',
+              id: 'deploy_step',
+              env: { NODE_ENV: 'production' },
+              if: "github.ref == 'refs/heads/main'",
+              continueOnError: true,
+              timeoutMinutes: 30,
+              workingDirectory: './app',
+            }
+          );
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      if (step.kind === 'run') {
+        expect(step.run).toBe('bash ./scripts/deploy.sh');
+        expect(step.name).toBe('Deploy');
+        expect(step.id).toBe('deploy_step');
+        expect(step.env).toEqual({ NODE_ENV: 'production' });
+        expect(step.if).toBe("github.ref == 'refs/heads/main'");
+        expect(step.continueOnError).toBe(true);
+        expect(step.timeoutMinutes).toBe(30);
+        expect(step.workingDirectory).toBe('./app');
+      }
+    });
+
+    it('rejects double shell specification at build time', () => {
+      expect(() => {
+        defineWorkflow({
+          id: createWorkflowId('ci'),
+          name: 'CI',
+        })
+          .onPush()
+          .addJob(createJobId('deploy'), (job) => {
+            job
+              .runsOn('ubuntu-latest')
+              .runScript({ path: './scripts/deploy.sh', shell: 'bash' }, { shell: 'sh' });
+          })
+          .build();
+      }).toThrow(WorkflowValidationError);
+
+      try {
+        defineWorkflow({
+          id: createWorkflowId('ci'),
+          name: 'CI',
+        })
+          .onPush()
+          .addJob(createJobId('deploy'), (job) => {
+            job
+              .runsOn('ubuntu-latest')
+              .runScript({ path: './scripts/deploy.sh', shell: 'bash' }, { shell: 'sh' });
+          })
+          .build();
+      } catch (error) {
+        expect(error).toBeInstanceOf(WorkflowValidationError);
+        const validationError = error as InstanceType<typeof WorkflowValidationError>;
+        expect(validationError.issues).toContain(
+          'job "deploy" step 1 must not define shell in both script-reference and step metadata. Expected: shell in one location only'
+        );
+      }
+    });
+
+    it('rejects blank script-reference path at build time', () => {
+      expect(() => {
+        defineWorkflow({
+          id: createWorkflowId('ci'),
+          name: 'CI',
+        })
+          .onPush()
+          .addJob(createJobId('deploy'), (job) => {
+            job.runsOn('ubuntu-latest').runScript({ path: '' });
+          })
+          .build();
+      }).toThrow(WorkflowValidationError);
+
+      try {
+        defineWorkflow({
+          id: createWorkflowId('ci'),
+          name: 'CI',
+        })
+          .onPush()
+          .addJob(createJobId('deploy'), (job) => {
+            job.runsOn('ubuntu-latest').runScript({ path: '' });
+          })
+          .build();
+      } catch (error) {
+        expect(error).toBeInstanceOf(WorkflowValidationError);
+        const validationError = error as InstanceType<typeof WorkflowValidationError>;
+        expect(validationError.issues).toContain(
+          'job "deploy" step 1 script-reference path must not be empty'
+        );
+      }
+    });
+
+    it('rejects blank script-reference shell at build time', () => {
+      expect(() => {
+        defineWorkflow({
+          id: createWorkflowId('ci'),
+          name: 'CI',
+        })
+          .onPush()
+          .addJob(createJobId('deploy'), (job) => {
+            job.runsOn('ubuntu-latest').runScript({ path: './deploy.sh', shell: '  ' });
+          })
+          .build();
+      }).toThrow(WorkflowValidationError);
+
+      try {
+        defineWorkflow({
+          id: createWorkflowId('ci'),
+          name: 'CI',
+        })
+          .onPush()
+          .addJob(createJobId('deploy'), (job) => {
+            job.runsOn('ubuntu-latest').runScript({ path: './deploy.sh', shell: '  ' });
+          })
+          .build();
+      } catch (error) {
+        expect(error).toBeInstanceOf(WorkflowValidationError);
+        const validationError = error as InstanceType<typeof WorkflowValidationError>;
+        expect(validationError.issues).toContain(
+          'job "deploy" step 1 script-reference shell must not be empty'
+        );
+      }
+    });
+
+    it('freezes the built script reference deeply', () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId('ci'),
+        name: 'CI',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').runScript({ path: './deploy.sh', shell: 'bash' });
+        })
+        .build();
+
+      const step = workflow.jobs[0]!.steps![0]!;
+      if (step.kind === 'run') {
+        expect(Object.isFrozen(step.scriptReference)).toBe(true);
+      }
+    });
+
+    it('maps script reference in reusable-workflow job step drafts', () => {
+      expect(() => {
+        defineWorkflow({
+          id: createWorkflowId('ci'),
+          name: 'CI',
+        })
+          .onPush()
+          .addJob(createJobId('deploy'), (job) => {
+            job
+              .runScript({ path: './deploy.sh', shell: 'bash' })
+              .usesWorkflow('org/repo/.github/workflows/deploy.yml@main');
+          })
+          .build();
+      }).toThrow(WorkflowValidationError);
+    });
+  });
 });

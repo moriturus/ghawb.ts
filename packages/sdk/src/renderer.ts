@@ -419,6 +419,7 @@ function createStepPayload(step: WorkflowStep): WorkflowRenderStepPayload {
         'workingDirectory',
         'continueOnError',
         'timeoutMinutes',
+        'scriptReference',
       ],
       `step "${step.kind}"`
     );

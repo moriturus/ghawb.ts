@@ -6,6 +6,8 @@ import {
   type WorkflowId,
 } from '@ghawb/shared';
 
+import { readFileSync } from 'node:fs';
+
 import {
   WORKFLOW_PERMISSION_KEYS,
   PULL_REQUEST_ACTIVITY_TYPES,
@@ -27,6 +29,7 @@ import {
   type RunStepMetadata,
   type RunsOnTarget,
   type RunsOnValue,
+  type ScriptReference,
   type SimpleEventTrigger,
   type SimpleEventType,
   type StepMetadata,
@@ -71,6 +74,7 @@ interface WorkflowStepDraft extends StepMetadata {
   readonly shell?: string;
   readonly uses?: string;
   readonly workingDirectory?: string;
+  readonly scriptReference?: ScriptReference;
 }
 
 interface WorkflowJobDraftBase {
@@ -312,6 +316,14 @@ function cloneRunStepMetadata(metadata: RunStepMetadata): RunStepMetadata {
     ...(metadata.workingDirectory !== undefined
       ? { workingDirectory: metadata.workingDirectory }
       : {}),
+  };
+}
+
+function cloneScriptReference(ref: ScriptReference): ScriptReference {
+  return {
+    path: ref.path,
+    ...(ref.shell !== undefined ? { shell: ref.shell } : {}),
+    ...(ref.expand !== undefined ? { expand: ref.expand } : {}),
   };
 }
 
@@ -1244,6 +1256,25 @@ function createValidationIssues(
         if (step.workingDirectory !== undefined && step.workingDirectory.trim().length === 0) {
           issues.push(`${location} working-directory must not be empty`);
         }
+
+        if (step.scriptReference !== undefined) {
+          if (step.scriptReference.path.trim().length === 0) {
+            issues.push(`${location} script-reference path must not be empty`);
+          }
+
+          if (
+            step.scriptReference.shell !== undefined &&
+            step.scriptReference.shell.trim().length === 0
+          ) {
+            issues.push(`${location} script-reference shell must not be empty`);
+          }
+
+          if (step.scriptReference.shell !== undefined && step.shell !== undefined) {
+            issues.push(
+              `${location} must not define shell in both script-reference and step metadata. Expected: shell in one location only`
+            );
+          }
+        }
       }
 
       if (step.continueOnError !== undefined && typeof step.continueOnError !== 'boolean') {
@@ -1457,12 +1488,21 @@ function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   };
 
   if (step.kind === 'run') {
+    const resolvedShell = step.scriptReference?.expand && step.scriptReference?.shell !== undefined
+      ? step.scriptReference.shell.trim()
+      : step.shell !== undefined
+        ? step.shell.trim()
+        : undefined;
+
     return {
       kind: 'run',
       run: step.run!.trim(),
-      ...(step.shell !== undefined ? { shell: step.shell.trim() } : {}),
+      ...(resolvedShell !== undefined ? { shell: resolvedShell } : {}),
       ...(step.workingDirectory !== undefined
         ? { workingDirectory: step.workingDirectory.trim() }
+        : {}),
+      ...(step.scriptReference !== undefined
+        ? { scriptReference: cloneScriptReference(step.scriptReference) }
         : {}),
       ...base,
     };
@@ -1743,6 +1783,33 @@ class JobBuilder {
     return this;
   }
 
+  runScript(
+    config: Readonly<{ path: string; shell?: string; expand?: boolean }>,
+    metadata: RunStepMetadata = {}
+  ): this {
+    let run: string;
+
+    if (config.expand) {
+      run = readFileSync(config.path, 'utf-8');
+    } else {
+      run = config.shell ? `${config.shell} ${config.path}` : config.path;
+    }
+
+    const scriptReference = cloneScriptReference({
+      path: config.path,
+      ...(config.shell !== undefined ? { shell: config.shell } : {}),
+      ...(config.expand !== undefined ? { expand: config.expand } : {}),
+    });
+
+    this.jobSteps.push({
+      kind: 'run',
+      run,
+      scriptReference,
+      ...cloneRunStepMetadata(metadata),
+    });
+    return this;
+  }
+
   uses(action: ActionRef, metadata: StepMetadata = {}): this {
     this.jobSteps.push({
       kind: 'uses',
@@ -1793,6 +1860,9 @@ class JobBuilder {
           ...(step.uses !== undefined ? { uses: step.uses } : {}),
           ...(step.workingDirectory !== undefined
             ? { workingDirectory: step.workingDirectory }
+            : {}),
+          ...(step.scriptReference !== undefined
+            ? { scriptReference: cloneScriptReference(step.scriptReference) }
             : {}),
           ...cloneStepMetadata(step),
         })),
@@ -1858,6 +1928,9 @@ class JobBuilder {
         ...(step.shell !== undefined ? { shell: step.shell } : {}),
         ...(step.uses !== undefined ? { uses: step.uses } : {}),
         ...(step.workingDirectory !== undefined ? { workingDirectory: step.workingDirectory } : {}),
+        ...(step.scriptReference !== undefined
+          ? { scriptReference: cloneScriptReference(step.scriptReference) }
+          : {}),
         ...cloneStepMetadata(step),
       })),
     };

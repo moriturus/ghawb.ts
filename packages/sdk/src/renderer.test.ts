@@ -2304,4 +2304,133 @@ describe('workflow renderer', () => {
     const credKeys = Object.keys(payload.jobs.test!.container!.credentials!);
     expect(credKeys).toEqual(['username', 'password']);
   });
+
+  it('renders a script reference step without shell as a plain run step', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('ci'),
+      name: 'CI',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').runScript({ path: './scripts/deploy.sh' });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const step = payload.jobs.deploy!.steps![0]!;
+    expect(step).toEqual({ run: './scripts/deploy.sh' });
+  });
+
+  it('renders a script reference step with shell prefix in run value', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('ci'),
+      name: 'CI',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .runScript({ path: './scripts/deploy.sh', shell: 'bash' });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const step = payload.jobs.deploy!.steps![0]!;
+    expect(step).toEqual({ run: 'bash ./scripts/deploy.sh' });
+  });
+
+  it('renders a script reference step with metadata shell as step-level shell', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('ci'),
+      name: 'CI',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .runScript({ path: './scripts/deploy.sh' }, { shell: 'bash' });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const step = payload.jobs.deploy!.steps![0]!;
+    expect(step).toEqual({ shell: 'bash', run: './scripts/deploy.sh' });
+  });
+
+  it('renders a script reference step with expand mode', () => {
+    const fixturePath = new URL(
+      '../../../tests/fixtures/sample-script.sh',
+      import.meta.url
+    ).pathname;
+
+    const workflow = defineWorkflow({
+      id: createWorkflowId('ci'),
+      name: 'CI',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .runsOn('ubuntu-latest')
+          .runScript({ path: fixturePath, shell: 'bash', expand: true });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const step = payload.jobs.deploy!.steps![0]!;
+    expect(step.shell).toBe('bash');
+    expect(step.run).toContain('echo "Hello from script"');
+  });
+
+  it('renders a script reference step preserving metadata and field order', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('ci'),
+      name: 'CI',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').runScript(
+          { path: './scripts/deploy.sh', shell: 'bash' },
+          {
+            name: 'Deploy',
+            id: 'deploy_step',
+            env: { NODE_ENV: 'production' },
+            workingDirectory: './app',
+          }
+        );
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const step = payload.jobs.deploy!.steps![0]!;
+    expect(step.name).toBe('Deploy');
+    expect(step.id).toBe('deploy_step');
+    expect(step.env).toEqual({ NODE_ENV: 'production' });
+    expect(step['working-directory']).toBe('./app');
+    expect(step.run).toBe('bash ./scripts/deploy.sh');
+
+    const keys = Object.keys(step);
+    expect(keys).toEqual([
+      'name',
+      'id',
+      'env',
+      'working-directory',
+      'run',
+    ]);
+  });
+
+  it('does not emit scriptReference into the render payload', () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId('ci'),
+      name: 'CI',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job.runsOn('ubuntu-latest').runScript({ path: './deploy.sh', shell: 'bash' });
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    const step = payload.jobs.deploy!.steps![0]!;
+    expect(step).not.toHaveProperty('scriptReference');
+  });
 });

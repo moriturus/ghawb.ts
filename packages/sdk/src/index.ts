@@ -51,6 +51,7 @@ export type {
   PullRequestTriggerFilter,
   RunStepMetadata,
   RunStep,
+  ScriptReference,
   RunsOnTarget as RunsOn,
   RunsOnValue,
   SimpleEventTrigger,

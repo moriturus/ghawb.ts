@@ -1238,6 +1238,62 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+
+  createRenderFixture(
+    'script_reference_steps',
+    defineWorkflow({
+      id: createWorkflowId('script_reference'),
+      name: 'Script Reference',
+    })
+      .onPush()
+      .addJob(createJobId('deploy'), (job) => {
+        job
+          .runsOn(RunnerLabel.UbuntuLatest)
+          .runScript({ path: './scripts/deploy.sh' })
+          .runScript({ path: './scripts/test.sh', shell: 'bash' })
+          .runScript(
+            { path: '/opt/scripts/setup.sh', shell: 'sh' },
+            {
+              name: 'Setup',
+              id: 'setup_step',
+              env: { NODE_ENV: 'production' },
+              workingDirectory: './app',
+            }
+          )
+          .runScript({ path: './scripts/run.py' }, { shell: 'python3' });
+      })
+      .build(),
+    {
+      name: 'Script Reference',
+      on: {
+        push: null,
+      },
+      jobs: {
+        deploy: {
+          'runs-on': 'ubuntu-latest',
+          steps: [
+            {
+              run: './scripts/deploy.sh',
+            },
+            {
+              run: 'bash ./scripts/test.sh',
+            },
+            {
+              name: 'Setup',
+              id: 'setup_step',
+              env: { NODE_ENV: 'production' },
+              'working-directory': './app',
+              run: 'sh /opt/scripts/setup.sh',
+            },
+            {
+              shell: 'python3',
+              run: './scripts/run.py',
+            },
+          ],
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [
@@ -2023,5 +2079,57 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
         .build();
     },
     expectedIssues: ['trigger "issues" types must not be empty'],
+  },
+
+  {
+    name: 'script_reference_double_shell',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('double_shell'),
+        name: 'Double Shell',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job
+            .runsOn('ubuntu-latest')
+            .runScript({ path: './deploy.sh', shell: 'bash' }, { shell: 'sh' });
+        })
+        .build(),
+    expectedIssues: [
+      'job "deploy" step 1 must not define shell in both script-reference and step metadata. Expected: shell in one location only',
+    ],
+  },
+
+  {
+    name: 'script_reference_blank_path',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_path'),
+        name: 'Blank Path',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').runScript({ path: '  ' });
+        })
+        .build(),
+    expectedIssues: [
+      'job "deploy" step 1 must define a non-empty run value',
+      'job "deploy" step 1 script-reference path must not be empty',
+    ],
+  },
+
+  {
+    name: 'script_reference_blank_shell',
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId('blank_shell'),
+        name: 'Blank Shell',
+      })
+        .onPush()
+        .addJob(createJobId('deploy'), (job) => {
+          job.runsOn('ubuntu-latest').runScript({ path: './deploy.sh', shell: '' });
+        })
+        .build(),
+    expectedIssues: ['job "deploy" step 1 script-reference shell must not be empty'],
   },
 ];

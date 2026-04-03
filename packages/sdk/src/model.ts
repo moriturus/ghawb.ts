@@ -253,9 +253,16 @@ export interface RunStepMetadata extends StepMetadata {
   readonly workingDirectory?: string;
 }
 
+export interface ScriptReference {
+  readonly path: string;
+  readonly shell?: string;
+  readonly expand?: boolean;
+}
+
 export interface RunStep extends RunStepMetadata {
   readonly kind: 'run';
   readonly run: string;
+  readonly scriptReference?: ScriptReference;
 }
 
 export interface UsesStep extends StepMetadata {

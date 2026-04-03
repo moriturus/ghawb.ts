@@ -35,30 +35,34 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ### Item 48: Reusable workflow object injection in usesWorkflow()
 
-- Why: Currently `usesWorkflow()` only accepts a `WorkflowRef` string. Allowing a built `WorkflowDefinition` object to be passed directly improves ergonomics and enables compile-time safety — the SDK can verify the target workflow declares a `workflow_call` trigger before wiring the reference.
+- Why: Currently `usesWorkflow()` only accepts a `WorkflowRef` string. Allowing a `WorkflowBuilder` (unbuilt) or `WorkflowDefinition` (built) to be passed directly improves ergonomics and enables safety — the SDK can verify the target workflow declares a `workflow_call` trigger at the caller's `build()` time without imposing definition-order constraints.
 - Prerequisites: None (reusable workflow support is already complete via Item 32).
 - Implementation Plan:
-  - Extend `usesWorkflow()` signature to accept `WorkflowRef | WorkflowDefinition`.
-  - When a `WorkflowDefinition` is provided, derive the local ref as `./.github/workflows/${id}.yml`.
-  - Validate that the provided workflow has a `workflow_call` trigger; throw `WorkflowValidationError` if not.
-  - Add builder tests for object injection (happy path, missing trigger, with/secrets forwarding).
+  - Define a `ReusableWorkflowSource` union type: `WorkflowRef | WorkflowBuilder | WorkflowDefinition`.
+  - Extend `usesWorkflow()` signature to accept `ReusableWorkflowSource`.
+  - When a `WorkflowBuilder` or `WorkflowDefinition` is provided, derive the local ref as `./.github/workflows/${id}.yml`.
+  - Store a reference to the builder/definition alongside the derived ref so `build()` can inspect triggers later.
+  - At the caller's `build()` time (not at `usesWorkflow()` call time), validate that the target workflow has a `workflow_call` trigger. This avoids definition-order constraints — `onWorkflowCall()` may be called after `usesWorkflow()`.
+  - Add builder tests for object injection (happy path with builder, happy path with definition, missing trigger error, with/secrets forwarding, definition-order independence).
   - Add conformance fixture for object-injected reusable workflow rendering.
   - Update SPEC.md with the new overload.
 - Definition of Done:
-  - `usesWorkflow()` accepts both `WorkflowRef` and `WorkflowDefinition`.
-  - Passing a workflow without `workflow_call` trigger throws a validation error.
+  - `usesWorkflow()` accepts `WorkflowRef`, `WorkflowBuilder`, and `WorkflowDefinition`.
+  - Passing a workflow without `workflow_call` trigger produces a validation error at the caller's `build()` time.
   - Rendered output is identical to string-ref usage (`./.github/workflows/{id}.yml`).
+  - Definition order is unconstrained — `usesWorkflow(builder)` works even if `builder.onWorkflowCall()` is called later.
   - 100% line coverage maintained.
   - SPEC.md updated.
   - Code review completed.
 - Acceptance Criteria:
-  - `job.usesWorkflow(builtWorkflow, { secrets: "inherit" })` compiles and renders correct `uses:` value.
-  - Passing a non-reusable workflow to `usesWorkflow()` produces a clear error message.
+  - `job.usesWorkflow(unbuiltBuilder, { secrets: "inherit" })` compiles and renders correct `uses:` value.
+  - `job.usesWorkflow(builtDefinition, { secrets: "inherit" })` also works.
+  - Passing a workflow without `workflow_call` trigger to `usesWorkflow()` is accepted, but `build()` produces a clear validation error.
   - All existing `usesWorkflow(stringRef)` usage continues to work unchanged.
 - Story Points: 3
 - Status: new
 - Completed At: N/A
-- Notes/Links: Requested during Sprint 14 execution. Enhances the reusable workflow API surface (Item 32).
+- Notes/Links: Requested during Sprint 14 execution. Enhances the reusable workflow API surface (Item 32). Validation deferred to caller `build()` time per design decision.
 
 - Team intake decision: After Sprint 7 closeout exhausted the previously planned backlog, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, SDK completeness, and distribution readiness. Sprint 8 committed `Item 20` through `Item 23`. Sprint 9 committed `Item 24` through `Item 27`.
 - Product Owner intake rationale (Aoi Sakamoto): Prioritize filling the most impactful SDK feature gaps first — `env` maps and trigger completeness are table-stakes for real workflow authoring. Cross-job data flow (`step id` + `job outputs`) and strategy completion follow because they unlock materially new workflow patterns. Distribution readiness is last because the SDK surface must stabilize before external consumers arrive.

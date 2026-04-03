@@ -50,6 +50,9 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp11.md](./sprint_retrospectives/sp11.md): Sprint 11 retrospective summary, role reflections, sub-agent delegation friction, and final-sprint closeout observations.
 - [sprint_retrospectives/sp12.md](./sprint_retrospectives/sp12.md): Sprint 12 retrospective summary, role reflections, job builder naming, RunnerLabel casing, branch coverage documentation, and capacity baseline discipline.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
+- [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
+- [SECURITY.md](../SECURITY.md) — Security vulnerability reporting policy.
+- [SUPPORT.md](../SUPPORT.md) — Support channels and compatibility policy.
 
 ## Notes
 

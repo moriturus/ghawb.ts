@@ -72,6 +72,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - The CLI currently:
   - exposes `ghawb render --input <workflow.ts> --output <workflow.yml>`
   - exposes `ghawb render-batch --input <workflow.ts> --output <workflow.yml> ...` for explicit multi-workflow rendering without repository scanning
+  - exposes `ghawb lint <file.yml> [<file.yml> ...]` for verifying generated workflow YAML files with `actionlint`; when `actionlint` is not found on `PATH`, the CLI exits non-zero with a clear message naming the missing tool and linking to installation instructions
   - loads a directly specified TypeScript module whose default export is a built workflow definition
   - renders YAML through one concrete adapter backed by the `yaml` Node module
   - writes deterministic workflow output files and exits non-zero on failure, with batch mode surfacing partial failures after attempting every declared mapping
@@ -128,6 +129,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - Render workflow definitions authored with the SDK into `.github/workflows/*.yml` outputs
 - Load explicitly targeted TypeScript modules rather than scanning project state implicitly
 - Fail clearly when definitions are invalid, incomplete, or not exported as the module default
+- Verify generated workflow files with `actionlint` through a dedicated `lint` command; exit non-zero with actionable install instructions when `actionlint` is not available on `PATH`
 
 ### Renderer / Internal Model
 

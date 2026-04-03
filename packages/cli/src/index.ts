@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { execFile } from "node:child_process";
 
 import { stringify } from "yaml";
 
@@ -17,6 +18,11 @@ export interface CliIo {
 export interface CliRunDependencies extends CliIo {
   readonly importModule: (modulePath: string) => Promise<unknown>;
   readonly writeOutputFile: (outputPath: string, contents: string) => Promise<void>;
+  readonly findExecutable: (name: string) => Promise<string | undefined>;
+  readonly runCommand: (
+    command: string,
+    args: readonly string[]
+  ) => Promise<{ exitCode: number; stdout: string; stderr: string }>;
 }
 
 interface RenderTarget {
@@ -153,10 +159,37 @@ async function defaultWriteOutputFile(outputPath: string, contents: string): Pro
   await writeFile(outputPath, contents, "utf8");
 }
 
+async function defaultFindExecutable(name: string): Promise<string | undefined> {
+  const command = process.platform === "win32" ? "where" : "which";
+  return new Promise((resolve) => {
+    execFile(command, [name], (error, stdout) => {
+      resolve(error ? undefined : stdout.trim().split("\n")[0]);
+    });
+  });
+}
+
+async function defaultRunCommand(
+  command: string,
+  args: readonly string[]
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    execFile(command, [...args], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+      if (error && "status" in error && typeof error.status === "number") {
+        resolve({ exitCode: error.status, stdout, stderr });
+      } else if (error) {
+        resolve({ exitCode: 1, stdout, stderr });
+      } else {
+        resolve({ exitCode: 0, stdout, stderr });
+      }
+    });
+  });
+}
+
 function usage(): string {
   return [
     "Usage: ghawb render --input <workflow.ts> --output <workflow.yml>",
     "       ghawb render-batch --input <workflow.ts> --output <workflow.yml> [--input <workflow.ts> --output <workflow.yml> ...]",
+    "       ghawb lint <file.yml> [<file.yml> ...]",
   ].join("\n");
 }
 
@@ -186,6 +219,8 @@ export async function runCli(
 ): Promise<number> {
   const importModule = dependencies.importModule ?? defaultImportModule;
   const writeOutputFile = dependencies.writeOutputFile ?? defaultWriteOutputFile;
+  const findExecutable = dependencies.findExecutable ?? defaultFindExecutable;
+  const runCommand = dependencies.runCommand ?? defaultRunCommand;
 
   try {
     const [command, ...rest] = args;
@@ -220,6 +255,36 @@ export async function runCli(
       }
 
       return 0;
+    }
+
+    if (command === "lint") {
+      if (rest.length === 0) {
+        throw new CliUsageError("lint requires at least one file argument");
+      }
+
+      const actionlintPath = await findExecutable("actionlint");
+
+      if (!actionlintPath) {
+        io.stderr(
+          [
+            "actionlint is not installed or not found on PATH.",
+            "",
+            "Install it from: https://github.com/rhysd/actionlint",
+            "",
+            "  brew install actionlint              # macOS (Homebrew)",
+            "  go install github.com/rhysd/actionlint/cmd/actionlint@latest  # Go",
+            "  choco install actionlint             # Windows (Chocolatey)",
+            "",
+            "See https://github.com/rhysd/actionlint#install for more options.",
+          ].join("\n")
+        );
+        return 1;
+      }
+
+      const result = await runCommand(actionlintPath, rest);
+      if (result.stdout) io.stdout(result.stdout);
+      if (result.stderr) io.stderr(result.stderr);
+      return result.exitCode;
     }
 
     throw new CliUsageError(command ? `unknown command "${command}"` : "missing command");

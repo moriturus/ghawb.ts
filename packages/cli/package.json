@@ -23,7 +23,7 @@
     "prepublishOnly": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@ghawb/sdk": "workspace:*",
+    "@ghawb/sdk": "^0.1.0",
     "yaml": "^2.8.1"
   }
 }

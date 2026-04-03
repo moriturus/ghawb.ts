@@ -20,6 +20,6 @@
     "prepublishOnly": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@ghawb/shared": "workspace:*"
+    "@ghawb/shared": "^0.1.0"
   }
 }

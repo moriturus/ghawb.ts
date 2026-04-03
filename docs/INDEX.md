@@ -6,6 +6,8 @@ This directory contains the source-of-truth project documents for `ghawb`.
 
 - [INDEX.md](./INDEX.md): Index of the documentation set under `docs/`.
 - [SPEC.md](./SPEC.md): Current product specification and quality constraints.
+- [API_REFERENCE.md](./API_REFERENCE.md): SDK public API reference covering builders, expressions, renderer, validation, and known gotchas.
+- [COOKBOOK.md](./COOKBOOK.md): Practical workflow recipes and patterns using `@ghawb/sdk`.
 - [SYNTAX_COVERAGE.md](./SYNTAX_COVERAGE.md): GitHub Actions workflow syntax support/non-support matrix.
 - [CONTRIBUTING.md](./CONTRIBUTING.md): Supported contributor verification flow and workflow authoring guidance.
 - [PRODUCT_BACKLOG.md](./PRODUCT_BACKLOG.md): Prioritized product backlog and delivery order.

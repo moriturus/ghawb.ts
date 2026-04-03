@@ -1294,6 +1294,41 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
       },
     }
   ),
+  createRenderFixture(
+    "object_injected_reusable_workflow",
+    (() => {
+      const reusable = defineWorkflow({
+        id: createWorkflowId("shared_deploy"),
+        name: "Shared Deploy",
+      }).onWorkflowCall({
+        inputs: { env: { type: "string", required: true } },
+      });
+
+      return defineWorkflow({
+        id: createWorkflowId("object_injection_caller"),
+        name: "Object Injection Caller",
+      })
+        .onPush()
+        .addJob(createJobId("deploy"), (job) => {
+          job.usesWorkflow(reusable, {
+            with: { env: "production" },
+            secrets: "inherit",
+          });
+        })
+        .build();
+    })(),
+    {
+      name: "Object Injection Caller",
+      on: { push: null },
+      jobs: {
+        deploy: {
+          secrets: "inherit",
+          with: { env: "production" },
+          uses: "./.github/workflows/shared_deploy.yml",
+        },
+      },
+    }
+  ),
 ];
 
 export const validationConformanceFixtures: readonly ValidationConformanceFixture[] = [

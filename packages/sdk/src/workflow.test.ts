@@ -4103,7 +4103,7 @@ describe("workflow builder", () => {
       }
     });
 
-    it("rejects blank script-reference path at build time", () => {
+    it("rejects blank script-reference path at call time", () => {
       expect(() => {
         defineWorkflow({
           id: createWorkflowId("ci"),
@@ -4130,12 +4130,12 @@ describe("workflow builder", () => {
         expect(error).toBeInstanceOf(WorkflowValidationError);
         const validationError = error as InstanceType<typeof WorkflowValidationError>;
         expect(validationError.issues).toContain(
-          'job "deploy" step 1 script-reference path must not be empty'
+          'runScript() requires "path" to be a non-empty string.'
         );
       }
     });
 
-    it("rejects blank script-reference shell at build time", () => {
+    it("rejects blank script-reference shell at call time", () => {
       expect(() => {
         defineWorkflow({
           id: createWorkflowId("ci"),
@@ -4162,7 +4162,30 @@ describe("workflow builder", () => {
         expect(error).toBeInstanceOf(WorkflowValidationError);
         const validationError = error as InstanceType<typeof WorkflowValidationError>;
         expect(validationError.issues).toContain(
-          'job "deploy" step 1 script-reference shell must not be empty'
+          'runScript() requires "shell" to be omitted or a non-empty string.'
+        );
+      }
+    });
+
+    it("rejects unreadable script path in expand mode at call time", () => {
+      try {
+        defineWorkflow({
+          id: createWorkflowId("ci"),
+          name: "CI",
+        })
+          .onPush()
+          .addJob(createJobId("deploy"), (job) => {
+            job
+              .runsOn("ubuntu-latest")
+              .runScript({ path: "./nonexistent-script.sh", expand: true });
+          })
+          .build();
+        expect.unreachable("should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(WorkflowValidationError);
+        const validationError = error as InstanceType<typeof WorkflowValidationError>;
+        expect(validationError.issues[0]).toContain(
+          'runScript() could not read script at "./nonexistent-script.sh"'
         );
       }
     });

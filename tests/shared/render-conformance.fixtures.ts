@@ -2112,10 +2112,7 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
           job.runsOn("ubuntu-latest").runScript({ path: "  " });
         })
         .build(),
-    expectedIssues: [
-      'job "deploy" step 1 must define a non-empty run value',
-      'job "deploy" step 1 script-reference path must not be empty',
-    ],
+    expectedIssues: ['runScript() requires "path" to be a non-empty string.'],
   },
 
   {
@@ -2130,6 +2127,6 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
           job.runsOn("ubuntu-latest").runScript({ path: "./deploy.sh", shell: "" });
         })
         .build(),
-    expectedIssues: ['job "deploy" step 1 script-reference shell must not be empty'],
+    expectedIssues: ['runScript() requires "shell" to be omitted or a non-empty string.'],
   },
 ];

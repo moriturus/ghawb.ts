@@ -1258,17 +1258,6 @@ function createValidationIssues(
         }
 
         if (step.scriptReference !== undefined) {
-          if (step.scriptReference.path.trim().length === 0) {
-            issues.push(`${location} script-reference path must not be empty`);
-          }
-
-          if (
-            step.scriptReference.shell !== undefined &&
-            step.scriptReference.shell.trim().length === 0
-          ) {
-            issues.push(`${location} script-reference shell must not be empty`);
-          }
-
           if (step.scriptReference.shell !== undefined && step.shell !== undefined) {
             issues.push(
               `${location} must not define shell in both script-reference and step metadata. Expected: shell in one location only`
@@ -1789,11 +1778,13 @@ class JobBuilder {
     metadata: RunStepMetadata = {}
   ): this {
     if (config.path.trim().length === 0) {
-      throw new WorkflowValidationError('runScript() requires "path" to be a non-empty string.');
+      throw new WorkflowValidationError(['runScript() requires "path" to be a non-empty string.']);
     }
 
     if (config.shell !== undefined && config.shell.trim().length === 0) {
-      throw new WorkflowValidationError('runScript() requires "shell" to be omitted or a non-empty string.');
+      throw new WorkflowValidationError([
+        'runScript() requires "shell" to be omitted or a non-empty string.',
+      ]);
     }
 
     let run: string;
@@ -1803,9 +1794,9 @@ class JobBuilder {
         run = readFileSync(config.path, "utf-8");
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
-        throw new WorkflowValidationError(
-          `runScript() could not read script at "${config.path}": ${reason}`
-        );
+        throw new WorkflowValidationError([
+          `runScript() could not read script at "${config.path}": ${reason}`,
+        ]);
       }
     } else {
       run = config.shell ? `${config.shell} ${config.path}` : config.path;

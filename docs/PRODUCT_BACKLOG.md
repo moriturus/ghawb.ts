@@ -64,6 +64,32 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: Requested during Sprint 14 execution. Enhances the reusable workflow API surface (Item 32). Validation deferred to caller `build()` time per design decision.
 
+### Item 49: Fix npm install/ci failure caused by workspace: protocol
+
+- Why: `npm install` and `npm ci` fail with `EUNSUPPORTEDPROTOCOL` because `package.json` files use `workspace:*` for inter-package dependencies. The `workspace:` protocol is supported by pnpm, yarn, and bun, but not by npm. Since the project aims to maintain package manager compatibility across npm, yarn, and pnpm (per AGENTS.md), npm must work.
+- Prerequisites: None.
+- Implementation Plan:
+  - Investigate viable workspace dependency strategies that work across npm, pnpm, yarn, and bun simultaneously.
+  - Likely approach: replace `workspace:*` with `file:../shared` or similar npm-compatible references, or adopt npm workspaces configuration in root `package.json`.
+  - Verify that the chosen strategy does not break `npm publish` — published packages must reference registry versions, not local paths.
+  - Verify `bun install`, `pnpm install`, `yarn install`, and `npm install` all succeed.
+  - Verify `npm publish --dry-run` still produces correct dependency references for each package.
+  - Update RELEASING.md if the publish flow is affected.
+- Definition of Done:
+  - `npm install` and `npm ci` succeed without errors.
+  - `bun install`, `pnpm install`, and `yarn install` continue to work.
+  - Published packages reference correct registry versions (not local paths).
+  - All tests pass after the change.
+  - Code review completed.
+- Acceptance Criteria:
+  - `npm install` exits 0 in a clean checkout.
+  - `npm ci` exits 0 with a valid lockfile.
+  - `npm publish --dry-run` for each package shows correct dependency versions.
+- Story Points: 2
+- Status: new
+- Completed At: N/A
+- Notes/Links: Root cause is `workspace:*` in `package.json` (root), `packages/cli/package.json`, and `packages/sdk/package.json`. Reported during Sprint 14.
+
 - Team intake decision: After Sprint 7 closeout exhausted the previously planned backlog, the whole team agreed to refill the product backlog with ten items that balance workflow-surface expansion, SDK completeness, and distribution readiness. Sprint 8 committed `Item 20` through `Item 23`. Sprint 9 committed `Item 24` through `Item 27`.
 - Product Owner intake rationale (Aoi Sakamoto): Prioritize filling the most impactful SDK feature gaps first — `env` maps and trigger completeness are table-stakes for real workflow authoring. Cross-job data flow (`step id` + `job outputs`) and strategy completion follow because they unlock materially new workflow patterns. Distribution readiness is last because the SDK surface must stabilize before external consumers arrive.
 - Scrum Master intake rationale (Ren Takahashi): Keep dependency order flat where possible to reduce sequencing friction. Most items have no hard prerequisites, which allows sprint planning flexibility. `Item 29` is intentionally last because it benefits from the broadened surface. The Sprint 7 retrospective rule — every workflow-surface expansion must include cross-runtime conformance fixture updates in the same slice — applies to every item in this intake.

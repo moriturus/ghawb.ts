@@ -46,6 +46,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp13.md](./sprint_reviews/sp13.md): Sprint 13 review summary, typed `uses` helpers, npm packaging, governance documents, and Product Owner decision.
 - [sprint_reviews/sp14.md](./sprint_reviews/sp14.md): Sprint 14 review summary, run script references, README rewrite, release automation, CI fix findings, and Product Owner decision.
 - [sprint_reviews/sp15.md](./sprint_reviews/sp15.md): Sprint 15 review summary, npm workspace fix, tsc build-config gap closure, reusable workflow object injection, backlog exhaustion, and Product Owner decision.
+- [sprint_reviews/sp16.md](./sprint_reviews/sp16.md): Sprint 16 review summary, expression helpers, advanced runs-on, actionlint bridge, API reference and cookbook, YAML import package, and Product Owner decision.
 - [sprint_retrospectives/sp1.md](./sprint_retrospectives/sp1.md): Sprint 1 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp2.md](./sprint_retrospectives/sp2.md): Sprint 2 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp3.md](./sprint_retrospectives/sp3.md): Sprint 3 retrospective summary, role reflections, and routed improvement actions.

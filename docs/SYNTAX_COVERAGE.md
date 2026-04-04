@@ -250,4 +250,4 @@ All existing raw `string` entry points remain backward compatible. Empty or blan
 
 | Feature | Notes |
 |---------|-------|
-| Composite actions | Actions-level construct, not workflow-level. Sprint 20 discovery selected a separate opt-in package plus a dedicated CLI action-emitter flow for the first implementation slice; code support is still pending Item 70b. |
+| Advanced composite action features | `@ghawb/composite-actions` now covers the first slice (`name`, `description`, `inputs`, `outputs`, and composite `runs.steps`) through `ghawb render-action`, but branding metadata, pre/post hooks, and other non-core action metadata remain unsupported. |

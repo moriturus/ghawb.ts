@@ -3,6 +3,9 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
+
+import { defineCompositeAction } from "@ghawb/composite-actions";
+
 import { runCli as runCliDirect, type CliIo, type CliRunDependencies } from "./index.js";
 
 function defineMinimalWorkflow() {
@@ -226,9 +229,7 @@ export default defineWorkflow({
 
       expect(exitCode).toBe(0);
       expect(io.stderr_lines).toEqual([]);
-      expect(io.stdout_lines.join("\n")).toContain(
-        join(tempDir, ".github", "workflows", "ci.yml")
-      );
+      expect(io.stdout_lines.join("\n")).toContain(join(tempDir, ".github", "workflows", "ci.yml"));
     } finally {
       process.chdir(originalCwd);
     }
@@ -646,6 +647,112 @@ export default defineWorkflow({
       expect.stringContaining("first.yml"),
       expect.stringContaining("second.yml"),
     ]);
+  });
+
+  it("renders a composite action module into action.yml", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const inputPath = join(tempDir, "action.ts");
+    const outputPath = join(tempDir, "action.yml");
+
+    await writeFile(
+      inputPath,
+      `import { defineCompositeAction } from '${join(process.cwd(), "packages/composite-actions/src/index.ts")}';
+
+export default defineCompositeAction({
+  name: 'Setup Bun',
+  description: 'Install Bun and expose cache metadata',
+})
+  .input('bun-version', {
+    description: 'Version to install',
+    default: '1.3.11',
+  })
+  .output('cache-path', {
+    value: '\${{ steps.cache.outputs.path }}',
+  })
+  .uses('actions/checkout@v4', 'Checkout')
+  .run('echo path=$HOME/.bun/install/cache >> $GITHUB_OUTPUT', {
+    name: 'Expose Cache',
+    id: 'cache',
+    shell: 'bash',
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    const result = await runCli(
+      ["render-action", "--input", inputPath, "--output", outputPath],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain(outputPath);
+    await expect(readFile(outputPath, "utf8")).resolves.toBe(`name: Setup Bun
+description: Install Bun and expose cache metadata
+inputs:
+  bun-version:
+    description: Version to install
+    default: 1.3.11
+outputs:
+  cache-path:
+    value: \${{ steps.cache.outputs.path }}
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Expose Cache
+      id: cache
+      shell: bash
+      run: echo path=$HOME/.bun/install/cache >> $GITHUB_OUTPUT
+`);
+  });
+
+  it("requires an explicit output path for render-action", async () => {
+    const io = createIo();
+    const exitCode = await runCliDirect(["render-action", "--input", "action.ts"], io, mockDeps());
+
+    expect(exitCode).toBe(1);
+    expect(io.stderr_lines.join("\n")).toContain("missing required --output argument");
+  });
+
+  it("accepts short flags for render-action", async () => {
+    const io = createIo();
+
+    const exitCode = await runCliDirect(
+      ["render-action", "-i", "action.ts", "-o", "action.yml"],
+      io,
+      mockDeps({
+        importModule: async () => ({
+          default: defineCompositeAction({ name: "Echo" }).run("echo ok").build(),
+        }),
+        writeOutputFile: async () => {},
+      })
+    );
+
+    expect(exitCode).toBe(0);
+    expect(io.stderr_lines).toEqual([]);
+    expect(io.stdout_lines.join("\n")).toContain("action.yml");
+  });
+
+  it("fails clearly when the input module does not export a built composite action", async () => {
+    const io = createIo();
+
+    const exitCode = await runCliDirect(
+      ["render-action", "--input", "action.ts", "--output", "action.yml"],
+      io,
+      mockDeps({
+        importModule: async () => ({ default: defineMinimalWorkflow() }),
+      })
+    );
+
+    expect(exitCode).toBe(1);
+    expect(io.stderr_lines.join("\n")).toContain(
+      "default export must be a built composite action definition"
+    );
   });
 });
 

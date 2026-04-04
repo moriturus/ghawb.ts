@@ -57,6 +57,20 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: User-requested backlog intake to modernize self-hosted workflow definitions so repository examples track the current public authoring surface rather than older transitional patterns.
 
+### Item 75: Move high-level job helpers such as `nodeCi()` into an opt-in package
+
+- Why: `@ghawb/sdk` is primarily the core workflow AST, builder, validation, and rendering surface. High-specificity job helpers such as `nodeCi()` introduce a more opinionated layer that feels closer to `@ghawb/typed-actions` than to the core SDK boundary. Moving that class of helper into an opt-in package would make the package boundaries more coherent and keep the core SDK focused on workflow primitives plus low-level authoring helpers.
+- Prerequisites: None, but the work should treat the current `nodeCi()` surface as shipped behavior and therefore plan an explicit migration path rather than silently breaking existing users.
+- Implementation Plan: Define the target package boundary for high-level job helpers, likely as a new opt-in package or as part of an existing ergonomics-oriented package if the boundary remains coherent. Move `nodeCi()` behind that package boundary, provide a migration path for current users, update self-hosted workflow examples and docs, and verify that the resulting surface still supports the repository's preferred explicit-authoring model without drifting into a broad preset framework.
+- Definition of Done: High-level job helpers are no longer part of the core `@ghawb/sdk` package surface, an opt-in package boundary and migration story are documented, self-hosted examples and docs use the new import path where appropriate, and review plus verification are complete.
+- Acceptance Criteria: `nodeCi()` or its equivalent is provided through an opt-in package rather than the core SDK. Existing users have a documented migration path. `docs/SPEC.md`, API docs, and any affected self-hosted workflow sources are updated to reflect the new boundary. Verification proves the refactor does not break the supported authoring contract.
+- Story Points: 3
+- Status: new
+- Completed At: N/A
+- Notes/Links: User-requested backlog intake to align high-level job helpers with the same opt-in packaging principle already used for typed action wrappers and composite action authoring.
+
+## Notes
+
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.
 - Sprint 16 selection note: Items 51–55 (19 SP total) were committed to Sprint 16 after estimate validation and acceptance-criteria refinement. See [Sprint 16 Backlog](./sprint_backlogs/sp16.md) for committed scope and planning notes.
 - Sprint 17 selection note: Items 57–60 (discovery intake, 6 SP) and Item 56 (prior backlog, 2 SP) were committed to Sprint 17 for a total of 8 SP. Items 57–60 address quality-gate, coverage-enforcement, documentation-accuracy, and date-integrity gaps identified during product discovery as release prerequisites. Items 61–65 were added to the backlog from feature proposals (`gpt/new_functions.md`) but deferred to post-release sprints per PO decision. See [Sprint 17 Backlog](./sprint_backlogs/sp17.md) for committed scope and planning notes.

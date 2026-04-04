@@ -37,7 +37,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 - Why: Common workflow patterns (Node CI, Bun CI, pnpm install/test) are repeatedly assembled from the same builder calls. A preset or recipe API could reduce boilerplate for standard patterns and bridge the gap between the Cookbook documentation and the SDK API.
 - Prerequisites: None. Benefits from typed action wrappers (Item 61) if available.
-- Implementation Plan: Needs discovery. Design decisions required: preset scope (which patterns), API shape (factory functions vs. builder mixins), relationship to Cookbook recipes, and package placement.
+- Implementation Plan: Needs discovery. Design decisions required: preset scope (which patterns), API shape (factory functions vs. builder mixins), relationship to Cookbook recipes, package placement, and whether the right answer is an SDK API at all versus Cookbook-first guidance or a narrower helper layer.
 - Definition of Done: TBD after design scoping.
 - Acceptance Criteria: TBD after design scoping.
 - Story Points: TBD (requires discovery before estimation)
@@ -50,6 +50,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Sprint 17 selection note: Items 57–60 (discovery intake, 6 SP) and Item 56 (prior backlog, 2 SP) were committed to Sprint 17 for a total of 8 SP. Items 57–60 address quality-gate, coverage-enforcement, documentation-accuracy, and date-integrity gaps identified during product discovery as release prerequisites. Items 61–65 were added to the backlog from feature proposals (`gpt/new_functions.md`) but deferred to post-release sprints per PO decision. See [Sprint 17 Backlog](./sprint_backlogs/sp17.md) for committed scope and planning notes.
 - Sprint 18 selection note: Items 61, 62, 63, and 64 were committed to Sprint 18 for a total of 13 SP. The PO explicitly chose continued feature maturation over a `0.1.0` release decision, so Sprint 18 proceeds as a feature-expansion sprint while `0.1.0` remains unreleased. Item 65 was deferred because it still requires discovery and estimate refinement. See [Sprint 18 Backlog](./sprint_backlogs/sp18.md) for committed scope and planning notes.
 - Sprint 18 review decision: Sprint 18 delivered all committed scope (Items 61–64, 13/13 SP) without carry-over. No active-backlog reprioritization is needed because only Item 65 remains. The next priority is discovery for Item 65 before Sprint 19 planning; the standing PO decision remains that `0.1.0` stays unreleased until the product is mature enough. See [Sprint 18 Review](./sprint_reviews/sp18.md).
+- Sprint 18 retrospective decision: Item 65 discovery should explicitly compare at least three options before Sprint 19 planning: Cookbook-only guidance, a narrow helper API, and a broader preset/recipe layer. Sprint 18 reinforced the product preference for additive explicit APIs over magic abstractions. See [Sprint 18 Retrospective](./sprint_retrospectives/sp18.md).
 
 ## Sprint Backlog Records
 

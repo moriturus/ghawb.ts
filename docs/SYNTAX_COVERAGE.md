@@ -133,7 +133,7 @@ All use `.onEvent(type, { types? })`.
 | `if` | ✅ | metadata arg | |
 | `run` | ✅ | `.run(cmd, meta?)` | |
 | `uses` | ✅ | `.uses(action, meta?)` | `ActionRef` string or typed action step |
-| `with` | ✅ | metadata arg / typed action step | `Record<string, string>` or typed-action-managed inputs; opt-in wrappers for checkout/setup-node/upload-artifact/download-artifact live in `@ghawb/typed-actions` |
+| `with` | ✅ | metadata arg / typed action step | `Record<string, string>` or typed-action-managed inputs; opt-in wrappers for checkout/cache/setup-node/setup-python/setup-go/setup-java/setup-dotnet/github-script/configure-pages/upload-pages-artifact/deploy-pages/labeler/upload-artifact/download-artifact live in `@ghawb/typed-actions` |
 | `env` | ✅ | metadata arg | |
 | `shell` | ✅ | metadata arg | Run steps only |
 | `working-directory` | ✅ | metadata arg | Run steps only |

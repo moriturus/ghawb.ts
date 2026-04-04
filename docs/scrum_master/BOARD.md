@@ -4,7 +4,8 @@ This board tracks Scrum Master owned team-improvement follow-up items.
 
 ## Priority-Ordered TODO
 
-(No open items.)
+- (Opened during Sprint 17 retrospective) Add README feature-status sync check to the sprint closeout protocol in PLAYBOOK.md. When a sprint delivers a feature that changes the supported/unsupported boundary, the closeout checklist should verify the README reflects the change before the sprint closes.
+- (Opened during Sprint 17 retrospective) Add pre-execution validation step to the sprint start protocol in PLAYBOOK.md. Re-run acceptance checks against the sprint branch base at sprint start to detect items whose criteria are already satisfied, converting them to explicit "already done" acknowledgments during planning rather than execution.
 
 ## Recently Closed
 

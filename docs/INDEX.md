@@ -65,6 +65,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp14.md](./sprint_retrospectives/sp14.md): Sprint 14 retrospective summary, Bun-vs-tsc gap, validation enforcement points, npm compatibility, and follow-up routing.
 - [sprint_retrospectives/sp15.md](./sprint_retrospectives/sp15.md): Sprint 15 retrospective summary, role reflections, backlog exhaustion, bun/npm gotcha, and product discovery recommendations.
 - [sprint_retrospectives/sp16.md](./sprint_retrospectives/sp16.md): Sprint 16 retrospective summary, role reflections, new-package config checklist, test helper parameterization, and release evaluation recommendation.
+- [sprint_retrospectives/sp17.md](./sprint_retrospectives/sp17.md): Sprint 17 retrospective summary, role reflections, pre-execution validation, README feature-status sync, and release readiness evaluation.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 - [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
 - [RELEASING.md](../RELEASING.md) — Release workflow and publishing documentation.

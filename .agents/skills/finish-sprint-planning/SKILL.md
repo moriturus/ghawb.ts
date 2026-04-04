@@ -44,6 +44,8 @@ Use this order unless the user explicitly asks for a narrower finishing task.
 - Do not leave selected sprint items in a pre-selection state such as `todo` once they have been moved into a committed sprint backlog unless the repository docs explicitly require that convention.
 - Update remaining product-backlog priority notes so they reflect only the unselected backlog.
 - If a new sprint backlog Markdown file is added under `docs/`, update `docs/INDEX.md` in the same change.
+- Unless the user explicitly asks for a no-commit outcome, stage and commit the resulting sprint-planning documentation changes as part of finishing the sprint-planning workflow.
+- Use a Conventional Commit message that makes the planning outcome explicit, for example `docs(sprint): plan sprint 19`.
 
 ### 4. Evaluate planning readiness
 
@@ -73,6 +75,7 @@ Omit sections the user did not ask for. Keep the language direct and specific.
 - Keep `docs/PRODUCT_BACKLOG.md` and the relevant `docs/sprint_backlogs/sp<N>.md` file internally consistent after each planning edit.
 - Before finishing, verify that each selected sprint item uses the committed sprint status convention expected by the repository, and correct stale pre-selection statuses such as `todo` when the sprint is being marked ready to start.
 - If a new sprint backlog file is created under `docs/`, update `docs/INDEX.md` in the same change.
+- When persistence was requested and no explicit no-commit instruction exists, do not report the sprint-planning closeout as finished until the documentation changes are committed.
 - Surface unused capacity, deferred items, and blocked dependencies explicitly.
 - When repository docs define team personas, use them for evaluation language without inventing fictional implementation work.
 - Treat this skill as the closing phase: do not reopen settled planning decisions unless persistence is blocked by a concrete unresolved issue.

@@ -69,6 +69,18 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: User-requested backlog intake to align high-level job helpers with the same opt-in packaging principle already used for typed action wrappers and composite action authoring.
 
+### Item 76: Strengthen Deno compatibility coverage with higher-value test slices
+
+- Why: The repository claims Deno 2.x compatibility and already runs a small Deno test suite, but the documented testing split still treats Deno primarily as smoke-level coverage. That leaves room for runtime-specific regressions in module resolution, package entry points, and representative public API contracts to slip through until late verification.
+- Prerequisites: None. The work should preserve Bun-run Vitest as the primary unit/integration authority unless a separate specification or planning decision explicitly changes the repository-wide testing strategy.
+- Implementation Plan: Audit the current `tests/deno` coverage and add the highest-value Deno-only or Deno-sensitive verification slices beyond the current smoke baseline. Favor explicit compatibility checks for exported package entry points, representative public API authoring flows, and failure modes that have historically differed under Deno's stricter runtime or type-checking behavior. Update quality commands and documentation only where the strengthened Deno contract materially changes contributor expectations.
+- Definition of Done: The repository has materially stronger automated Deno compatibility evidence than the current smoke-oriented baseline, the added tests target concrete cross-runtime risk areas, related documentation is updated where necessary, and the completed change has code review finished by a non-implementing persona.
+- Acceptance Criteria: `tests/deno` covers more than a minimal smoke path and includes at least one additional high-value contract slice beyond the existing render-conformance fixtures; the added Deno tests are reproducible through the repository's documented commands; any changed expectations about Deno's verification role are documented consistently across backlog and contributor-facing docs; and the expanded suite does not weaken existing Bun/Node verification.
+- Story Points: 3
+- Status: new
+- Completed At: N/A
+- Notes/Links: User-requested backlog intake focused on improving Deno-side automated confidence while preserving the repository's current Bun-primary verification model unless explicitly re-decided later.
+
 ## Notes
 
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.

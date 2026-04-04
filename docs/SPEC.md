@@ -99,6 +99,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - Follow test-driven development as the default implementation approach.
 - Target 100% SDK line coverage. The "100% coverage" claim refers specifically to line, statement, and function coverage of `packages/sdk/src/` as measured by `bun run coverage` using Vitest's v8 provider. Branch coverage has a known exception: defensive branches in type-narrowed union code that are unreachable by design (e.g., exhaustive discriminant checks) are not counted as missing coverage.
 - Measure `packages/sdk/src/` coverage with `bun run coverage` using Vitest's v8 provider, emit lcov output to `coverage/lcov.info`, and fail CI when configured coverage thresholds regress.
+- Coverage thresholds enforced in `vitest.config.ts`: lines 100%, statements 100%, functions 100%, branches 98%. The branch threshold is set to 98% rather than 100% because the remaining uncovered branches are intentional defense-in-depth code: reusable-workflow `toDraft()` step-field conditionals in `builders.ts` and optional-field conditional spreads in `renderer.ts`. These branches guard against structurally impossible states in type-narrowed union code and are unreachable under normal operation.
 - Ensure generated workflow output is deterministic and idempotent.
 - Favor explicit validation and failure modes over silent coercion.
 

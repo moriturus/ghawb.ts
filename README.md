@@ -75,7 +75,7 @@ export default defineWorkflow({
 ### 2. Render to YAML
 
 ```bash
-npx ghawb render --input workflows/ci.ts --output .github/workflows/ci.yml
+npx ghawb render -i workflows/ci.ts -o .github/workflows/ci.yml
 ```
 
 ### 3. Commit both files
@@ -183,12 +183,12 @@ The `@ghawb/cli` package provides the `ghawb` command.
 
 ```bash
 # Render a single workflow
-ghawb render --input workflows/ci.ts --output .github/workflows/ci.yml
+ghawb render -i workflows/ci.ts -o .github/workflows/ci.yml
 
 # Render multiple workflows in one pass
 ghawb render-batch \
-  --input workflows/ci.ts      --output .github/workflows/ci.yml \
-  --input workflows/deploy.ts  --output .github/workflows/deploy.yml
+  -i workflows/ci.ts      -o .github/workflows/ci.yml \
+  -i workflows/deploy.ts  -o .github/workflows/deploy.yml
 ```
 
 The CLI dynamically imports your TypeScript module, validates the default export is a `WorkflowDefinition`, and renders it to YAML using the bundled YAML adapter.
@@ -232,11 +232,11 @@ The SDK catches structural and type-level problems at construction time, but it 
 
 ```bash
 # After rendering, verify the generated YAML with actionlint
-ghawb render --input workflows/ci.ts --output .github/workflows/ci.yml
+ghawb render -i workflows/ci.ts -o .github/workflows/ci.yml
 ghawb lint .github/workflows/ci.yml
 
 # Render and lint in one step
-ghawb render --input workflows/ci.ts --output .github/workflows/ci.yml --lint
+ghawb render -i workflows/ci.ts -o .github/workflows/ci.yml --lint
 
 # Lint multiple files
 ghawb lint .github/workflows/*.yml

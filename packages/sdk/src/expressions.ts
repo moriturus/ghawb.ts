@@ -2,6 +2,10 @@ export interface StepOutputRef {
   outputs(name: string): string;
 }
 
+export interface NeedsOutputRef {
+  outputs(name: string): string;
+}
+
 export function expr(content: string): string {
   if (content.trim().length === 0) {
     throw new Error(
@@ -58,6 +62,20 @@ export function steps(id: string): StepOutputRef {
         throw new Error("steps outputs name must not be empty or blank. Expected: an output name");
       }
       return `steps.${id}.outputs.${name}`;
+    },
+  };
+}
+
+export function needs(id: string): NeedsOutputRef {
+  if (id.trim().length === 0) {
+    throw new Error("needs id must not be empty or blank. Expected: a job identifier");
+  }
+  return {
+    outputs(name: string): string {
+      if (name.trim().length === 0) {
+        throw new Error("needs outputs name must not be empty or blank. Expected: an output name");
+      }
+      return `needs.${id}.outputs.${name}`;
     },
   };
 }

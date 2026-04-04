@@ -119,6 +119,7 @@ interface ReusableWorkflowJobDraft extends WorkflowJobDraftBase {
   readonly kind: "reusable-workflow";
   readonly secrets?: ReusableWorkflowJobSecrets;
   readonly with?: Readonly<Record<string, string>>;
+  readonly outputNames?: readonly string[];
   readonly uses?: string;
   readonly usesSource?: WorkflowBuilder | WorkflowDefinition;
   readonly steps: readonly WorkflowStepDraft[];
@@ -972,6 +973,18 @@ function createValidationIssues(
         }
       }
 
+      if (job.outputNames !== undefined) {
+        for (const outputName of job.outputNames) {
+          if (outputName.trim().length === 0) {
+            issues.push(`job "${jobId}" reusable workflow outputs must not contain blank names`);
+          } else if (!matchesIdentifierFormat(outputName)) {
+            issues.push(
+              `job "${jobId}" reusable workflow output "${outputName}" must match ${IDENTIFIER_FORMAT_SOURCE}. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens`
+            );
+          }
+        }
+      }
+
       if (job.runsOn !== undefined) {
         issues.push(
           `job "${jobId}" reusable workflow job must not define runs-on. Only step-based jobs support runs-on`
@@ -1658,6 +1671,25 @@ function finalizeReusableWorkflowJobSecrets(
   return Object.fromEntries(Object.entries(secrets).map(([key, value]) => [key, value.trim()]));
 }
 
+function inferWorkflowCallOutputNames(
+  workflow: WorkflowBuilder | WorkflowDefinition
+): readonly string[] | undefined {
+  const workflowCallTrigger =
+    workflow instanceof WorkflowBuilder
+      ? workflow.triggers.find((trigger) => trigger.type === "workflow_call")
+      : workflow.on.find((trigger) => trigger.type === "workflow_call");
+
+  if (
+    workflowCallTrigger?.type === "workflow_call" &&
+    workflowCallTrigger.outputs !== undefined &&
+    Object.keys(workflowCallTrigger.outputs).length > 0
+  ) {
+    return Object.keys(workflowCallTrigger.outputs);
+  }
+
+  return undefined;
+}
+
 class JobBuilder {
   readonly id: JobId;
 
@@ -1688,6 +1720,7 @@ class JobBuilder {
   private jobUses?: string;
   private jobWith?: Readonly<Record<string, string>>;
   private jobSecrets?: ReusableWorkflowJobSecrets;
+  private jobOutputNames?: readonly string[];
   private jobUsesSource?: WorkflowBuilder | WorkflowDefinition;
   private readonly jobSteps: WorkflowStepDraft[] = [];
 
@@ -1817,21 +1850,46 @@ class JobBuilder {
     options: Readonly<{
       with?: Readonly<Record<string, string>>;
       secrets?: ReusableWorkflowJobSecrets;
+      outputs?: readonly string[];
     }> = {}
   ): this {
     this.jobKind = "reusable-workflow";
     if (typeof workflow === "string") {
       this.jobUses = workflow;
       delete this.jobUsesSource;
+      if (options.outputs !== undefined) {
+        this.jobOutputNames = [...options.outputs];
+      } else {
+        delete this.jobOutputNames;
+      }
     } else if (workflow instanceof WorkflowBuilder) {
       this.jobUses = `./.github/workflows/${workflow.id}.yml`;
       this.jobUsesSource = workflow;
+      const inferredOutputNames =
+        options.outputs !== undefined
+          ? [...options.outputs]
+          : inferWorkflowCallOutputNames(workflow);
+      if (inferredOutputNames !== undefined) {
+        this.jobOutputNames = inferredOutputNames;
+      } else {
+        delete this.jobOutputNames;
+      }
     } else if (workflow !== null && workflow !== undefined) {
       this.jobUses = `./.github/workflows/${(workflow as WorkflowDefinition).id}.yml`;
       this.jobUsesSource = workflow as WorkflowDefinition;
+      const inferredOutputNames =
+        options.outputs !== undefined
+          ? [...options.outputs]
+          : inferWorkflowCallOutputNames(workflow as WorkflowDefinition);
+      if (inferredOutputNames !== undefined) {
+        this.jobOutputNames = inferredOutputNames;
+      } else {
+        delete this.jobOutputNames;
+      }
     } else {
       this.jobUses = workflow as unknown as string;
       delete this.jobUsesSource;
+      delete this.jobOutputNames;
     }
     if (options.with !== undefined) {
       this.jobWith = { ...options.with };
@@ -1953,6 +2011,7 @@ class JobBuilder {
         ...(this.jobUses !== undefined ? { uses: this.jobUses } : {}),
         ...(this.jobUsesSource !== undefined ? { usesSource: this.jobUsesSource } : {}),
         ...(this.jobWith !== undefined ? { with: { ...this.jobWith } } : {}),
+        ...(this.jobOutputNames !== undefined ? { outputNames: [...this.jobOutputNames] } : {}),
         ...(this.jobSecrets !== undefined
           ? {
               secrets: this.jobSecrets === "inherit" ? "inherit" : { ...this.jobSecrets },
@@ -2245,6 +2304,9 @@ export class WorkflowBuilder {
             : {}),
           ...(job.with !== undefined && Object.keys(job.with).length > 0
             ? { with: { ...job.with } }
+            : {}),
+          ...(job.outputNames !== undefined && job.outputNames.length > 0
+            ? { outputNames: [...job.outputNames] }
             : {}),
           uses: job.uses!.trim() as WorkflowRef,
         } satisfies ReusableWorkflowJob;

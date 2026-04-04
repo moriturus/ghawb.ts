@@ -116,7 +116,7 @@ All use `.onEvent(type, { types? })`.
 
 | Key | Status | Builder API | Notes |
 |-----|--------|-------------|-------|
-| `uses` | ✅ | `.usesWorkflow(ref, opts?)` | `owner/repo/path@ref` format |
+| `uses` | ✅ | `.usesWorkflow(ref, opts?)` | `owner/repo/path@ref` format; caller-side output names can be declared or inferred |
 | `with` | ✅ | via options | Input bindings |
 | `secrets` | ✅ | via options | Map or `'inherit'` |
 | `name`, `if`, `needs`, `permissions`, `continue-on-error` | ✅ | Same as step-based | |
@@ -240,4 +240,3 @@ All existing raw `string` entry points remain backward compatible. Empty or blan
 | Feature | Notes |
 |---------|-------|
 | Composite actions | Actions-level construct, not workflow-level |
-| Reusable workflow `outputs` at caller side | |

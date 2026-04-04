@@ -179,6 +179,7 @@ export default defineWorkflow({
       .permissions({ contents: "read", packages: "write" })
       .usesWorkflow("octo-org/shared-workflows/.github/workflows/publish.yml@main", {
         with: { artifact: "dist" },
+        outputs: ["artifact_url"],
         secrets: "inherit",
       });
   })

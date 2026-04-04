@@ -6,6 +6,7 @@ import {
   secrets,
   matrix,
   inputs,
+  needs,
   steps,
   success,
   always,
@@ -212,6 +213,30 @@ describe("expression helpers", () => {
     it("rejects blank output name", () => {
       expect(() => steps("build").outputs("   ")).toThrowError(
         "steps outputs name must not be empty or blank. Expected: an output name"
+      );
+    });
+  });
+
+  describe("needs", () => {
+    it("creates reusable workflow output references", () => {
+      expect(needs("deploy").outputs("artifact")).toBe("needs.deploy.outputs.artifact");
+    });
+
+    it("wraps reusable workflow output references in expr for full expression", () => {
+      expect(expr(needs("deploy").outputs("artifact"))).toBe(
+        "${{ needs.deploy.outputs.artifact }}"
+      );
+    });
+
+    it("rejects blank job ids", () => {
+      expect(() => needs("   ")).toThrowError(
+        "needs id must not be empty or blank. Expected: a job identifier"
+      );
+    });
+
+    it("rejects blank output names", () => {
+      expect(() => needs("deploy").outputs("")).toThrowError(
+        "needs outputs name must not be empty or blank. Expected: an output name"
       );
     });
   });

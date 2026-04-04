@@ -200,9 +200,7 @@ describe("workflow builder", () => {
       });
 
     expect(() => builder.build()).toThrowError(
-      new WorkflowValidationError([
-        'job "build" runs-on labels must not contain blank values',
-      ])
+      new WorkflowValidationError(['job "build" runs-on labels must not contain blank values'])
     );
   });
 

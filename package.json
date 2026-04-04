@@ -19,7 +19,7 @@
     "format:check": "oxfmt -c oxfmt.config.ts --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build:check": "tsc -p packages/shared/tsconfig.build.json && tsc -p packages/sdk/tsconfig.build.json && tsc -p packages/cli/tsconfig.build.json && tsc -p packages/yaml-import/tsconfig.build.json",
-    "check": "bun run format:check && bun run lint && bun run typecheck && bun run build:check && bun run test"
+    "check": "bun run format && bun run format:check && bun run lint && bun run typecheck && bun run build:check && bun run test"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.6.0",

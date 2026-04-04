@@ -1021,7 +1021,11 @@ function createValidationIssues(
           `job "${jobId}" runs-on object must define at least one of "group" or "labels". Expected: { group?: string; labels?: string[] }`
         );
       }
-      if (obj.group !== undefined && typeof obj.group === "string" && obj.group.trim().length === 0) {
+      if (
+        obj.group !== undefined &&
+        typeof obj.group === "string" &&
+        obj.group.trim().length === 0
+      ) {
         issues.push(
           `job "${jobId}" runs-on group must not be empty. Expected: a non-blank runner group name`
         );

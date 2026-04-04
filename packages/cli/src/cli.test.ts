@@ -295,7 +295,8 @@ describe("ghawb CLI lint command", () => {
       ["lint", "ci.yml", "deploy.yml"],
       io,
       mockDeps({
-        findExecutable: async (name) => (name === "actionlint" ? "/usr/local/bin/actionlint" : undefined),
+        findExecutable: async (name) =>
+          name === "actionlint" ? "/usr/local/bin/actionlint" : undefined,
         runCommand: async (command, args) => {
           runCommandCalls.push({ command, args });
           return { exitCode: 0, stdout: "", stderr: "" };
@@ -335,7 +336,11 @@ describe("ghawb CLI lint command", () => {
       io,
       mockDeps({
         findExecutable: async () => "/usr/local/bin/actionlint",
-        runCommand: async () => ({ exitCode: 1, stdout: "", stderr: "fatal: something went wrong" }),
+        runCommand: async () => ({
+          exitCode: 1,
+          stdout: "",
+          stderr: "fatal: something went wrong",
+        }),
       })
     );
 

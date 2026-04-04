@@ -184,9 +184,7 @@ describe("expression helpers", () => {
     });
 
     it("wraps in expr for full expression", () => {
-      expect(expr(steps("build").outputs("result"))).toBe(
-        "${{ steps.build.outputs.result }}"
-      );
+      expect(expr(steps("build").outputs("result"))).toBe("${{ steps.build.outputs.result }}");
     });
 
     it("supports different step IDs and output names", () => {
@@ -254,9 +252,7 @@ describe("expression helpers", () => {
 
   describe("composition patterns", () => {
     it("composes context reference with comparison operator", () => {
-      expect(expr(`${github("event_name")} == 'push'`)).toBe(
-        "${{ github.event_name == 'push' }}"
-      );
+      expect(expr(`${github("event_name")} == 'push'`)).toBe("${{ github.event_name == 'push' }}");
     });
 
     it("composes matrix reference in condition", () => {

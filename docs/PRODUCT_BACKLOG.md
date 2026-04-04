@@ -69,6 +69,30 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: User-requested CLI ergonomics improvement after Sprint 18. Requires a documented contract for output-path inference to avoid implicit behavior drift.
 
+### Item 68: Remaining niche trigger support
+
+- Why: The project still advertises a small set of unsupported trigger types in `README.md` and `docs/SYNTAX_COVERAGE.md`, leaving a visible syntax-coverage gap after the major trigger work is otherwise complete. Closing the remaining niche trigger set would reduce the "mostly complete except for edge cases" status of the SDK.
+- Prerequisites: None. Builds on the existing trigger model/builder/validation/renderer/conformance pattern.
+- Implementation Plan: Implement the remaining explicitly documented unsupported workflow triggers, starting with `branch_protection_rule` and `deployment_protection_rule`, and reconcile whether a scoped set of GitHub App events should be included in the same slice or split into a follow-up item. Update builder APIs, validation, rendering, conformance fixtures, `docs/SPEC.md`, `docs/SYNTAX_COVERAGE.md`, and README support claims.
+- Definition of Done: The currently documented unsupported niche triggers are either implemented or explicitly re-scoped into a narrower follow-up backlog item with updated docs. Tests, cross-runtime conformance coverage, documentation, and code review completed.
+- Acceptance Criteria: `branch_protection_rule` and `deployment_protection_rule` are supported through the SDK and renderer with documented behavior. Any remaining GitHub App event gap is documented precisely rather than described vaguely. The corresponding rows are removed or narrowed in `docs/SYNTAX_COVERAGE.md` and README.
+- Story Points: 3
+- Status: new
+- Completed At: N/A
+- Notes/Links: Intake from README "Not Yet Supported" and `docs/SYNTAX_COVERAGE.md` "Not Yet Supported Triggers".
+
+### Item 69: Composite action definition support
+
+- Why: Composite actions remain the only feature listed under `docs/SYNTAX_COVERAGE.md` "Not Yet Supported Features". Although they are actions-level rather than workflow-level, their absence leaves an obvious capability gap for users who want to author reusable action logic in the same type-safe ecosystem.
+- Prerequisites: Needs design clarification because composite actions sit adjacent to, but outside, the current workflow-focused core contract.
+- Implementation Plan: Design a composite-action authoring slice that preserves the project's architecture rules. Decisions required: whether support lives in `@ghawb/sdk` or a separate package, what action-level AST surface is needed, how metadata and outputs map to the existing validation style, and whether YAML emission remains CLI-driven or gets a dedicated action emitter path. After design clarification, implement the minimal composite-action definition surface with docs and tests.
+- Definition of Done: A documented and tested path exists for authoring composite action definitions, or a deliberate package/scope split is recorded if the work must ship outside the current workflow-focused package boundary. Code review and spec/doc updates completed.
+- Acceptance Criteria: Users can define a composite action through a documented API that renders valid `action.yml` output for the supported slice. The unsupported-feature entry for composite actions is removed or narrowed with explicit scope notes. Architecture and package-boundary decisions are documented.
+- Story Points: 5
+- Status: new
+- Completed At: N/A
+- Notes/Links: Intake from `docs/SYNTAX_COVERAGE.md` "Not Yet Supported Features". Likely requires design-first slicing before sprint commitment.
+
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.
 - Sprint 16 selection note: Items 51–55 (19 SP total) were committed to Sprint 16 after estimate validation and acceptance-criteria refinement. See [Sprint 16 Backlog](./sprint_backlogs/sp16.md) for committed scope and planning notes.
 - Sprint 17 selection note: Items 57–60 (discovery intake, 6 SP) and Item 56 (prior backlog, 2 SP) were committed to Sprint 17 for a total of 8 SP. Items 57–60 address quality-gate, coverage-enforcement, documentation-accuracy, and date-integrity gaps identified during product discovery as release prerequisites. Items 61–65 were added to the backlog from feature proposals (`gpt/new_functions.md`) but deferred to post-release sprints per PO decision. See [Sprint 17 Backlog](./sprint_backlogs/sp17.md) for committed scope and planning notes.

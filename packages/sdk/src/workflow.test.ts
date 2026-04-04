@@ -4497,4 +4497,175 @@ describe("workflow builder", () => {
       expect((result.jobs[1] as ReusableWorkflowJob).uses).toBe("./.github/workflows/deploy.yml");
     });
   });
+
+  describe("string shorthand for step name", () => {
+    it("uses() accepts a string shorthand equivalent to { name: value }", () => {
+      const shorthand = defineWorkflow({
+        id: createWorkflowId("w"),
+        name: "W",
+      })
+        .onPush()
+        .addJob(createJobId("j"), (job) => {
+          job.runsOn("ubuntu-latest").uses("actions/checkout@v4", "Checkout");
+        })
+        .build();
+
+      const expanded = defineWorkflow({
+        id: createWorkflowId("w"),
+        name: "W",
+      })
+        .onPush()
+        .addJob(createJobId("j"), (job) => {
+          job.runsOn("ubuntu-latest").uses("actions/checkout@v4", { name: "Checkout" });
+        })
+        .build();
+
+      expect((shorthand.jobs[0] as StepsJob).steps).toEqual((expanded.jobs[0] as StepsJob).steps);
+    });
+
+    it("run() accepts a string shorthand equivalent to { name: value }", () => {
+      const shorthand = defineWorkflow({
+        id: createWorkflowId("w"),
+        name: "W",
+      })
+        .onPush()
+        .addJob(createJobId("j"), (job) => {
+          job.runsOn("ubuntu-latest").run("npm test", "Run tests");
+        })
+        .build();
+
+      const expanded = defineWorkflow({
+        id: createWorkflowId("w"),
+        name: "W",
+      })
+        .onPush()
+        .addJob(createJobId("j"), (job) => {
+          job.runsOn("ubuntu-latest").run("npm test", { name: "Run tests" });
+        })
+        .build();
+
+      expect((shorthand.jobs[0] as StepsJob).steps).toEqual((expanded.jobs[0] as StepsJob).steps);
+    });
+
+    it("runScript() accepts a string shorthand equivalent to { name: value }", () => {
+      const shorthand = defineWorkflow({
+        id: createWorkflowId("w"),
+        name: "W",
+      })
+        .onPush()
+        .addJob(createJobId("j"), (job) => {
+          job
+            .runsOn("ubuntu-latest")
+            .runScript({ path: "./scripts/deploy.sh" }, "Run deploy script");
+        })
+        .build();
+
+      const expanded = defineWorkflow({
+        id: createWorkflowId("w"),
+        name: "W",
+      })
+        .onPush()
+        .addJob(createJobId("j"), (job) => {
+          job
+            .runsOn("ubuntu-latest")
+            .runScript({ path: "./scripts/deploy.sh" }, { name: "Run deploy script" });
+        })
+        .build();
+
+      expect((shorthand.jobs[0] as StepsJob).steps).toEqual((expanded.jobs[0] as StepsJob).steps);
+    });
+
+    it("string shorthand and object form produce identical rendered YAML payloads", () => {
+      const shorthand = defineWorkflow({
+        id: createWorkflowId("w"),
+        name: "W",
+      })
+        .onPush()
+        .addJob(createJobId("j"), (job) => {
+          job
+            .runsOn("ubuntu-latest")
+            .uses("actions/checkout@v4", "Checkout")
+            .run("npm test", "Test")
+            .runScript({ path: "./scripts/deploy.sh" }, "Deploy");
+        })
+        .build();
+
+      const expanded = defineWorkflow({
+        id: createWorkflowId("w"),
+        name: "W",
+      })
+        .onPush()
+        .addJob(createJobId("j"), (job) => {
+          job
+            .runsOn("ubuntu-latest")
+            .uses("actions/checkout@v4", { name: "Checkout" })
+            .run("npm test", { name: "Test" })
+            .runScript({ path: "./scripts/deploy.sh" }, { name: "Deploy" });
+        })
+        .build();
+
+      const shorthandPayload = createWorkflowRenderPayload(shorthand);
+      const expandedPayload = createWorkflowRenderPayload(expanded);
+      expect(shorthandPayload).toEqual(expandedPayload);
+    });
+
+    it("existing object-form usage continues to work unchanged", () => {
+      const result = defineWorkflow({
+        id: createWorkflowId("w"),
+        name: "W",
+      })
+        .onPush()
+        .addJob(createJobId("j"), (job) => {
+          job
+            .runsOn("ubuntu-latest")
+            .uses("actions/checkout@v4", {
+              name: "Checkout",
+              with: { "fetch-depth": "0" },
+            })
+            .run("npm test", {
+              name: "Test",
+              shell: "bash",
+              env: { CI: "true" },
+            })
+            .runScript(
+              { path: "./scripts/deploy.sh" },
+              { name: "Deploy", workingDirectory: "./dist" }
+            );
+        })
+        .build();
+
+      const steps = (result.jobs[0] as StepsJob).steps;
+      expect(steps[0]).toMatchObject({
+        kind: "uses",
+        name: "Checkout",
+        with: { "fetch-depth": "0" },
+      });
+      expect(steps[1]).toMatchObject({
+        kind: "run",
+        name: "Test",
+        shell: "bash",
+        env: { CI: "true" },
+      });
+      expect(steps[2]).toMatchObject({
+        kind: "run",
+        name: "Deploy",
+        workingDirectory: "./dist",
+      });
+    });
+
+    it("string shorthand empty string is rejected by validation", () => {
+      const builder = defineWorkflow({
+        id: createWorkflowId("w"),
+        name: "W",
+      })
+        .onPush()
+        .addJob(createJobId("j"), (job) => {
+          job.runsOn("ubuntu-latest").run("echo hi", "  ");
+        });
+
+      expect(() => builder.build()).toThrowError(
+        new WorkflowValidationError(['job "j" step 1 name must not be empty'])
+      );
+    });
+  });
 });

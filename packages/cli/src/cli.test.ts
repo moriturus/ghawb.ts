@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
@@ -52,7 +52,7 @@ function runCli(
   cwd: string
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn("bun", ["run", "packages/cli/src/bin.ts", ...args], {
+    const child = spawn("bun", ["run", join(process.cwd(), "packages/cli/src/bin.ts"), ...args], {
       cwd,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -175,12 +175,55 @@ export default defineWorkflow({
     await expect(readFile(outputPath, "utf8")).resolves.toContain("name: CI");
   });
 
-  it("fails with a non-zero exit code when required arguments are missing", async () => {
-    const result = await runCli(["render", "--input", "workflow.ts"], process.cwd());
+  it("infers the default output path for supported repository-local render inputs", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
 
-    expect(result.exitCode).toBe(1);
-    expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("missing required --output argument");
+    const workflowsDir = join(tempDir, "workflows");
+    const outputPath = join(tempDir, ".github", "workflows", "ci.yml");
+
+    await mkdir(workflowsDir, { recursive: true });
+    const io = createIo();
+    const originalCwd = process.cwd();
+
+    try {
+      process.chdir(tempDir);
+
+      const exitCode = await runCliDirect(
+        ["render", "--input", "workflows/ci.ts"],
+        io,
+        mockDeps({
+          importModule: async () => ({ default: defineMinimalWorkflow() }),
+          writeOutputFile: async () => {},
+        })
+      );
+
+      expect(exitCode).toBe(0);
+      expect(io.stderr_lines).toEqual([]);
+      expect(io.stdout_lines.join("\n")).toContain(outputPath);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("fails clearly when default output inference is unsupported", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+    const io = createIo();
+    const originalCwd = process.cwd();
+
+    try {
+      process.chdir(tempDir);
+
+      const exitCode = await runCliDirect(["render", "--input", "workflow.ts"], io, mockDeps());
+
+      expect(exitCode).toBe(1);
+      expect(io.stdout_lines).toEqual([]);
+      expect(io.stderr_lines.join("\n")).toContain("cannot infer default output path");
+      expect(io.stderr_lines.join("\n")).toContain("pass --output explicitly");
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 
   it("fails clearly when the input module does not export a default workflow", async () => {

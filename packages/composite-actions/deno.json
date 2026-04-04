@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@ghawb/composite-actions": "./src/index.ts",
+    "@ghawb/sdk": "../sdk/src/index.ts",
+    "@ghawb/shared": "../shared/src/index.ts"
+  }
+}

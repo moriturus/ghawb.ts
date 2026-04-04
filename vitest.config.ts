@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       "@ghawb/shared": resolve(root, "packages/shared/src/index.ts"),
       "@ghawb/sdk": resolve(root, "packages/sdk/src/index.ts"),
+      "@ghawb/composite-actions": resolve(root, "packages/composite-actions/src/index.ts"),
       "@ghawb/typed-actions": resolve(root, "packages/typed-actions/src/index.ts"),
       "@ghawb/cli": resolve(root, "packages/cli/src/index.ts"),
       "@ghawb/yaml-import": resolve(root, "packages/yaml-import/src/index.ts"),
@@ -18,6 +19,7 @@ export default defineConfig({
     environment: "node",
     include: [
       "packages/cli/src/**/*.test.ts",
+      "packages/composite-actions/src/**/*.test.ts",
       "packages/shared/src/**/*.test.ts",
       "packages/sdk/src/**/*.test.ts",
       "packages/typed-actions/src/**/*.test.ts",

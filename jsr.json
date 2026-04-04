@@ -1,3 +1,9 @@
 {
-  "workspace": ["./packages/sdk", "./packages/shared", "./packages/cli", "./packages/yaml-import"]
+  "workspace": [
+    "./packages/sdk",
+    "./packages/shared",
+    "./packages/composite-actions",
+    "./packages/cli",
+    "./packages/yaml-import"
+  ]
 }

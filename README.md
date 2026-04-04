@@ -1,8 +1,8 @@
 # ghawb
 
-**Build GitHub Actions workflows in TypeScript with full type safety, deterministic output, and zero non-Node dependencies.**
+**Build GitHub Actions workflows and composite actions in TypeScript with full type safety, deterministic output, and zero non-Node dependencies.**
 
-`ghawb` replaces hand-written YAML with a fluent TypeScript builder that validates your workflows at construction time, catches mistakes before CI ever runs, and renders deterministic YAML you can commit alongside your source.
+`ghawb` replaces hand-written YAML with fluent TypeScript builders that validate your workflow or composite action at construction time, catch mistakes before CI ever runs, and render deterministic YAML you can commit alongside your source.
 
 ```ts
 import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
@@ -47,6 +47,12 @@ For opt-in typed wrappers around common first-party actions:
 
 ```bash
 npm install @ghawb/typed-actions    # or pnpm / yarn / bun
+```
+
+For opt-in composite action authoring:
+
+```bash
+npm install @ghawb/composite-actions    # or pnpm / yarn / bun
 ```
 
 > **Runtime support:** Node 24+, Bun 1.x, Deno 2.x.
@@ -185,13 +191,16 @@ The `@ghawb/cli` package provides the `ghawb` command.
 # Render a single workflow
 ghawb render -i workflows/ci.ts
 
+# Render a composite action definition
+ghawb render-action -i actions/setup-bun.ts -o actions/setup-bun/action.yml
+
 # Render multiple workflows in one pass
 ghawb render-batch \
   -i workflows/ci.ts      -o .github/workflows/ci.yml \
   -i workflows/deploy.ts  -o .github/workflows/deploy.yml
 ```
 
-The CLI dynamically imports your TypeScript module, validates the default export is a `WorkflowDefinition`, and renders it to YAML using the bundled YAML adapter. When `render` is pointed at the supported repository-local path `workflows/<name>.ts`, it infers the default output as `.github/workflows/<name>.yml`. For out-of-tree or unsupported inputs, pass `--output` explicitly.
+The CLI dynamically imports your TypeScript module and renders it to YAML using the bundled YAML adapter. `render` validates the default export is a `WorkflowDefinition` and, for the supported repository-local path `workflows/<name>.ts`, infers `.github/workflows/<name>.yml` when `--output` is omitted. `render-action` validates the default export is a built composite action definition and always requires an explicit `--output` path for the first slice.
 
 ## Supported Features
 
@@ -210,14 +219,15 @@ The SDK covers the majority of the [GitHub Actions workflow syntax](https://docs
 - **Typed helpers:** `actionRef()` / `workflowRef()` for validated references, `RunnerLabel` constants for standard runners
 - **Typed action core:** `typedActionStep()` plus `TypedActionStep` for typed `uses` objects in the SDK
 - **Opt-in typed action wrappers:** `@ghawb/typed-actions` exports `actionsCheckout()`, `actionsSetupNode()`, `actionsUploadArtifact()`, and `actionsDownloadArtifact()` for typed `with` inputs on common first-party actions
+- **Opt-in composite actions:** `@ghawb/composite-actions` exports `defineCompositeAction()` plus a dedicated `ghawb render-action` path for the first composite-action slice (`name`, `description`, `inputs`, `outputs`, and ordered composite `runs.steps`)
 - **Expression helpers:** `expr()`, context accessors (`github`, `env`, `secrets`, `matrix`, `inputs`, `steps`, `needs`), status-check functions (`success`, `failure`, `always`, `cancelled`), and comparison/logical helpers (`literal`, `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `and`, `or`, `not`) for type-safe `${{ }}` construction
 - **Identifiers:** branded `WorkflowId` and `JobId` types with format validation
 
 For the full support matrix, see [docs/SYNTAX_COVERAGE.md](docs/SYNTAX_COVERAGE.md).
 
-### Not Yet Supported
+### Still Limited Or Unsupported
 
-- Composite action definitions (actions-level, not workflow-level)
+- Composite actions currently support only the Sprint 20 initial slice: `name`, optional `description`, optional `inputs`, optional `outputs`, and composite `runs.steps` using `run`/`uses` plus `name`, `id`, `if`, `env`, `with`, `shell`, and `working-directory`
 - A few GitHub App-only or deprecated webhook events are not modeled as workflow triggers (`deployment_protection_rule`, `installation*`, classic `project*`)
 
 ## Validation
@@ -256,7 +266,10 @@ Using `ghawb` and `actionlint` together gives you type-safe construction _and_ Y
 packages/
 ├── shared/   Branded identifiers (WorkflowId, JobId) and shared validation errors
 ├── sdk/      Workflow model, fluent builders, validation, deterministic renderer
-└── cli/      CLI entrypoint, argument parsing, YAML adapter (yaml library)
+├── composite-actions/  Opt-in composite action builder, validation, and renderer
+├── typed-actions/      Opt-in typed wrappers for common action refs
+├── yaml-import/        Opt-in reusable-workflow YAML import
+└── cli/                CLI entrypoint, argument parsing, YAML adapter (yaml library)
 ```
 
 - **Pure TypeScript** — no code generation, no macros, no build plugins.

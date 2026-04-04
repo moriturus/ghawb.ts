@@ -274,9 +274,9 @@ packages/
 
 ## Coverage
 
-This project maintains **100% SDK line coverage** as measured by Vitest's v8 provider over `packages/sdk/src/`. This covers the workflow model, builders, validation, and renderer.
+This project maintains **100% SDK line, statement, and function coverage** as measured by Vitest's v8 provider over `packages/sdk/src/`, with a **98% branch threshold**. This covers the workflow model, builders, validation, and renderer.
 
-Coverage does not extend to the CLI package, shared utilities, or workflow source files. "100% coverage" in this project always means SDK line coverage specifically.
+Coverage does not extend to the CLI package, shared utilities, or workflow source files. In this project, "100% coverage" refers to the primary SDK coverage bar over `packages/sdk/src/`, while branch coverage intentionally uses a slightly lower floor for a small set of low-value branches.
 
 ## Contributing
 

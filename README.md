@@ -43,6 +43,12 @@ For CLI rendering to YAML:
 npm install @ghawb/cli    # or pnpm / yarn / bun
 ```
 
+For opt-in typed wrappers around common first-party actions:
+
+```bash
+npm install @ghawb/typed-actions    # or pnpm / yarn / bun
+```
+
 > **Runtime support:** Node 24+, Bun 1.x, Deno 2.x.
 > The SDK and shared packages have zero production dependencies beyond Node built-ins.
 
@@ -202,7 +208,8 @@ The SDK covers the majority of the [GitHub Actions workflow syntax](https://docs
 - **Defaults:** `defaults.run` for shell and working-directory
 - **Step metadata:** `id`, `if`, `name`, `shell`, `working-directory`, `with`, `env`, `continue-on-error`, `timeout-minutes`
 - **Typed helpers:** `actionRef()` / `workflowRef()` for validated references, `RunnerLabel` constants for standard runners
-- **Typed action wrappers:** `actionsCheckout()`, `actionsSetupNode()`, `actionsUploadArtifact()`, and `actionsDownloadArtifact()` for typed `with` inputs on common first-party actions
+- **Typed action core:** `typedActionStep()` plus `TypedActionStep` for typed `uses` objects in the SDK
+- **Opt-in typed action wrappers:** `@ghawb/typed-actions` exports `actionsCheckout()`, `actionsSetupNode()`, `actionsUploadArtifact()`, and `actionsDownloadArtifact()` for typed `with` inputs on common first-party actions
 - **Expression helpers:** `expr()`, context accessors (`github`, `env`, `secrets`, `matrix`, `inputs`, `steps`, `needs`), status-check functions (`success`, `failure`, `always`, `cancelled`), and comparison/logical helpers (`literal`, `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `and`, `or`, `not`) for type-safe `${{ }}` construction
 - **Identifiers:** branded `WorkflowId` and `JobId` types with format validation
 

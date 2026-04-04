@@ -8,7 +8,7 @@ import {
 
 import { readFileSync } from "node:fs";
 
-import { actionsCheckout, actionsSetupNode, type TypedActionStep } from "./actions.js";
+import { type TypedActionStep } from "./actions.js";
 
 import {
   WORKFLOW_PERMISSION_KEYS,
@@ -1942,17 +1942,30 @@ class JobBuilder {
       ]);
     }
 
-    this.uses(actionsCheckout(), "Checkout");
-    this.uses(
-      actionsSetupNode({
-        nodeVersion: options.nodeVersion.trim(),
-        ...(options.cache !== undefined ? { cache: options.cache } : {}),
-        ...(options.cacheDependencyPath !== undefined
-          ? { cacheDependencyPath: options.cacheDependencyPath }
-          : {}),
-      }),
-      "Setup Node"
-    );
+    const setupNodeWith: Record<string, string> = {
+      "node-version": options.nodeVersion.trim(),
+    };
+
+    if (options.cache !== undefined) {
+      setupNodeWith.cache = options.cache;
+    }
+
+    const cacheDependencyPath = options.cacheDependencyPath;
+
+    if (cacheDependencyPath !== undefined) {
+      const serializedCacheDependencyPath =
+        typeof cacheDependencyPath === "string"
+          ? cacheDependencyPath
+          : cacheDependencyPath.join("\n");
+
+      setupNodeWith["cache-dependency-path"] = serializedCacheDependencyPath;
+    }
+
+    this.uses("actions/checkout@v4", "Checkout");
+    this.uses("actions/setup-node@v4", {
+      name: "Setup Node",
+      with: setupNodeWith,
+    });
     this.run(options.install ?? "npm ci", "Install");
     this.run(options.test ?? "npm test", "Test");
     return this;
@@ -2016,7 +2029,7 @@ class JobBuilder {
 
     if (typeof action !== "string" && "with" in resolved && resolved.with !== undefined) {
       throw new WorkflowValidationError([
-        'uses() does not allow "metadata.with" when the first argument is a typed action wrapper. Expected: pass typed action inputs through the wrapper function.',
+        'uses() does not allow "metadata.with" when the first argument is a typed action step. Expected: pass typed action inputs through the typed action object.',
       ]);
     }
 

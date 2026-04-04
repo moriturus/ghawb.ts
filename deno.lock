@@ -45,6 +45,13 @@
           ]
         }
       },
+      "packages/typed-actions": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@ghawb/sdk@0.1"
+          ]
+        }
+      },
       "packages/yaml-import": {
         "packageJson": {
           "dependencies": [

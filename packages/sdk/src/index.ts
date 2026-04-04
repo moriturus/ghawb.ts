@@ -8,12 +8,7 @@ export {
   type WorkflowId,
 } from "@ghawb/shared";
 export { defineWorkflow, WorkflowBuilder, type ReusableWorkflowSource } from "./builders.js";
-export {
-  actionsCheckout,
-  actionsDownloadArtifact,
-  actionsSetupNode,
-  actionsUploadArtifact,
-} from "./actions.js";
+export { typedActionStep } from "./actions.js";
 export {
   expr,
   github,
@@ -128,14 +123,4 @@ export type {
   WorkflowStep,
   WorkflowTrigger,
 } from "./model.js";
-export type {
-  ActionsCheckoutInputs,
-  ActionsCheckoutWith,
-  ActionsDownloadArtifactInputs,
-  ActionsDownloadArtifactWith,
-  ActionsSetupNodeInputs,
-  ActionsSetupNodeWith,
-  ActionsUploadArtifactInputs,
-  ActionsUploadArtifactWith,
-  TypedActionStep,
-} from "./actions.js";
+export type { TypedActionWithMap, TypedActionStep } from "./actions.js";

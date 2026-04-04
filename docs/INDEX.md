@@ -74,6 +74,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp19.md](./sprint_retrospectives/sp19.md): Sprint 19 retrospective summary, discovery-first delivery reflections, sprint-branch/closeout process gaps, and follow-up routing.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 - [adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md): Sprint 19 discovery decision selecting a narrow `@ghawb/sdk` Node CI helper over cookbook-only guidance or a broader preset layer.
+- [adrs/0003-separate-typed-action-wrappers-from-sdk-core.md](./adrs/0003-separate-typed-action-wrappers-from-sdk-core.md): Stakeholder decision keeping typed action core support in `@ghawb/sdk` while moving concrete wrappers into opt-in `@ghawb/typed-actions`.
 - [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
 - [RELEASING.md](../RELEASING.md) — Release workflow and publishing documentation.
 - [SECURITY.md](../SECURITY.md) — Security vulnerability reporting policy.

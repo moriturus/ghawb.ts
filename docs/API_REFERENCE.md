@@ -1,6 +1,6 @@
 # API Reference
 
-This document covers the public API of `@ghawb/sdk`. For a quick-start guide, see the [README](../README.md). For the specification source of truth, see [SPEC.md](SPEC.md).
+This document covers the public API of `@ghawb/sdk`. For a quick-start guide, see the [README](../README.md). For the specification source of truth, see [SPEC.md](SPEC.md). For the opt-in typed wrapper package, see `@ghawb/typed-actions`.
 
 ## Table of Contents
 
@@ -121,7 +121,7 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 |--------|-------------|
 | `.run(script, metadata?)` | Add a run step. |
 | `.nodeCi(options)` | Append a standard Node CI step sequence: checkout, setup-node, install, and test. |
-| `.uses(action, metadata?)` | Add a uses step. Accepts either an `ActionRef` string or a typed action wrapper object. |
+| `.uses(action, metadata?)` | Add a uses step. Accepts either an `ActionRef` string or a typed action step object. |
 | `.scriptReference(options, metadata?)` | Add a script file reference step. |
 
 **Step metadata fields:** `name`, `id`, `if`, `env`, `shell`, `with`, `workingDirectory`, `continueOnError`, `timeoutMinutes`.
@@ -186,7 +186,7 @@ Runtime validation predicates returning `boolean`.
 
 ## Typed Action Wrappers
 
-The SDK includes manual-first wrappers for several high-frequency first-party actions. These helpers pin explicit action versions and provide typed input names with IDE autocomplete.
+The SDK keeps the typed action core surface (`typedActionStep()` and `TypedActionStep`) and accepts typed action step objects in `.uses(...)`. Manual-first wrappers for several high-frequency first-party actions live in the opt-in `@ghawb/typed-actions` package.
 
 ### `actionsCheckout(inputs?)`
 
@@ -205,7 +205,7 @@ Returns a typed action wrapper for `actions/upload-artifact@v4`.
 Returns a typed action wrapper for `actions/download-artifact@v4`.
 
 ```ts
-import { actionsCheckout, actionsSetupNode } from "@ghawb/sdk";
+import { actionsCheckout, actionsSetupNode } from "@ghawb/typed-actions";
 
 job
   .uses(actionsCheckout({ fetchDepth: 0 }), "Checkout")
@@ -221,9 +221,9 @@ job
 
 Notes:
 
-- Wrapper versions are pinned explicitly in the SDK rather than generated from upstream `action.yml` metadata.
+- Wrapper versions are pinned explicitly in `@ghawb/typed-actions` rather than generated from upstream `action.yml` metadata.
 - Wrapper inputs serialize booleans and numbers into the string-valued `with` payload required by GitHub Actions.
-- When a typed wrapper is passed to `.uses(...)`, do not also pass `metadata.with`; wrapper inputs own that surface.
+- When a typed action step is passed to `.uses(...)`, do not also pass `metadata.with`; the typed action object owns that surface.
 
 ---
 

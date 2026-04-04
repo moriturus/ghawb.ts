@@ -250,4 +250,4 @@ All existing raw `string` entry points remain backward compatible. Empty or blan
 
 | Feature | Notes |
 |---------|-------|
-| Composite actions | Actions-level construct, not workflow-level |
+| Composite actions | Actions-level construct, not workflow-level. Sprint 20 discovery selected a separate opt-in package plus a dedicated CLI action-emitter flow for the first implementation slice; code support is still pending Item 70b. |

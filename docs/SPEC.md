@@ -120,6 +120,8 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - Documenting every GitHub Actions syntax detail up front
 - Defining packaging, versioning, or release automation in detail before the core model exists (now implemented — see [Distribution](#distribution))
 
+Composite action definitions are still unsupported in the current implementation. Sprint 20 discovery selected a separate opt-in package and a dedicated CLI action-emitter flow for the first slice, rather than widening the workflow-focused `@ghawb/sdk` AST or overloading the existing workflow `render` command.
+
 ## Planned Core Responsibilities
 
 ### SDK

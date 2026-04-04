@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, extname, isAbsolute, join, parse, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { execFile } from "node:child_process";
 
@@ -76,6 +76,26 @@ function isOutputFlag(arg: string | undefined): boolean {
   return arg === "--output" || arg === "-o";
 }
 
+function inferDefaultRenderOutputPath(inputPath: string): string {
+  const resolvedInputPath = resolve(inputPath);
+  const sourceDirectory = resolve("workflows");
+  const relativeSourcePath = relative(sourceDirectory, resolvedInputPath);
+
+  if (
+    relativeSourcePath.length === 0 ||
+    relativeSourcePath.startsWith("..") ||
+    isAbsolute(relativeSourcePath) ||
+    dirname(relativeSourcePath) !== "." ||
+    extname(relativeSourcePath) !== ".ts"
+  ) {
+    throw new CliUsageError(
+      `cannot infer default output path for "${inputPath}". Expected: a repository-local workflow source at workflows/<name>.ts; otherwise pass --output explicitly`
+    );
+  }
+
+  return join(".github", "workflows", `${parse(relativeSourcePath).name}.yml`);
+}
+
 function parseRenderArguments(args: readonly string[]): RenderCommandOptions {
   let inputPath: string | undefined;
   let outputPath: string | undefined;
@@ -109,7 +129,7 @@ function parseRenderArguments(args: readonly string[]): RenderCommandOptions {
   }
 
   if (!outputPath) {
-    throw new CliUsageError("missing required --output argument");
+    outputPath = inferDefaultRenderOutputPath(inputPath);
   }
 
   return { target: { inputPath, outputPath }, lint };
@@ -214,7 +234,7 @@ async function defaultRunCommand(
 
 function usage(): string {
   return [
-    "Usage: ghawb render (--input|-i) <workflow.ts> (--output|-o) <workflow.yml> [--lint]",
+    "Usage: ghawb render (--input|-i) <workflow.ts> [(--output|-o) <workflow.yml>] [--lint]",
     "       ghawb render-batch (--input|-i) <workflow.ts> (--output|-o) <workflow.yml> [(--input|-i) <workflow.ts> (--output|-o) <workflow.yml> ...] [--lint]",
     "       ghawb lint <file.yml> [<file.yml> ...]",
   ].join("\n");

@@ -32,7 +32,7 @@ jobs:
       - name: Verify Workflow Guardrails
         run: bun run verify:workflows
       - name: Build Packages
-        run: tsc -p packages/shared/tsconfig.build.json && tsc -p packages/sdk/tsconfig.build.json && tsc -p packages/cli/tsconfig.build.json
+        run: bun run build:check
       - name: Run Bun Checks
         run: bun run check
       - name: Run SDK Coverage

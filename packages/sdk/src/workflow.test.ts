@@ -4894,6 +4894,55 @@ describe("workflow builder", () => {
       });
     });
 
+    it("supports string setup-node cache dependency paths", () => {
+      const workflow = defineWorkflow({
+        id: createWorkflowId("node_ci_cache_dependency_path_string"),
+        name: "Node CI Cache Dependency Path String",
+      })
+        .onPush()
+        .addJob(createJobId("test"), (job) => {
+          job.runsOn("ubuntu-latest").nodeCi({
+            nodeVersion: "24",
+            cache: "npm",
+            cacheDependencyPath: "package-lock.json",
+          });
+        })
+        .build();
+
+      expect(workflow.jobs[0]).toEqual({
+        kind: "steps",
+        id: "test",
+        runsOn: "ubuntu-latest",
+        steps: [
+          {
+            kind: "uses",
+            name: "Checkout",
+            uses: "actions/checkout@v4",
+          },
+          {
+            kind: "uses",
+            name: "Setup Node",
+            uses: "actions/setup-node@v4",
+            with: {
+              "node-version": "24",
+              cache: "npm",
+              "cache-dependency-path": "package-lock.json",
+            },
+          },
+          {
+            kind: "run",
+            name: "Install",
+            run: "npm ci",
+          },
+          {
+            kind: "run",
+            name: "Test",
+            run: "npm test",
+          },
+        ],
+      });
+    });
+
     it("rejects blank nodeVersion input", () => {
       expect(() =>
         defineWorkflow({

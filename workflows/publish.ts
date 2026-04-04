@@ -26,12 +26,9 @@ export default defineWorkflow({
       .run("npm ci", {
         name: "Install Dependencies",
       })
-      .run(
-        "tsc -p packages/shared/tsconfig.build.json && tsc -p packages/sdk/tsconfig.build.json && tsc -p packages/cli/tsconfig.build.json",
-        {
-          name: "Build Packages",
-        }
-      )
+      .run("bun run build:check", {
+        name: "Build Packages",
+      })
       .run("npm test", {
         name: "Run Tests",
       })

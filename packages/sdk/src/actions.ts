@@ -1,6 +1,8 @@
 import type { ActionRef } from "./model.js";
 
-export interface TypedActionStep<TWith extends object = Readonly<Record<string, string>>> {
+type TypedActionWithMap = Readonly<Partial<Record<string, string>>>;
+
+export interface TypedActionStep<TWith extends TypedActionWithMap = TypedActionWithMap> {
   readonly uses: ActionRef;
   readonly with?: TWith;
 }
@@ -67,67 +69,75 @@ export interface ActionsDownloadArtifactInputs {
   readonly digestMismatch?: "ignore" | "info" | "warn" | "error";
 }
 
-export interface ActionsCheckoutWith {
-  readonly repository?: string;
-  readonly ref?: string;
-  readonly token?: string;
-  readonly "ssh-key"?: string;
-  readonly "ssh-known-hosts"?: string;
-  readonly "ssh-strict"?: string;
-  readonly "ssh-user"?: string;
-  readonly "persist-credentials"?: string;
-  readonly path?: string;
-  readonly clean?: string;
-  readonly filter?: string;
-  readonly "sparse-checkout"?: string;
-  readonly "sparse-checkout-cone-mode"?: string;
-  readonly "fetch-depth"?: string;
-  readonly "fetch-tags"?: string;
-  readonly "show-progress"?: string;
-  readonly lfs?: string;
-  readonly submodules?: string;
-  readonly "set-safe-directory"?: string;
-  readonly "github-server-url"?: string;
-}
+type ActionsCheckoutWithKey =
+  | "repository"
+  | "ref"
+  | "token"
+  | "ssh-key"
+  | "ssh-known-hosts"
+  | "ssh-strict"
+  | "ssh-user"
+  | "persist-credentials"
+  | "path"
+  | "clean"
+  | "filter"
+  | "sparse-checkout"
+  | "sparse-checkout-cone-mode"
+  | "fetch-depth"
+  | "fetch-tags"
+  | "show-progress"
+  | "lfs"
+  | "submodules"
+  | "set-safe-directory"
+  | "github-server-url";
 
-export interface ActionsSetupNodeWith {
-  readonly "always-auth"?: string;
-  readonly "node-version"?: string;
-  readonly "node-version-file"?: string;
-  readonly architecture?: string;
-  readonly "check-latest"?: string;
-  readonly "registry-url"?: string;
-  readonly scope?: string;
-  readonly token?: string;
-  readonly cache?: string;
-  readonly "cache-dependency-path"?: string;
-  readonly "package-manager-cache"?: string;
-  readonly mirror?: string;
-  readonly "mirror-token"?: string;
-}
+type ActionsSetupNodeWithKey =
+  | "always-auth"
+  | "node-version"
+  | "node-version-file"
+  | "architecture"
+  | "check-latest"
+  | "registry-url"
+  | "scope"
+  | "token"
+  | "cache"
+  | "cache-dependency-path"
+  | "package-manager-cache"
+  | "mirror"
+  | "mirror-token";
 
-export interface ActionsUploadArtifactWith {
-  readonly name?: string;
-  readonly path?: string;
-  readonly "if-no-files-found"?: string;
-  readonly "retention-days"?: string;
-  readonly "compression-level"?: string;
-  readonly overwrite?: string;
-  readonly "include-hidden-files"?: string;
-}
+type ActionsUploadArtifactWithKey =
+  | "name"
+  | "path"
+  | "if-no-files-found"
+  | "retention-days"
+  | "compression-level"
+  | "overwrite"
+  | "include-hidden-files";
 
-export interface ActionsDownloadArtifactWith {
-  readonly name?: string;
-  readonly "artifact-ids"?: string;
-  readonly path?: string;
-  readonly pattern?: string;
-  readonly "merge-multiple"?: string;
-  readonly "github-token"?: string;
-  readonly repository?: string;
-  readonly "run-id"?: string;
-  readonly "skip-decompress"?: string;
-  readonly "digest-mismatch"?: string;
-}
+type ActionsDownloadArtifactWithKey =
+  | "name"
+  | "artifact-ids"
+  | "path"
+  | "pattern"
+  | "merge-multiple"
+  | "github-token"
+  | "repository"
+  | "run-id"
+  | "skip-decompress"
+  | "digest-mismatch";
+
+export type ActionsCheckoutWith = Readonly<Partial<Record<ActionsCheckoutWithKey, string>>>;
+
+export type ActionsSetupNodeWith = Readonly<Partial<Record<ActionsSetupNodeWithKey, string>>>;
+
+export type ActionsUploadArtifactWith = Readonly<
+  Partial<Record<ActionsUploadArtifactWithKey, string>>
+>;
+
+export type ActionsDownloadArtifactWith = Readonly<
+  Partial<Record<ActionsDownloadArtifactWithKey, string>>
+>;
 
 function toBooleanString(value: boolean): string {
   return value ? "true" : "false";
@@ -149,7 +159,7 @@ function toCommaSeparatedString(value: string | number | readonly (string | numb
   return value.map((part) => String(part)).join(",");
 }
 
-function buildTypedActionStep<TWith extends object>(
+function buildTypedActionStep<TWith extends TypedActionWithMap>(
   uses: ActionRef,
   withInputs: TWith
 ): TypedActionStep<TWith> {

@@ -316,6 +316,14 @@ function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
   };
 }
 
+function normalizeTypedActionWith(
+  withInputs: Readonly<Partial<Record<string, string>>>
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    Object.entries(withInputs).filter(([, value]) => value !== undefined)
+  ) as Readonly<Record<string, string>>;
+}
+
 function cloneRunStepMetadata(metadata: RunStepMetadata): RunStepMetadata {
   return {
     ...cloneStepMetadata(metadata),
@@ -1895,7 +1903,7 @@ class JobBuilder {
   }
 
   uses(action: ActionRef, metadata?: StepMetadata | string): this;
-  uses<TWith extends object>(
+  uses<TWith extends Readonly<Partial<Record<string, string>>>>(
     action: TypedActionStep<TWith>,
     metadata?: Omit<StepMetadata, "with"> | string
   ): this;
@@ -1917,9 +1925,7 @@ class JobBuilder {
         ? (resolved as StepMetadata)
         : {
             ...resolved,
-            ...(action.with !== undefined
-              ? { with: action.with as Readonly<Record<string, string>> }
-              : {}),
+            ...(action.with !== undefined ? { with: normalizeTypedActionWith(action.with) } : {}),
           };
 
     this.jobSteps.push({

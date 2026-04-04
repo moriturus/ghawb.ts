@@ -239,7 +239,5 @@ All existing raw `string` entry points remain backward compatible. Empty or blan
 
 | Feature | Notes |
 |---------|-------|
-| Typed action wrappers (`actions/checkout`, etc.) | Backlog Item 46 |
 | Composite actions | Actions-level construct, not workflow-level |
 | Reusable workflow `outputs` at caller side | |
-| Step-level `uses` type-safe `with` | Backlog Item 46 |

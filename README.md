@@ -218,7 +218,7 @@ The SDK covers the majority of the [GitHub Actions workflow syntax](https://docs
 - **Step metadata:** `id`, `if`, `name`, `shell`, `working-directory`, `with`, `env`, `continue-on-error`, `timeout-minutes`
 - **Typed helpers:** `actionRef()` / `workflowRef()` for validated references, `RunnerLabel` constants for standard runners
 - **Typed action wrappers:** `actionsCheckout()`, `actionsSetupNode()`, `actionsUploadArtifact()`, and `actionsDownloadArtifact()` for typed `with` inputs on common first-party actions
-- **Expression helpers:** `expr()`, context accessors (`github`, `env`, `secrets`, `matrix`, `inputs`, `steps`), and status-check functions (`success`, `failure`, `always`, `cancelled`) for type-safe `${{ }}` construction
+- **Expression helpers:** `expr()`, context accessors (`github`, `env`, `secrets`, `matrix`, `inputs`, `steps`, `needs`), status-check functions (`success`, `failure`, `always`, `cancelled`), and comparison/logical helpers (`literal`, `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `and`, `or`, `not`) for type-safe `${{ }}` construction
 - **Identifiers:** branded `WorkflowId` and `JobId` types with format validation
 
 For the full support matrix, see [docs/SYNTAX_COVERAGE.md](docs/SYNTAX_COVERAGE.md).

@@ -81,15 +81,51 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: Intake from `docs/SYNTAX_COVERAGE.md` "Not Yet Supported Features". Likely requires design-first slicing before sprint commitment.
 
+### Item 71: Expand typed action wrappers with about 10 popular actions
+
+- Why: `@ghawb/typed-actions` now proves the opt-in wrapper boundary, but the current wrapper set only covers four first-party actions. Expanding the package with a broader set of high-frequency actions would increase practical value for users who want typed `with` inputs on the actions they use most often.
+- Prerequisites: None. Builds on the newly separated `@ghawb/typed-actions` package and the `TypedActionStep` core that remains in `@ghawb/sdk`.
+- Implementation Plan: Select roughly 10 popular GitHub Actions to add as manual-first typed wrappers in `@ghawb/typed-actions`. Favor widely used first-party or ecosystem-standard actions with stable input surfaces and clear version pins. Document the selection rationale, implement typed input mappings with string serialization, add tests, and update README/API/SPEC docs to show the expanded wrapper catalog.
+- Definition of Done: `@ghawb/typed-actions` ships about 10 additional popular action wrappers beyond the current four, with pinned refs, typed input surfaces, tests, docs, and code review completed.
+- Acceptance Criteria: The package exposes typed wrappers for approximately 10 newly selected popular actions. Wrapper names and input field naming follow the repository's TypeScript style (for example `exampleUrl`, `runId`, `nodeCi`). The selected actions and version pins are documented, and `.uses(...)` examples demonstrate the expanded value of the opt-in package.
+- Story Points: 5
+- Status: new
+- Completed At: N/A
+- Notes/Links: User-requested backlog intake after the `@ghawb/typed-actions` package split. Selection should prefer popularity plus API stability over exhaustiveness.
+
+### Item 72: Add typed action examples to README and COOKBOOK
+
+- Why: The repository now documents that `@ghawb/typed-actions` exists, but README and COOKBOOK do not yet show concrete examples of using typed wrappers. That leaves the feature discoverable only through API-reference reading instead of through the primary onboarding docs.
+- Prerequisites: None. Builds on the existing `@ghawb/typed-actions` package and should remain aligned with whatever wrapper set is currently shipped.
+- Implementation Plan: Add at least one concise typed-wrapper example to `README.md` and at least one practical recipe to `docs/COOKBOOK.md`. Show imports from `@ghawb/typed-actions`, demonstrate `.uses(...)` with typed wrappers, and explain when to prefer wrappers versus raw action refs or `nodeCi()`.
+- Definition of Done: README and COOKBOOK both include accurate typed-action examples that run against the current shipped API, with tests or example validation updated as needed and code review completed.
+- Acceptance Criteria: README contains a typed-action usage example, COOKBOOK contains a typed-action recipe, imports use `@ghawb/typed-actions`, and the examples reflect the current TypeScript naming style and current wrapper package boundary.
+- Story Points: 1
+- Status: new
+- Completed At: N/A
+- Notes/Links: User-requested backlog intake after confirming that README and COOKBOOK currently lack concrete typed-action examples.
+
+### Item 73: Enrich README and COOKBOOK for stronger onboarding and recipe coverage
+
+- Why: The current README and COOKBOOK cover the baseline surfaces, but they are still relatively thin as onboarding material. Stronger examples, decision guidance, and recipe coverage would reduce time-to-first-success and make the project easier to evaluate without reading the full specification.
+- Prerequisites: None. May absorb the output of Item 72 if the Product Owner later chooses to sequence documentation work incrementally.
+- Implementation Plan: Expand `README.md` and `docs/COOKBOOK.md` with better onboarding structure, more representative workflow examples, clearer package-boundary guidance, and stronger cross-links into API/SPEC material. Favor practical scenarios over exhaustive repetition, and keep examples aligned with the current public API and supported feature set.
+- Definition of Done: README and COOKBOOK are materially more useful as user-facing onboarding docs, with improved examples, clearer guidance, updated links, and code review completed.
+- Acceptance Criteria: README better explains when to use `@ghawb/sdk`, `@ghawb/typed-actions`, `@ghawb/cli`, and `@ghawb/yaml-import`; COOKBOOK gains additional high-value recipes beyond the current baseline set; examples are internally consistent with the current implementation and documentation set.
+- Story Points: 3
+- Status: new
+- Completed At: N/A
+- Notes/Links: User-requested documentation backlog intake focused on stronger onboarding and recipe depth rather than a single API slice.
+
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.
 - Sprint 16 selection note: Items 51–55 (19 SP total) were committed to Sprint 16 after estimate validation and acceptance-criteria refinement. See [Sprint 16 Backlog](./sprint_backlogs/sp16.md) for committed scope and planning notes.
 - Sprint 17 selection note: Items 57–60 (discovery intake, 6 SP) and Item 56 (prior backlog, 2 SP) were committed to Sprint 17 for a total of 8 SP. Items 57–60 address quality-gate, coverage-enforcement, documentation-accuracy, and date-integrity gaps identified during product discovery as release prerequisites. Items 61–65 were added to the backlog from feature proposals (`gpt/new_functions.md`) but deferred to post-release sprints per PO decision. See [Sprint 17 Backlog](./sprint_backlogs/sp17.md) for committed scope and planning notes.
 - Sprint 18 selection note: Items 61, 62, 63, and 64 were committed to Sprint 18 for a total of 13 SP. The PO explicitly chose continued feature maturation over a `0.1.0` release decision, so Sprint 18 proceeds as a feature-expansion sprint while `0.1.0` remains unreleased. Item 65 was deferred because it still requires discovery and estimate refinement. See [Sprint 18 Backlog](./sprint_backlogs/sp18.md) for committed scope and planning notes.
 - Sprint 18 review decision: Sprint 18 delivered all committed scope (Items 61–64, 13/13 SP) without carry-over. No active-backlog reprioritization is needed because only Item 65 remains. The next priority is discovery for Item 65 before Sprint 19 planning; the standing PO decision remains that `0.1.0` stays unreleased until the product is mature enough. See [Sprint 18 Review](./sprint_reviews/sp18.md).
 - Sprint 18 retrospective decision: Item 65 discovery should explicitly compare at least three options before Sprint 19 planning: Cookbook-only guidance, a narrow helper API, and a broader preset/recipe layer. Sprint 18 reinforced the product preference for additive explicit APIs over magic abstractions. See [Sprint 18 Retrospective](./sprint_retrospectives/sp18.md).
-- Sprint 19 selection note: Items 65 and 66 were committed to Sprint 19 for a total of 5 SP. The PO chose to preserve a focused discovery-first sequence for the job preset / recipe theme rather than mixing lower-priority CLI, trigger, or composite-action work into the sprint. Items 67–70 remain active backlog in unchanged priority order. See [Sprint 19 Backlog](./sprint_backlogs/sp19.md) for committed scope and planning notes.
+- Sprint 19 selection note: Items 65 and 66 were committed to Sprint 19 for a total of 5 SP. The PO chose to preserve a focused discovery-first sequence for the job preset / recipe theme rather than mixing lower-priority CLI, trigger, or composite-action work into the sprint. Items 67 and later remain active backlog in unchanged priority order unless superseded by later intake decisions. See [Sprint 19 Backlog](./sprint_backlogs/sp19.md) for committed scope and planning notes.
 - Sprint 19 discovery decision: Item 65 completed by selecting a narrow helper API in `@ghawb/sdk` as the first reusable job-pattern slice and rejecting both cookbook-only guidance and a broader preset framework for Sprint 19. The implementation target for Item 66 is one additive Node CI job helper for the repeated `checkout -> setup-node -> install -> test` sequence. See [ADR 0002](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md).
-- Sprint 19 review decision: Sprint 19 delivered all committed scope (Items 65 and 66, 5/5 SP) without carry-over. No active-backlog reprioritization is needed; the next priority order remains Items 67, 68, 69, and 70. See [Sprint 19 Review](./sprint_reviews/sp19.md).
+- Sprint 19 review decision: Sprint 19 delivered all committed scope (Items 65 and 66, 5/5 SP) without carry-over. No active-backlog reprioritization was needed at sprint close, and later backlog intake should append behind the standing post-Sprint-19 order unless the Product Owner explicitly reorders items. See [Sprint 19 Review](./sprint_reviews/sp19.md).
 - Sprint 19 retrospective decision: Future recipe-style product work should treat `nodeCi()` as evidence for a narrow additive-helper path, not as implicit approval for a broader preset framework. Keep using discovery-first slicing when backlog items still contain unresolved API-boundary questions. See [Sprint 19 Retrospective](./sprint_retrospectives/sp19.md).
 
 ## Sprint Backlog Records

@@ -8,6 +8,7 @@ This document covers the public API of `@ghawb/sdk`. For a quick-start guide, se
 - [Job Builder](#job-builder)
 - [Identifiers](#identifiers)
 - [Typed References](#typed-references)
+- [Typed Action Wrappers](#typed-action-wrappers)
 - [Expression Helpers](#expression-helpers)
 - [Runner Labels](#runner-labels)
 - [Renderer](#renderer)
@@ -119,7 +120,7 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 | Method | Description |
 |--------|-------------|
 | `.run(script, metadata?)` | Add a run step. |
-| `.uses(action, metadata?)` | Add a uses step. |
+| `.uses(action, metadata?)` | Add a uses step. Accepts either an `ActionRef` string or a typed action wrapper object. |
 | `.scriptReference(options, metadata?)` | Add a script file reference step. |
 
 **Step metadata fields:** `name`, `id`, `if`, `env`, `shell`, `with`, `workingDirectory`, `continueOnError`, `timeoutMinutes`.
@@ -177,6 +178,49 @@ Creates a validated `WorkflowRef` for use in `.usesWorkflow()`. Supports two for
 ### `isValidActionRef(value)` / `isValidWorkflowRef(value)`
 
 Runtime validation predicates returning `boolean`.
+
+---
+
+## Typed Action Wrappers
+
+The SDK includes manual-first wrappers for several high-frequency first-party actions. These helpers pin explicit action versions and provide typed input names with IDE autocomplete.
+
+### `actionsCheckout(inputs?)`
+
+Returns a typed action wrapper for `actions/checkout@v4`.
+
+### `actionsSetupNode(inputs?)`
+
+Returns a typed action wrapper for `actions/setup-node@v4`.
+
+### `actionsUploadArtifact(inputs?)`
+
+Returns a typed action wrapper for `actions/upload-artifact@v4`.
+
+### `actionsDownloadArtifact(inputs?)`
+
+Returns a typed action wrapper for `actions/download-artifact@v4`.
+
+```ts
+import { actionsCheckout, actionsSetupNode } from "@ghawb/sdk";
+
+job
+  .uses(actionsCheckout({ fetchDepth: 0 }), "Checkout")
+  .uses(
+    actionsSetupNode({
+      nodeVersion: "22",
+      cache: "pnpm",
+      packageManagerCache: true,
+    }),
+    "Setup Node"
+  );
+```
+
+Notes:
+
+- Wrapper versions are pinned explicitly in the SDK rather than generated from upstream `action.yml` metadata.
+- Wrapper inputs serialize booleans and numbers into the string-valued `with` payload required by GitHub Actions.
+- When a typed wrapper is passed to `.uses(...)`, do not also pass `metadata.with`; wrapper inputs own that surface.
 
 ---
 

@@ -132,8 +132,8 @@ All use `.onEvent(type, { types? })`.
 | `id` | ✅ | metadata arg | Unique within job; identifier format enforced |
 | `if` | ✅ | metadata arg | |
 | `run` | ✅ | `.run(cmd, meta?)` | |
-| `uses` | ✅ | `.uses(action, meta?)` | Raw string reference |
-| `with` | ✅ | metadata arg | `Record<string, string>` |
+| `uses` | ✅ | `.uses(action, meta?)` | `ActionRef` string or typed action wrapper |
+| `with` | ✅ | metadata arg / typed wrapper | `Record<string, string>` or wrapper-managed typed inputs for checkout/setup-node/upload-artifact/download-artifact |
 | `env` | ✅ | metadata arg | |
 | `shell` | ✅ | metadata arg | Run steps only |
 | `working-directory` | ✅ | metadata arg | Run steps only |
@@ -239,7 +239,5 @@ All existing raw `string` entry points remain backward compatible. Empty or blan
 
 | Feature | Notes |
 |---------|-------|
-| Typed action wrappers (`actions/checkout`, etc.) | Backlog Item 46 |
 | Composite actions | Actions-level construct, not workflow-level |
 | Reusable workflow `outputs` at caller side | |
-| Step-level `uses` type-safe `with` | Backlog Item 46 |

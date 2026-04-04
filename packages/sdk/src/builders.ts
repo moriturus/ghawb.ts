@@ -8,6 +8,8 @@ import {
 
 import { readFileSync } from "node:fs";
 
+import type { TypedActionStep } from "./actions.js";
+
 import {
   WORKFLOW_PERMISSION_KEYS,
   PULL_REQUEST_ACTIVITY_TYPES,
@@ -312,6 +314,14 @@ function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
       : {}),
     ...(metadata.timeoutMinutes !== undefined ? { timeoutMinutes: metadata.timeoutMinutes } : {}),
   };
+}
+
+function normalizeTypedActionWith(
+  withInputs: Readonly<Partial<Record<string, string>>>
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    Object.entries(withInputs).filter(([, value]) => value !== undefined)
+  ) as Readonly<Record<string, string>>;
 }
 
 function cloneRunStepMetadata(metadata: RunStepMetadata): RunStepMetadata {
@@ -1892,12 +1902,36 @@ class JobBuilder {
     return this;
   }
 
-  uses(action: ActionRef, metadata: StepMetadata | string = {}): this {
-    const resolved: StepMetadata = typeof metadata === "string" ? { name: metadata } : metadata;
+  uses(action: ActionRef, metadata?: StepMetadata | string): this;
+  uses<TWith extends Readonly<Partial<Record<string, string>>>>(
+    action: TypedActionStep<TWith>,
+    metadata?: Omit<StepMetadata, "with"> | string
+  ): this;
+  uses(
+    action: ActionRef | TypedActionStep,
+    metadata: StepMetadata | Omit<StepMetadata, "with"> | string = {}
+  ): this {
+    const resolved = typeof metadata === "string" ? { name: metadata } : metadata;
+
+    if (typeof action !== "string" && "with" in resolved && resolved.with !== undefined) {
+      throw new WorkflowValidationError([
+        'uses() does not allow "metadata.with" when the first argument is a typed action wrapper. Expected: pass typed action inputs through the wrapper function.',
+      ]);
+    }
+
+    const finalizedAction = typeof action === "string" ? action : action.uses;
+    const finalizedMetadata: StepMetadata =
+      typeof action === "string"
+        ? (resolved as StepMetadata)
+        : {
+            ...resolved,
+            ...(action.with !== undefined ? { with: normalizeTypedActionWith(action.with) } : {}),
+          };
+
     this.jobSteps.push({
       kind: "uses",
-      uses: action,
-      ...cloneStepMetadata(resolved),
+      uses: finalizedAction,
+      ...cloneStepMetadata(finalizedMetadata),
     });
     return this;
   }

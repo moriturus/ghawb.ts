@@ -9,6 +9,12 @@ import {
   createWorkflowRenderPayload,
   defineWorkflow,
 } from "@ghawb/sdk";
+import {
+  actionsCache,
+  actionsCheckout,
+  actionsSetupNode,
+  actionsUploadArtifact,
+} from "@ghawb/typed-actions";
 
 describe("README examples", () => {
   it("hero example: basic CI", () => {
@@ -124,5 +130,44 @@ describe("README examples", () => {
     expect(publishJob!["uses"]).toBe(
       "octo-org/shared-workflows/.github/workflows/publish.yml@main"
     );
+  });
+
+  it("typed action wrappers", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("typed-actions"),
+      name: "Typed Actions",
+    })
+      .onPush({ branches: ["main"] })
+      .addJob(createJobId("build"), (job) => {
+        job
+          .runsOn("ubuntu-latest")
+          .uses(actionsCheckout({ fetchDepth: 0 }), "Checkout")
+          .uses(
+            actionsSetupNode({
+              nodeVersion: "22",
+              cache: "pnpm",
+              cacheDependencyPath: ["pnpm-lock.yaml", "packages/*/pnpm-lock.yaml"],
+            }),
+            "Setup Node"
+          )
+          .uses(
+            actionsCache({
+              path: "~/.pnpm-store",
+              key: "pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}",
+              restoreKeys: "pnpm-${{ runner.os }}-",
+            }),
+            "Cache Store"
+          )
+          .run("pnpm install --frozen-lockfile")
+          .run("pnpm test")
+          .uses(actionsUploadArtifact({ name: "coverage", path: "coverage" }), "Upload Coverage");
+      })
+      .build();
+
+    const payload = createWorkflowRenderPayload(workflow);
+    expect(payload.name).toBe("Typed Actions");
+    const buildJob = payload.jobs["build"];
+    expect(buildJob).toBeDefined();
+    expect(buildJob!["steps"]).toHaveLength(6);
   });
 });

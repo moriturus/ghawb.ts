@@ -20,11 +20,20 @@
       "name": "@ghawb/cli",
       "version": "0.1.0",
       "bin": {
-        "ghawb": "./src/bin.ts",
+        "ghawb": "./dist/bin.js",
       },
       "dependencies": {
-        "@ghawb/sdk": "workspace:*",
+        "@ghawb/composite-actions": "^0.1.0",
+        "@ghawb/sdk": "^0.1.0",
         "yaml": "^2.8.1",
+      },
+    },
+    "packages/composite-actions": {
+      "name": "@ghawb/composite-actions",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ghawb/sdk": "^0.1.0",
+        "@ghawb/shared": "^0.1.0",
       },
     },
     "packages/sdk": {
@@ -37,6 +46,13 @@
     "packages/shared": {
       "name": "@ghawb/shared",
       "version": "0.1.0",
+    },
+    "packages/typed-actions": {
+      "name": "@ghawb/typed-actions",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ghawb/sdk": "^0.1.0",
+      },
     },
     "packages/yaml-import": {
       "name": "@ghawb/yaml-import",
@@ -154,9 +170,13 @@
 
     "@ghawb/cli": ["@ghawb/cli@workspace:packages/cli"],
 
+    "@ghawb/composite-actions": ["@ghawb/composite-actions@workspace:packages/composite-actions"],
+
     "@ghawb/sdk": ["@ghawb/sdk@workspace:packages/sdk"],
 
     "@ghawb/shared": ["@ghawb/shared@workspace:packages/shared"],
+
+    "@ghawb/typed-actions": ["@ghawb/typed-actions@workspace:packages/typed-actions"],
 
     "@ghawb/yaml-import": ["@ghawb/yaml-import@workspace:packages/yaml-import"],
 

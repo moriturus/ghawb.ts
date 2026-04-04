@@ -1,10 +1,15 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, extname, isAbsolute, join, parse, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { execFile } from "node:child_process";
 
 import { stringify } from "yaml";
 
+import {
+  renderCompositeAction,
+  type CompositeActionDefinition,
+  type CompositeActionRenderPayload,
+} from "@ghawb/composite-actions";
 import { renderWorkflow, type WorkflowDefinition, type WorkflowRenderPayload } from "@ghawb/sdk";
 
 export const CLI_PACKAGE_NAME = "@ghawb/cli";
@@ -40,6 +45,10 @@ interface RenderBatchCommandOptions {
   readonly lint: boolean;
 }
 
+interface RenderActionCommandOptions {
+  readonly target: RenderTarget;
+}
+
 export class CliUsageError extends Error {
   constructor(message: string) {
     super(message);
@@ -48,6 +57,14 @@ export class CliUsageError extends Error {
 }
 
 function emitWorkflowYaml(payload: WorkflowRenderPayload): string {
+  return `${stringify(payload, {
+    defaultStringType: "PLAIN",
+    lineWidth: 0,
+    simpleKeys: true,
+  })}`;
+}
+
+function emitCompositeActionYaml(payload: CompositeActionRenderPayload): string {
   return `${stringify(payload, {
     defaultStringType: "PLAIN",
     lineWidth: 0,
@@ -68,6 +85,48 @@ function isWorkflowDefinition(value: unknown): value is WorkflowDefinition {
   );
 }
 
+function isCompositeActionDefinition(value: unknown): value is CompositeActionDefinition {
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<CompositeActionDefinition>;
+  return (
+    typeof candidate.name === "string" &&
+    candidate.runs !== undefined &&
+    candidate.runs.using === "composite" &&
+    Array.isArray(candidate.runs.steps)
+  );
+}
+
+function isInputFlag(arg: string | undefined): boolean {
+  return arg === "--input" || arg === "-i";
+}
+
+function isOutputFlag(arg: string | undefined): boolean {
+  return arg === "--output" || arg === "-o";
+}
+
+function inferDefaultRenderOutputPath(inputPath: string): string {
+  const resolvedInputPath = resolve(inputPath);
+  const sourceDirectory = resolve("workflows");
+  const relativeSourcePath = relative(sourceDirectory, resolvedInputPath);
+
+  if (
+    relativeSourcePath.length === 0 ||
+    relativeSourcePath.startsWith("..") ||
+    isAbsolute(relativeSourcePath) ||
+    dirname(relativeSourcePath) !== "." ||
+    extname(relativeSourcePath) !== ".ts"
+  ) {
+    throw new CliUsageError(
+      `cannot infer default output path for "${inputPath}". Expected: a repository-local workflow source at workflows/<name>.ts; otherwise pass --output explicitly`
+    );
+  }
+
+  return join(".github", "workflows", `${parse(relativeSourcePath).name}.yml`);
+}
+
 function parseRenderArguments(args: readonly string[]): RenderCommandOptions {
   let inputPath: string | undefined;
   let outputPath: string | undefined;
@@ -76,13 +135,13 @@ function parseRenderArguments(args: readonly string[]): RenderCommandOptions {
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
-    if (arg === "--input") {
+    if (isInputFlag(arg)) {
       inputPath = args[index + 1];
       index += 1;
       continue;
     }
 
-    if (arg === "--output") {
+    if (isOutputFlag(arg)) {
       outputPath = args[index + 1];
       index += 1;
       continue;
@@ -101,7 +160,7 @@ function parseRenderArguments(args: readonly string[]): RenderCommandOptions {
   }
 
   if (!outputPath) {
-    throw new CliUsageError("missing required --output argument");
+    outputPath = inferDefaultRenderOutputPath(inputPath);
   }
 
   return { target: { inputPath, outputPath }, lint };
@@ -115,7 +174,7 @@ function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandO
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
-    if (arg === "--input") {
+    if (isInputFlag(arg)) {
       if (pendingInputPath) {
         throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
       }
@@ -130,7 +189,7 @@ function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandO
       continue;
     }
 
-    if (arg === "--output") {
+    if (isOutputFlag(arg)) {
       const outputPath = args[index + 1];
       index += 1;
 
@@ -167,6 +226,39 @@ function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandO
   }
 
   return { targets, lint };
+}
+
+function parseRenderActionArguments(args: readonly string[]): RenderActionCommandOptions {
+  let inputPath: string | undefined;
+  let outputPath: string | undefined;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (isInputFlag(arg)) {
+      inputPath = args[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (isOutputFlag(arg)) {
+      outputPath = args[index + 1];
+      index += 1;
+      continue;
+    }
+
+    throw new CliUsageError(`unknown argument "${arg}"`);
+  }
+
+  if (!inputPath) {
+    throw new CliUsageError("missing required --input argument");
+  }
+
+  if (!outputPath) {
+    throw new CliUsageError("missing required --output argument");
+  }
+
+  return { target: { inputPath, outputPath } };
 }
 
 async function defaultImportModule(modulePath: string): Promise<unknown> {
@@ -206,8 +298,9 @@ async function defaultRunCommand(
 
 function usage(): string {
   return [
-    "Usage: ghawb render --input <workflow.ts> --output <workflow.yml> [--lint]",
-    "       ghawb render-batch --input <workflow.ts> --output <workflow.yml> [--input <workflow.ts> --output <workflow.yml> ...] [--lint]",
+    "Usage: ghawb render (--input|-i) <workflow.ts> [(--output|-o) <workflow.yml>] [--lint]",
+    "       ghawb render-batch (--input|-i) <workflow.ts> (--output|-o) <workflow.yml> [(--input|-i) <workflow.ts> (--output|-o) <workflow.yml> ...] [--lint]",
+    "       ghawb render-action (--input|-i) <action.ts> (--output|-o) <action.yml>",
     "       ghawb lint <file.yml> [<file.yml> ...]",
   ].join("\n");
 }
@@ -227,6 +320,25 @@ async function renderTarget(
   }
 
   const renderedYaml = renderWorkflow(workflow, emitWorkflowYaml);
+  await writeOutputFile(resolvedOutputPath, renderedYaml);
+  return resolvedOutputPath;
+}
+
+async function renderActionTarget(
+  target: RenderTarget,
+  importModule: CliRunDependencies["importModule"],
+  writeOutputFile: CliRunDependencies["writeOutputFile"]
+): Promise<string> {
+  const resolvedInputPath = resolve(target.inputPath);
+  const resolvedOutputPath = resolve(target.outputPath);
+  const loadedModule = await importModule(resolvedInputPath);
+  const action = (loadedModule as { default?: unknown }).default;
+
+  if (!isCompositeActionDefinition(action)) {
+    throw new Error("default export must be a built composite action definition");
+  }
+
+  const renderedYaml = renderCompositeAction(action, emitCompositeActionYaml);
   await writeOutputFile(resolvedOutputPath, renderedYaml);
   return resolvedOutputPath;
 }
@@ -308,6 +420,13 @@ export async function runCli(
       }
 
       return lint ? await runActionlint(outputPaths, io, findExecutable, runCommand) : 0;
+    }
+
+    if (command === "render-action") {
+      const { target } = parseRenderActionArguments(rest);
+      const outputPath = await renderActionTarget(target, importModule, writeOutputFile);
+      io.stdout(`Rendered ${outputPath}`);
+      return 0;
     }
 
     if (command === "lint") {

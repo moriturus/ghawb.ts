@@ -3,6 +3,7 @@ import type { JobId, WorkflowId } from "@ghawb/shared";
 export type FilteredTriggerType = "push" | "pull_request" | "pull_request_target";
 
 export type SimpleEventType =
+  | "branch_protection_rule"
   | "check_run"
   | "check_suite"
   | "create"
@@ -28,6 +29,7 @@ export type SimpleEventType =
   | "watch";
 
 const SIMPLE_EVENT_TYPES: readonly string[] = [
+  "branch_protection_rule",
   "check_run",
   "check_suite",
   "create",
@@ -60,6 +62,7 @@ export function isSimpleEventType(value: string): value is SimpleEventType {
 export const SIMPLE_EVENT_ACTIVITY_TYPES: Readonly<
   Partial<Record<SimpleEventType, readonly string[]>>
 > = {
+  branch_protection_rule: ["created", "edited", "deleted"],
   check_run: ["created", "rerequested", "completed", "requested_action"],
   check_suite: ["completed", "requested", "rerequested"],
   discussion: [

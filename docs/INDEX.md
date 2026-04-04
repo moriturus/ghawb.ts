@@ -31,6 +31,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_backlogs/sp17.md](./sprint_backlogs/sp17.md): Sprint 17 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp18.md](./sprint_backlogs/sp18.md): Sprint 18 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp19.md](./sprint_backlogs/sp19.md): Sprint 19 backlog record, planning notes, and committed items.
+- [sprint_backlogs/sp20.md](./sprint_backlogs/sp20.md): Sprint 20 backlog record, planning notes, and committed items.
 - [scrum_master/BOARD.md](./scrum_master/BOARD.md): Scrum Master owned team-improvement follow-ups in priority order.
 - [scrum_master/PLAYBOOK.md](./scrum_master/PLAYBOOK.md): Scrum Master operating guide for sprint start, planning, and closeout improvements.
 - [TEAM.md](./TEAM.md): Scrum team roles and working personas.
@@ -75,6 +76,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 - [adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md): Sprint 19 discovery decision selecting a narrow `@ghawb/sdk` Node CI helper over cookbook-only guidance or a broader preset layer.
 - [adrs/0003-separate-typed-action-wrappers-from-sdk-core.md](./adrs/0003-separate-typed-action-wrappers-from-sdk-core.md): Stakeholder decision keeping typed action core support in `@ghawb/sdk` while moving concrete wrappers into opt-in `@ghawb/typed-actions`.
+- [adrs/0004-separate-composite-action-authoring-from-workflow-sdk.md](./adrs/0004-separate-composite-action-authoring-from-workflow-sdk.md): Sprint 20 discovery decision separating composite action authoring from the workflow SDK and choosing a dedicated CLI action-emitter flow.
 - [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
 - [RELEASING.md](../RELEASING.md) — Release workflow and publishing documentation.
 - [SECURITY.md](../SECURITY.md) — Security vulnerability reporting policy.

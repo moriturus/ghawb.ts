@@ -33,78 +33,6 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-### Item 67: CLI short flags for render input/output
-
-- Why: `ghawb render` and `ghawb render-batch` currently require verbose `--input` / `--output` flags for every mapping. Short aliases `-i` and `-o` would reduce command noise and make repeated CLI usage less tedious, especially in batch mode and shell snippets.
-- Prerequisites: None. Builds on the existing render and render-batch argument parser.
-- Implementation Plan: Add `-i` as a shorthand for `--input` and `-o` as a shorthand for `--output` in both `render` and `render-batch`. Preserve existing long flags unchanged. Update CLI usage text, README examples where appropriate, and tests covering mixed long/short flag usage.
-- Definition of Done: The CLI accepts `-i` / `-o` anywhere `--input` / `--output` are currently accepted, with unchanged semantics and validation behavior. Tests, docs, and code review completed.
-- Acceptance Criteria: `ghawb render -i workflows/ci.ts -o .github/workflows/ci.yml` works. `ghawb render-batch` accepts repeated `-i` / `-o` pairs. Existing long-flag usage remains backward compatible.
-- Story Points: 1
-- Status: new
-- Completed At: N/A
-- Notes/Links: User-requested CLI ergonomics improvement after Sprint 18.
-
-### Item 68: CLI inferred default output path for render
-
-- Why: Requiring `--output` for the common case creates friction when the desired destination is the conventional `.github/workflows/<name>.yml`. Inferring the output path from the input filename would make the CLI more convenient for routine repository-local rendering.
-- Prerequisites: Item 67 is adjacent but not technically required. Depends on clarifying the supported inference contract before implementation.
-- Implementation Plan: Design and implement a default-output rule for `ghawb render` that derives `.github/workflows/<input-basename>.yml` when `--output` is omitted. Clarify whether the same rule applies to `render-batch`, what happens for non-`.ts` inputs, and whether inference is limited to repository-local workflow source paths. Update CLI help text, README, SPEC, and tests.
-- Definition of Done: `ghawb render --input workflows/ci.ts` can emit `.github/workflows/ci.yml` without an explicit `--output`, under a documented and tested inference contract. Documentation and code review completed.
-- Acceptance Criteria: Omitting `--output` on `render` writes to the inferred `.github/workflows/<basename>.yml` path for supported inputs. The inference rule is documented precisely, including error behavior when inference is unsupported or ambiguous. Existing explicit `--output` usage remains unchanged.
-- Story Points: 2
-- Status: new
-- Completed At: N/A
-- Notes/Links: User-requested CLI ergonomics improvement after Sprint 18. Requires a documented contract for output-path inference to avoid implicit behavior drift.
-
-### Item 69: Remaining niche trigger support
-
-- Why: The project still advertises a small set of unsupported trigger types in `README.md` and `docs/SYNTAX_COVERAGE.md`, leaving a visible syntax-coverage gap after the major trigger work is otherwise complete. Closing the remaining niche trigger set would reduce the "mostly complete except for edge cases" status of the SDK.
-- Prerequisites: None. Builds on the existing trigger model/builder/validation/renderer/conformance pattern.
-- Implementation Plan: Implement the remaining explicitly documented unsupported workflow triggers, starting with `branch_protection_rule` and `deployment_protection_rule`, and reconcile whether a scoped set of GitHub App events should be included in the same slice or split into a follow-up item. Update builder APIs, validation, rendering, conformance fixtures, `docs/SPEC.md`, `docs/SYNTAX_COVERAGE.md`, and README support claims.
-- Definition of Done: The currently documented unsupported niche triggers are either implemented or explicitly re-scoped into a narrower follow-up backlog item with updated docs. Tests, cross-runtime conformance coverage, documentation, and code review completed.
-- Acceptance Criteria: `branch_protection_rule` and `deployment_protection_rule` are supported through the SDK and renderer with documented behavior. Any remaining GitHub App event gap is documented precisely rather than described vaguely. The corresponding rows are removed or narrowed in `docs/SYNTAX_COVERAGE.md` and README.
-- Story Points: 3
-- Status: new
-- Completed At: N/A
-- Notes/Links: Intake from README "Not Yet Supported" and `docs/SYNTAX_COVERAGE.md` "Not Yet Supported Triggers".
-
-### Item 70: Composite action definition support
-
-- Why: Composite actions remain the only feature listed under `docs/SYNTAX_COVERAGE.md` "Not Yet Supported Features". Although they are actions-level rather than workflow-level, their absence leaves an obvious capability gap for users who want to author reusable action logic in the same type-safe ecosystem.
-- Prerequisites: Needs design clarification because composite actions sit adjacent to, but outside, the current workflow-focused core contract.
-- Implementation Plan: Design a composite-action authoring slice that preserves the project's architecture rules. Decisions required: whether support lives in `@ghawb/sdk` or a separate package, what action-level AST surface is needed, how metadata and outputs map to the existing validation style, and whether YAML emission remains CLI-driven or gets a dedicated action emitter path. After design clarification, implement the minimal composite-action definition surface with docs and tests.
-- Definition of Done: A documented and tested path exists for authoring composite action definitions, or a deliberate package/scope split is recorded if the work must ship outside the current workflow-focused package boundary. Code review and spec/doc updates completed.
-- Acceptance Criteria: Users can define a composite action through a documented API that renders valid `action.yml` output for the supported slice. The unsupported-feature entry for composite actions is removed or narrowed with explicit scope notes. Architecture and package-boundary decisions are documented.
-- Story Points: 5
-- Status: new
-- Completed At: N/A
-- Notes/Links: Intake from `docs/SYNTAX_COVERAGE.md` "Not Yet Supported Features". Likely requires design-first slicing before sprint commitment.
-
-### Item 71: Expand typed action wrappers with about 10 popular actions
-
-- Why: `@ghawb/typed-actions` now proves the opt-in wrapper boundary, but the current wrapper set only covers four first-party actions. Expanding the package with a broader set of high-frequency actions would increase practical value for users who want typed `with` inputs on the actions they use most often.
-- Prerequisites: None. Builds on the newly separated `@ghawb/typed-actions` package and the `TypedActionStep` core that remains in `@ghawb/sdk`.
-- Implementation Plan: Select roughly 10 popular GitHub Actions to add as manual-first typed wrappers in `@ghawb/typed-actions`. Favor widely used first-party or ecosystem-standard actions with stable input surfaces and clear version pins. Document the selection rationale, implement typed input mappings with string serialization, add tests, and update README/API/SPEC docs to show the expanded wrapper catalog.
-- Definition of Done: `@ghawb/typed-actions` ships about 10 additional popular action wrappers beyond the current four, with pinned refs, typed input surfaces, tests, docs, and code review completed.
-- Acceptance Criteria: The package exposes typed wrappers for approximately 10 newly selected popular actions. Wrapper names and input field naming follow the repository's TypeScript style (for example `exampleUrl`, `runId`, `nodeCi`). The selected actions and version pins are documented, and `.uses(...)` examples demonstrate the expanded value of the opt-in package.
-- Story Points: 5
-- Status: new
-- Completed At: N/A
-- Notes/Links: User-requested backlog intake after the `@ghawb/typed-actions` package split. Selection should prefer popularity plus API stability over exhaustiveness.
-
-### Item 72: Add typed action examples to README and COOKBOOK
-
-- Why: The repository now documents that `@ghawb/typed-actions` exists, but README and COOKBOOK do not yet show concrete examples of using typed wrappers. That leaves the feature discoverable only through API-reference reading instead of through the primary onboarding docs.
-- Prerequisites: None. Builds on the existing `@ghawb/typed-actions` package and should remain aligned with whatever wrapper set is currently shipped.
-- Implementation Plan: Add at least one concise typed-wrapper example to `README.md` and at least one practical recipe to `docs/COOKBOOK.md`. Show imports from `@ghawb/typed-actions`, demonstrate `.uses(...)` with typed wrappers, and explain when to prefer wrappers versus raw action refs or `nodeCi()`.
-- Definition of Done: README and COOKBOOK both include accurate typed-action examples that run against the current shipped API, with tests or example validation updated as needed and code review completed.
-- Acceptance Criteria: README contains a typed-action usage example, COOKBOOK contains a typed-action recipe, imports use `@ghawb/typed-actions`, and the examples reflect the current TypeScript naming style and current wrapper package boundary.
-- Story Points: 1
-- Status: new
-- Completed At: N/A
-- Notes/Links: User-requested backlog intake after confirming that README and COOKBOOK currently lack concrete typed-action examples.
-
 ### Item 73: Enrich README and COOKBOOK for stronger onboarding and recipe coverage
 
 - Why: The current README and COOKBOOK cover the baseline surfaces, but they are still relatively thin as onboarding material. Stronger examples, decision guidance, and recipe coverage would reduce time-to-first-success and make the project easier to evaluate without reading the full specification.
@@ -127,6 +55,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Sprint 19 discovery decision: Item 65 completed by selecting a narrow helper API in `@ghawb/sdk` as the first reusable job-pattern slice and rejecting both cookbook-only guidance and a broader preset framework for Sprint 19. The implementation target for Item 66 is one additive Node CI job helper for the repeated `checkout -> setup-node -> install -> test` sequence. See [ADR 0002](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md).
 - Sprint 19 review decision: Sprint 19 delivered all committed scope (Items 65 and 66, 5/5 SP) without carry-over. No active-backlog reprioritization was needed at sprint close, and later backlog intake should append behind the standing post-Sprint-19 order unless the Product Owner explicitly reorders items. See [Sprint 19 Review](./sprint_reviews/sp19.md).
 - Sprint 19 retrospective decision: Future recipe-style product work should treat `nodeCi()` as evidence for a narrow additive-helper path, not as implicit approval for a broader preset framework. Keep using discovery-first slicing when backlog items still contain unresolved API-boundary questions. See [Sprint 19 Retrospective](./sprint_retrospectives/sp19.md).
+- Sprint 20 selection note: `Ad hoc A1`, Items 67, 68, 69, 70a, 70b, 71, and 72 were committed to Sprint 20 for a total of 18 SP. The PO inserted the `npm ci` lockfile/workspace repair as an ad hoc readiness item, split Item 70 into a discovery spike plus a first implementation slice, and deferred Item 73 so Sprint 20 keeps a small planning buffer while preserving strict backlog order. See [Sprint 20 Backlog](./sprint_backlogs/sp20.md) for committed scope and planning notes.
 
 ## Sprint Backlog Records
 
@@ -149,3 +78,4 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - [Sprint 17 Backlog](./sprint_backlogs/sp17.md)
 - [Sprint 18 Backlog](./sprint_backlogs/sp18.md)
 - [Sprint 19 Backlog](./sprint_backlogs/sp19.md)
+- [Sprint 20 Backlog](./sprint_backlogs/sp20.md)

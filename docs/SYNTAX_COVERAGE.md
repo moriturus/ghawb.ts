@@ -46,6 +46,7 @@ All use `.onEvent(type, { types? })`.
 
 | Trigger | Status | Activity Types |
 |---------|--------|----------------|
+| `branch_protection_rule` | ✅ | `created`, `edited`, `deleted` |
 | `check_run` | ✅ | `created`, `rerequested`, `completed`, `requested_action` |
 | `check_suite` | ✅ | `completed`, `requested`, `rerequested` |
 | `create` | ✅ | _(bare event)_ |
@@ -74,8 +75,7 @@ All use `.onEvent(type, { types? })`.
 
 | Trigger | Notes |
 |---------|-------|
-| `branch_protection_rule` | |
-| `deployment_protection_rule` | |
+| `deployment_protection_rule` | GitHub App webhook event, not listed as a GitHub Actions workflow trigger |
 | `installation` | GitHub App event |
 | `installation_repositories` | GitHub App event |
 | `installation_target` | GitHub App event |
@@ -133,7 +133,7 @@ All use `.onEvent(type, { types? })`.
 | `if` | ✅ | metadata arg | |
 | `run` | ✅ | `.run(cmd, meta?)` | |
 | `uses` | ✅ | `.uses(action, meta?)` | `ActionRef` string or typed action step |
-| `with` | ✅ | metadata arg / typed action step | `Record<string, string>` or typed-action-managed inputs; opt-in wrappers for checkout/setup-node/upload-artifact/download-artifact live in `@ghawb/typed-actions` |
+| `with` | ✅ | metadata arg / typed action step | `Record<string, string>` or typed-action-managed inputs; opt-in wrappers for checkout/cache/setup-node/setup-python/setup-go/setup-java/setup-dotnet/github-script/configure-pages/upload-pages-artifact/deploy-pages/labeler/upload-artifact/download-artifact live in `@ghawb/typed-actions` |
 | `env` | ✅ | metadata arg | |
 | `shell` | ✅ | metadata arg | Run steps only |
 | `working-directory` | ✅ | metadata arg | Run steps only |
@@ -250,4 +250,4 @@ All existing raw `string` entry points remain backward compatible. Empty or blan
 
 | Feature | Notes |
 |---------|-------|
-| Composite actions | Actions-level construct, not workflow-level |
+| Advanced composite action features | `@ghawb/composite-actions` now covers the first slice (`name`, `description`, `inputs`, `outputs`, and composite `runs.steps`) through `ghawb render-action`, but branding metadata, pre/post hooks, and other non-core action metadata remain unsupported. |

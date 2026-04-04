@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
+
+import { defineCompositeAction } from "@ghawb/composite-actions";
+
 import { runCli as runCliDirect, type CliIo, type CliRunDependencies } from "./index.js";
 
 function defineMinimalWorkflow() {
@@ -52,7 +55,7 @@ function runCli(
   cwd: string
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn("bun", ["run", "packages/cli/src/bin.ts", ...args], {
+    const child = spawn("bun", ["run", join(process.cwd(), "packages/cli/src/bin.ts"), ...args], {
       cwd,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -144,12 +147,112 @@ jobs:
 `);
   });
 
-  it("fails with a non-zero exit code when required arguments are missing", async () => {
-    const result = await runCli(["render", "--input", "workflow.ts"], process.cwd());
+  it("accepts short input and output flags for render", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
 
-    expect(result.exitCode).toBe(1);
-    expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("missing required --output argument");
+    const inputPath = join(tempDir, "workflow.ts");
+    const outputPath = join(tempDir, "ci.yml");
+
+    await writeFile(
+      inputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('ci'),
+  name: 'CI',
+})
+  .onPush()
+  .addJob(createJobId('test'), (job) => {
+    job.runsOn('ubuntu-latest').run('echo ok');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    const result = await runCli(["render", "-i", inputPath, "-o", outputPath], process.cwd());
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    await expect(readFile(outputPath, "utf8")).resolves.toContain("name: CI");
+  });
+
+  it("infers the default output path for supported repository-local render inputs", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const workflowsDir = join(tempDir, "workflows");
+    const outputPath = join(tempDir, ".github", "workflows", "ci.yml");
+
+    await mkdir(workflowsDir, { recursive: true });
+    const io = createIo();
+    const originalCwd = process.cwd();
+
+    try {
+      process.chdir(tempDir);
+
+      const exitCode = await runCliDirect(
+        ["render", "--input", "workflows/ci.ts"],
+        io,
+        mockDeps({
+          importModule: async () => ({ default: defineMinimalWorkflow() }),
+          writeOutputFile: async () => {},
+        })
+      );
+
+      expect(exitCode).toBe(0);
+      expect(io.stderr_lines).toEqual([]);
+      expect(io.stdout_lines.join("\n")).toContain(outputPath);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("infers the default output path for short render input flags", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+    const io = createIo();
+    const originalCwd = process.cwd();
+
+    try {
+      process.chdir(tempDir);
+
+      const exitCode = await runCliDirect(
+        ["render", "-i", "workflows/ci.ts"],
+        io,
+        mockDeps({
+          importModule: async () => ({ default: defineMinimalWorkflow() }),
+          writeOutputFile: async () => {},
+        })
+      );
+
+      expect(exitCode).toBe(0);
+      expect(io.stderr_lines).toEqual([]);
+      expect(io.stdout_lines.join("\n")).toContain(join(tempDir, ".github", "workflows", "ci.yml"));
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("fails clearly when default output inference is unsupported", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+    const io = createIo();
+    const originalCwd = process.cwd();
+
+    try {
+      process.chdir(tempDir);
+
+      const exitCode = await runCliDirect(["render", "--input", "workflow.ts"], io, mockDeps());
+
+      expect(exitCode).toBe(1);
+      expect(io.stdout_lines).toEqual([]);
+      expect(io.stderr_lines.join("\n")).toContain("cannot infer default output path");
+      expect(io.stderr_lines.join("\n")).toContain("pass --output explicitly");
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 
   it("fails clearly when the input module does not export a default workflow", async () => {
@@ -261,6 +364,203 @@ export default defineWorkflow({
     await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("workflow_dispatch: null");
   });
 
+  it("accepts short input and output flags for render-batch", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const firstInputPath = join(tempDir, "first-workflow.ts");
+    const firstOutputPath = join(tempDir, "first.yml");
+    const secondInputPath = join(tempDir, "second-workflow.ts");
+    const secondOutputPath = join(tempDir, "second.yml");
+
+    await writeFile(
+      firstInputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('first'),
+  name: 'First',
+})
+  .onPush()
+  .addJob(createJobId('check'), (job) => {
+    job.runsOn('ubuntu-latest').run('bun test');
+  })
+  .build();
+`,
+      "utf8"
+    );
+    await writeFile(
+      secondInputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('second'),
+  name: 'Second',
+})
+  .onWorkflowDispatch()
+  .addJob(createJobId('verify'), (job) => {
+    job.runsOn('ubuntu-latest').run('bun run verify:workflows');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    const result = await runCli(
+      [
+        "render-batch",
+        "-i",
+        firstInputPath,
+        "-o",
+        firstOutputPath,
+        "-i",
+        secondInputPath,
+        "-o",
+        secondOutputPath,
+      ],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    await expect(readFile(firstOutputPath, "utf8")).resolves.toContain("name: First");
+    await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("name: Second");
+  });
+
+  it("still requires explicit output paths for render-batch", async () => {
+    const result = await runCli(["render-batch", "-i", "workflows/ci.ts"], process.cwd());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain('missing required --output argument for "workflows/ci.ts"');
+  });
+
+  it("accepts mixed long and short flags across render-batch targets", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const firstInputPath = join(tempDir, "first-workflow.ts");
+    const firstOutputPath = join(tempDir, "first.yml");
+    const secondInputPath = join(tempDir, "second-workflow.ts");
+    const secondOutputPath = join(tempDir, "second.yml");
+
+    await writeFile(
+      firstInputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('first'),
+  name: 'First',
+})
+  .onPush()
+  .addJob(createJobId('check'), (job) => {
+    job.runsOn('ubuntu-latest').run('bun test');
+  })
+  .build();
+`,
+      "utf8"
+    );
+    await writeFile(
+      secondInputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('second'),
+  name: 'Second',
+})
+  .onWorkflowDispatch()
+  .addJob(createJobId('verify'), (job) => {
+    job.runsOn('ubuntu-latest').run('bun run verify:workflows');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    const result = await runCli(
+      [
+        "render-batch",
+        "--input",
+        firstInputPath,
+        "-o",
+        firstOutputPath,
+        "-i",
+        secondInputPath,
+        "--output",
+        secondOutputPath,
+      ],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    await expect(readFile(firstOutputPath, "utf8")).resolves.toContain("name: First");
+    await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("name: Second");
+  });
+
+  it("accepts mixed long and short input and output flags for render-batch", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const firstInputPath = join(tempDir, "first-workflow.ts");
+    const firstOutputPath = join(tempDir, "first.yml");
+    const secondInputPath = join(tempDir, "second-workflow.ts");
+    const secondOutputPath = join(tempDir, "second.yml");
+
+    await writeFile(
+      firstInputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('first'),
+  name: 'First',
+})
+  .onPush()
+  .addJob(createJobId('check'), (job) => {
+    job.runsOn('ubuntu-latest').run('bun test');
+  })
+  .build();
+`,
+      "utf8"
+    );
+    await writeFile(
+      secondInputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('second'),
+  name: 'Second',
+})
+  .onWorkflowDispatch()
+  .addJob(createJobId('verify'), (job) => {
+    job.runsOn('ubuntu-latest').run('bun run verify:workflows');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    const result = await runCli(
+      [
+        "render-batch",
+        "--input",
+        firstInputPath,
+        "-o",
+        firstOutputPath,
+        "-i",
+        secondInputPath,
+        "--output",
+        secondOutputPath,
+      ],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    await expect(readFile(firstOutputPath, "utf8")).resolves.toContain("name: First");
+    await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("name: Second");
+  });
+
   it("reports partial batch failures with a non-zero exit code while keeping successful outputs", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
     tempDirs.push(tempDir);
@@ -347,6 +647,112 @@ export default defineWorkflow({
       expect.stringContaining("first.yml"),
       expect.stringContaining("second.yml"),
     ]);
+  });
+
+  it("renders a composite action module into action.yml", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const inputPath = join(tempDir, "action.ts");
+    const outputPath = join(tempDir, "action.yml");
+
+    await writeFile(
+      inputPath,
+      `import { defineCompositeAction } from '${join(process.cwd(), "packages/composite-actions/src/index.ts")}';
+
+export default defineCompositeAction({
+  name: 'Setup Bun',
+  description: 'Install Bun and expose cache metadata',
+})
+  .input('bun-version', {
+    description: 'Version to install',
+    default: '1.3.11',
+  })
+  .output('cache-path', {
+    value: '\${{ steps.cache.outputs.path }}',
+  })
+  .uses('actions/checkout@v4', 'Checkout')
+  .run('echo path=$HOME/.bun/install/cache >> $GITHUB_OUTPUT', {
+    name: 'Expose Cache',
+    id: 'cache',
+    shell: 'bash',
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    const result = await runCli(
+      ["render-action", "--input", inputPath, "--output", outputPath],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain(outputPath);
+    await expect(readFile(outputPath, "utf8")).resolves.toBe(`name: Setup Bun
+description: Install Bun and expose cache metadata
+inputs:
+  bun-version:
+    description: Version to install
+    default: 1.3.11
+outputs:
+  cache-path:
+    value: \${{ steps.cache.outputs.path }}
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Expose Cache
+      id: cache
+      shell: bash
+      run: echo path=$HOME/.bun/install/cache >> $GITHUB_OUTPUT
+`);
+  });
+
+  it("requires an explicit output path for render-action", async () => {
+    const io = createIo();
+    const exitCode = await runCliDirect(["render-action", "--input", "action.ts"], io, mockDeps());
+
+    expect(exitCode).toBe(1);
+    expect(io.stderr_lines.join("\n")).toContain("missing required --output argument");
+  });
+
+  it("accepts short flags for render-action", async () => {
+    const io = createIo();
+
+    const exitCode = await runCliDirect(
+      ["render-action", "-i", "action.ts", "-o", "action.yml"],
+      io,
+      mockDeps({
+        importModule: async () => ({
+          default: defineCompositeAction({ name: "Echo" }).run("echo ok").build(),
+        }),
+        writeOutputFile: async () => {},
+      })
+    );
+
+    expect(exitCode).toBe(0);
+    expect(io.stderr_lines).toEqual([]);
+    expect(io.stdout_lines.join("\n")).toContain("action.yml");
+  });
+
+  it("fails clearly when the input module does not export a built composite action", async () => {
+    const io = createIo();
+
+    const exitCode = await runCliDirect(
+      ["render-action", "--input", "action.ts", "--output", "action.yml"],
+      io,
+      mockDeps({
+        importModule: async () => ({ default: defineMinimalWorkflow() }),
+      })
+    );
+
+    expect(exitCode).toBe(1);
+    expect(io.stderr_lines.join("\n")).toContain(
+      "default export must be a built composite action definition"
+    );
   });
 });
 

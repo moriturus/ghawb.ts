@@ -9,6 +9,8 @@ description: Execute a repository sprint backlog under explicit Scrum personas a
 
 Execute the current sprint backlog one item at a time under explicit team personas. Gate execution on backlog readiness first, prefer sub-agent or multi-agent collaboration inside each current item, and keep Product Owner and Scrum Master personas out of implementation work. By default, continue from one backlog item to the next in sprint order until every committed item is `done` or a documented stop condition is hit. A response-turn boundary, status report, or progress summary is not itself a stop condition.
 
+Treat user-facing progress reports as non-blocking side effects, not as completion boundaries. After any status update, summary, or item-complete report, immediately resume sprint execution in the same turn unless a listed stop condition is currently true.
+
 Each sprint should normally run on a dedicated sprint branch. Each backlog item should normally be delivered on its own feature branch created from the latest sprint branch state, reviewed through its own pull request targeting the sprint branch, and the sprint branch itself should be merged back to `main` only through a final sprint-level pull request.
 
 ## Run Order
@@ -24,6 +26,7 @@ Each sprint should normally run on a dedicated sprint branch. Each backlog item 
 9. Verify, review, obtain Product Owner acceptance for the item, and update docs that must stay aligned with the change.
 10. After the current item reaches `done`, merge it into the sprint branch, re-read the sprint backlog, and continue with the next top-most item that is not done on a new item branch from the updated sprint branch.
 11. After every committed sprint item is `done`, open the sprint-level pull request from the sprint branch into `main`, verify the final sprint closeout proof, and only then stop.
+12. Before emitting any final "done" or closeout message, re-check the stop conditions and the backlog state explicitly; if later committed items remain, continue sprint execution instead of ending the turn.
 
 ## Ready Gate
 
@@ -147,6 +150,7 @@ Update project records when the change requires it:
 - Continue item-by-item until all committed sprint items are `done`.
 - After the final committed item is done, open the sprint closeout pull request from the sprint branch to `main`, verify the sprint-level hosted proof when required, and only then stop.
 - Do not stop merely because one item finished, because a status report was sent, or because one response turn ended if later committed sprint items are still pending and no stop condition applies.
+- If a user asks why work stopped and no stop condition applies, treat that as evidence of incorrect pausing: acknowledge the pause as an error and resume from the next executable sprint step rather than waiting for another explicit `do-sprint` trigger.
 
 ## Completion Gate
 
@@ -177,6 +181,8 @@ Stop and report instead of pushing forward when any of these are true:
 
 Anything not listed above is not a stop condition. In particular, reaching a natural response boundary, pausing to summarize progress, or finishing one item while later committed items remain does not authorize stopping sprint execution.
 
+Use a conservative interpretation: if there is doubt whether stopping is allowed, continue executing and report the next active step while doing so.
+
 ## Output Contract
 
 When using this skill, make the sprint state obvious in the response.
@@ -191,5 +197,6 @@ When using this skill, make the sprint state obvious in the response.
 - State whether Product Owner acceptance for the current item is still pending or completed.
 - State whether sprint execution is continuing to the next item, waiting on the sprint closeout pull request, or has stopped, and why.
 - If the response is only a status report and committed sprint items still remain, state explicitly that execution will continue after the report and name the next active step.
+- Do not end the overall response as if the task is complete while a later committed sprint item is still executable.
 - If any DoD evidence is still missing, name the missing evidence and do not present the item as complete.
 - If execution is blocked, stop there and list blockers instead of proposing implementation details.

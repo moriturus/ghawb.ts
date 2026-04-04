@@ -192,9 +192,49 @@ The SDK keeps the typed action core surface (`typedActionStep()` and `TypedActio
 
 Returns a typed action wrapper for `actions/checkout@v4`.
 
+### `actionsCache(inputs)`
+
+Returns a typed action wrapper for `actions/cache@v4`.
+
 ### `actionsSetupNode(inputs?)`
 
 Returns a typed action wrapper for `actions/setup-node@v4`.
+
+### `actionsSetupPython(inputs?)`
+
+Returns a typed action wrapper for `actions/setup-python@v5`.
+
+### `actionsSetupGo(inputs?)`
+
+Returns a typed action wrapper for `actions/setup-go@v5`.
+
+### `actionsSetupJava(inputs)`
+
+Returns a typed action wrapper for `actions/setup-java@v4`.
+
+### `actionsSetupDotnet(inputs?)`
+
+Returns a typed action wrapper for `actions/setup-dotnet@v4`.
+
+### `actionsGithubScript(inputs)`
+
+Returns a typed action wrapper for `actions/github-script@v7`.
+
+### `actionsConfigurePages(inputs?)`
+
+Returns a typed action wrapper for `actions/configure-pages@v5`.
+
+### `actionsUploadPagesArtifact(inputs)`
+
+Returns a typed action wrapper for `actions/upload-pages-artifact@v3`.
+
+### `actionsDeployPages(inputs?)`
+
+Returns a typed action wrapper for `actions/deploy-pages@v4`.
+
+### `actionsLabeler(inputs?)`
+
+Returns a typed action wrapper for `actions/labeler@v5`.
 
 ### `actionsUploadArtifact(inputs?)`
 
@@ -205,10 +245,11 @@ Returns a typed action wrapper for `actions/upload-artifact@v4`.
 Returns a typed action wrapper for `actions/download-artifact@v4`.
 
 ```ts
-import { actionsCheckout, actionsSetupNode } from "@ghawb/typed-actions";
+import { actionsCache, actionsCheckout, actionsSetupNode } from "@ghawb/typed-actions";
 
 job
   .uses(actionsCheckout({ fetchDepth: 0 }), "Checkout")
+  .uses(actionsCache({ path: "~/.pnpm-store", key: "pnpm-${{ runner.os }}" }), "Cache")
   .uses(
     actionsSetupNode({
       nodeVersion: "22",
@@ -221,8 +262,10 @@ job
 
 Notes:
 
+- Wrapper selection currently favors widely used, stable first-party actions across checkout, caching, language setup, GitHub maintenance, and Pages deployment paths rather than exhaustive wrapper generation.
 - Wrapper versions are pinned explicitly in `@ghawb/typed-actions` rather than generated from upstream `action.yml` metadata.
 - Wrapper inputs serialize booleans and numbers into the string-valued `with` payload required by GitHub Actions.
+- Multivalue wrapper inputs use newline-delimited or comma-delimited serialization when the upstream action expects those shapes.
 - When a typed action step is passed to `.uses(...)`, do not also pass `metadata.with`; the typed action object owns that surface.
 
 ---

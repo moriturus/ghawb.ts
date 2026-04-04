@@ -3,9 +3,19 @@ import { describe, expect, it } from "vitest";
 import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
 
 import {
+  actionsCache,
+  actionsConfigurePages,
   actionsCheckout,
+  actionsDeployPages,
   actionsDownloadArtifact,
+  actionsGithubScript,
+  actionsLabeler,
+  actionsSetupDotnet,
+  actionsSetupGo,
+  actionsSetupJava,
   actionsSetupNode,
+  actionsSetupPython,
+  actionsUploadPagesArtifact,
   actionsUploadArtifact,
 } from "./index.js";
 
@@ -15,6 +25,12 @@ describe("@ghawb/typed-actions", () => {
     expect(actionsSetupNode()).toEqual({ uses: "actions/setup-node@v4" });
     expect(actionsUploadArtifact()).toEqual({ uses: "actions/upload-artifact@v4" });
     expect(actionsDownloadArtifact()).toEqual({ uses: "actions/download-artifact@v4" });
+    expect(actionsSetupPython()).toEqual({ uses: "actions/setup-python@v5" });
+    expect(actionsSetupGo()).toEqual({ uses: "actions/setup-go@v5" });
+    expect(actionsSetupDotnet()).toEqual({ uses: "actions/setup-dotnet@v4" });
+    expect(actionsConfigurePages()).toEqual({ uses: "actions/configure-pages@v5" });
+    expect(actionsDeployPages()).toEqual({ uses: "actions/deploy-pages@v4" });
+    expect(actionsLabeler()).toEqual({ uses: "actions/labeler@v5" });
   });
 
   it("builds checkout wrapper inputs with serialized booleans and numbers", () => {
@@ -201,6 +217,258 @@ describe("@ghawb/typed-actions", () => {
     });
   });
 
+  it("builds cache and language setup wrappers with typed serialization", () => {
+    expect(
+      actionsCache({
+        path: ["~/.cache/pip", ".venv"],
+        key: "pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}",
+        restoreKeys: ["pip-${{ runner.os }}-", "pip-"],
+        uploadChunkSize: 1024,
+        enableCrossOsArchive: true,
+        failOnCacheMiss: false,
+        lookupOnly: true,
+        saveAlways: false,
+      })
+    ).toEqual({
+      uses: "actions/cache@v4",
+      with: {
+        path: "~/.cache/pip\n.venv",
+        key: "pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}",
+        "restore-keys": "pip-${{ runner.os }}-\npip-",
+        "upload-chunk-size": "1024",
+        enableCrossOsArchive: "true",
+        "fail-on-cache-miss": "false",
+        "lookup-only": "true",
+        "save-always": "false",
+      },
+    });
+
+    expect(
+      actionsSetupPython({
+        pythonVersion: "3.12",
+        pythonVersionFile: ".python-version",
+        cache: "pip",
+        architecture: "arm64",
+        checkLatest: true,
+        token: "${{ secrets.GITHUB_TOKEN }}",
+        cacheDependencyPath: ["requirements.txt", "requirements-dev.txt"],
+        updateEnvironment: false,
+        allowPrereleases: true,
+        freethreaded: false,
+      })
+    ).toEqual({
+      uses: "actions/setup-python@v5",
+      with: {
+        "python-version": "3.12",
+        "python-version-file": ".python-version",
+        cache: "pip",
+        architecture: "arm64",
+        "check-latest": "true",
+        token: "${{ secrets.GITHUB_TOKEN }}",
+        "cache-dependency-path": "requirements.txt\nrequirements-dev.txt",
+        "update-environment": "false",
+        "allow-prereleases": "true",
+        freethreaded: "false",
+      },
+    });
+
+    expect(
+      actionsSetupGo({
+        goVersion: "1.24",
+        goVersionFile: "go.mod",
+        checkLatest: false,
+        token: "${{ secrets.GITHUB_TOKEN }}",
+        cache: true,
+        cacheDependencyPath: ["go.sum", "tools/go.sum"],
+        architecture: "x64",
+      })
+    ).toEqual({
+      uses: "actions/setup-go@v5",
+      with: {
+        "go-version": "1.24",
+        "go-version-file": "go.mod",
+        "check-latest": "false",
+        token: "${{ secrets.GITHUB_TOKEN }}",
+        cache: "true",
+        "cache-dependency-path": "go.sum\ntools/go.sum",
+        architecture: "x64",
+      },
+    });
+
+    expect(
+      actionsSetupJava({
+        javaVersion: "21",
+        javaVersionFile: ".java-version",
+        distribution: "temurin",
+        javaPackage: "jdk",
+        architecture: "x64",
+        jdkFile: "downloads/jdk.tar.gz",
+        checkLatest: true,
+        serverId: "central",
+        serverUsername: "MAVEN_USERNAME",
+        serverPassword: "MAVEN_TOKEN",
+        settingsPath: "~/.m2",
+        overwriteSettings: false,
+        gpgPrivateKey: "${{ secrets.GPG_PRIVATE_KEY }}",
+        gpgPassphrase: "GPG_PASSPHRASE",
+        cache: "maven",
+        cacheDependencyPath: ["pom.xml", "submodule/pom.xml"],
+        token: "${{ secrets.GITHUB_TOKEN }}",
+        mvnToolchainId: "temurin_21",
+        mvnToolchainVendor: "temurin",
+      })
+    ).toEqual({
+      uses: "actions/setup-java@v4",
+      with: {
+        "java-version": "21",
+        "java-version-file": ".java-version",
+        distribution: "temurin",
+        "java-package": "jdk",
+        architecture: "x64",
+        jdkFile: "downloads/jdk.tar.gz",
+        "check-latest": "true",
+        "server-id": "central",
+        "server-username": "MAVEN_USERNAME",
+        "server-password": "MAVEN_TOKEN",
+        "settings-path": "~/.m2",
+        "overwrite-settings": "false",
+        "gpg-private-key": "${{ secrets.GPG_PRIVATE_KEY }}",
+        "gpg-passphrase": "GPG_PASSPHRASE",
+        cache: "maven",
+        "cache-dependency-path": "pom.xml\nsubmodule/pom.xml",
+        token: "${{ secrets.GITHUB_TOKEN }}",
+        "mvn-toolchain-id": "temurin_21",
+        "mvn-toolchain-vendor": "temurin",
+      },
+    });
+
+    expect(
+      actionsSetupDotnet({
+        dotnetVersion: ["8.0.x", "9.0.x"],
+        dotnetQuality: "preview",
+        globalJsonFile: "src/global.json",
+        sourceUrl: "https://nuget.pkg.github.com/moriturus/index.json",
+        owner: "moriturus",
+        configFile: "NuGet.config",
+        cache: true,
+        cacheDependencyPath: ["packages.lock.json", "src/*/packages.lock.json"],
+      })
+    ).toEqual({
+      uses: "actions/setup-dotnet@v4",
+      with: {
+        "dotnet-version": "8.0.x\n9.0.x",
+        "dotnet-quality": "preview",
+        "global-json-file": "src/global.json",
+        "source-url": "https://nuget.pkg.github.com/moriturus/index.json",
+        owner: "moriturus",
+        "config-file": "NuGet.config",
+        cache: "true",
+        "cache-dependency-path": "packages.lock.json\nsrc/*/packages.lock.json",
+      },
+    });
+  });
+
+  it("builds GitHub-maintenance wrappers with typed serialization", () => {
+    expect(
+      actionsGithubScript({
+        script: "return { ok: true };",
+        githubToken: "${{ secrets.GITHUB_TOKEN }}",
+        debug: true,
+        userAgent: "ghawb-tests",
+        previews: ["mercy", "nebula"],
+        resultEncoding: "string",
+        retries: 3,
+        retryExemptStatusCodes: [400, 404, "422"],
+        baseUrl: "https://ghe.example.com/api/v3",
+      })
+    ).toEqual({
+      uses: "actions/github-script@v7",
+      with: {
+        script: "return { ok: true };",
+        "github-token": "${{ secrets.GITHUB_TOKEN }}",
+        debug: "true",
+        "user-agent": "ghawb-tests",
+        previews: "mercy,nebula",
+        "result-encoding": "string",
+        retries: "3",
+        "retry-exempt-status-codes": "400,404,422",
+        "base-url": "https://ghe.example.com/api/v3",
+      },
+    });
+
+    expect(
+      actionsConfigurePages({
+        staticSiteGenerator: "next",
+        generatorConfigFile: "apps/web/next.config.js",
+        token: "${{ secrets.PAGES_TOKEN }}",
+        enablement: true,
+      })
+    ).toEqual({
+      uses: "actions/configure-pages@v5",
+      with: {
+        static_site_generator: "next",
+        generator_config_file: "apps/web/next.config.js",
+        token: "${{ secrets.PAGES_TOKEN }}",
+        enablement: "true",
+      },
+    });
+
+    expect(
+      actionsUploadPagesArtifact({
+        name: "docs-site",
+        path: "dist/docs",
+        retentionDays: 7,
+      })
+    ).toEqual({
+      uses: "actions/upload-pages-artifact@v3",
+      with: {
+        name: "docs-site",
+        path: "dist/docs",
+        "retention-days": "7",
+      },
+    });
+
+    expect(
+      actionsDeployPages({
+        token: "${{ secrets.GITHUB_TOKEN }}",
+        timeout: 900000,
+        errorCount: 20,
+        reportingInterval: 10000,
+        artifactName: "docs-site",
+        preview: true,
+      })
+    ).toEqual({
+      uses: "actions/deploy-pages@v4",
+      with: {
+        token: "${{ secrets.GITHUB_TOKEN }}",
+        timeout: "900000",
+        error_count: "20",
+        reporting_interval: "10000",
+        artifact_name: "docs-site",
+        preview: "true",
+      },
+    });
+
+    expect(
+      actionsLabeler({
+        repoToken: "${{ secrets.GITHUB_TOKEN }}",
+        configurationPath: ".github/labeler.yml",
+        syncLabels: true,
+        dot: false,
+        prNumber: [123, "456"],
+      })
+    ).toEqual({
+      uses: "actions/labeler@v5",
+      with: {
+        "repo-token": "${{ secrets.GITHUB_TOKEN }}",
+        "configuration-path": ".github/labeler.yml",
+        "sync-labels": "true",
+        dot: "false",
+        "pr-number": "123,456",
+      },
+    });
+  });
+
   it("allows job.uses() to accept a typed action wrapper from the opt-in package", () => {
     const workflow = defineWorkflow({
       id: createWorkflowId("typed-actions"),
@@ -215,6 +483,9 @@ describe("@ghawb/typed-actions", () => {
             name: "Setup Node",
             id: "setup-node",
           })
+          .uses(actionsCache({ path: "~/.pnpm-store", key: "pnpm-${{ runner.os }}" }), "Cache")
+          .uses(actionsSetupPython({ pythonVersion: "3.12", cache: "pip" }), "Setup Python")
+          .uses(actionsUploadPagesArtifact({ path: "dist" }), "Upload Pages Artifact")
       )
       .build();
 
@@ -236,6 +507,32 @@ describe("@ghawb/typed-actions", () => {
           "node-version": "22",
           cache: "pnpm",
           "package-manager-cache": "true",
+        },
+      },
+      {
+        kind: "uses",
+        name: "Cache",
+        uses: "actions/cache@v4",
+        with: {
+          path: "~/.pnpm-store",
+          key: "pnpm-${{ runner.os }}",
+        },
+      },
+      {
+        kind: "uses",
+        name: "Setup Python",
+        uses: "actions/setup-python@v5",
+        with: {
+          "python-version": "3.12",
+          cache: "pip",
+        },
+      },
+      {
+        kind: "uses",
+        name: "Upload Pages Artifact",
+        uses: "actions/upload-pages-artifact@v3",
+        with: {
+          path: "dist",
         },
       },
     ]);

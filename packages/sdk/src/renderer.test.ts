@@ -317,6 +317,38 @@ describe("workflow renderer", () => {
     });
   });
 
+  it("renders workflow_call secrets when optional fields are independently omitted", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("workflow_call_secret_optional_fields"),
+      name: "Workflow Call Secret Optional Fields",
+    })
+      .onWorkflowCall({
+        secrets: {
+          token: {
+            required: true,
+          },
+          deployment_key: {
+            description: "Deployment key",
+          },
+        },
+      })
+      .addJob(createJobId("build"), (job) => {
+        job.runsOn("ubuntu-latest").run("bun test");
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).on.workflow_call).toEqual({
+      secrets: {
+        token: {
+          required: true,
+        },
+        deployment_key: {
+          description: "Deployment key",
+        },
+      },
+    });
+  });
+
   it("renders identical output across repeated runs with the same emitter", () => {
     const workflow = defineWorkflow({
       id: createWorkflowId("repeatable"),
@@ -612,6 +644,43 @@ describe("workflow renderer", () => {
       },
     });
     expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
+  });
+
+  it("renders workflow-level defaults with only working-directory", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("workflow_defaults_working_directory_only"),
+      name: "Workflow Defaults Working Directory Only",
+    })
+      .onPush()
+      .defaultsRun({
+        workingDirectory: "./scripts",
+      })
+      .addJob(createJobId("check"), (job) => {
+        job.runsOn("ubuntu-latest").run("bun test");
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: "Workflow Defaults Working Directory Only",
+      on: {
+        push: null,
+      },
+      defaults: {
+        run: {
+          "working-directory": "./scripts",
+        },
+      },
+      jobs: {
+        check: {
+          "runs-on": "ubuntu-latest",
+          steps: [
+            {
+              run: "bun test",
+            },
+          ],
+        },
+      },
+    });
   });
 
   it("renders execution environment metadata deterministically", () => {
@@ -1646,6 +1715,43 @@ describe("workflow renderer", () => {
     expect(renderWorkflow(workflow, emitPseudoYaml)).toBe(renderWorkflow(workflow, emitPseudoYaml));
   });
 
+  it("renders workflow_run with branches-ignore deterministically", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("workflow_run_branches_ignore"),
+      name: "Workflow Run Branches Ignore",
+    })
+      .onWorkflowRun({
+        workflows: ["CI", "Release"],
+        types: ["completed"],
+        branchesIgnore: ["dependabot/**", "renovate/**"],
+      })
+      .addJob(createJobId("report"), (job) => {
+        job.runsOn("ubuntu-latest").run("bun test");
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow)).toEqual({
+      name: "Workflow Run Branches Ignore",
+      on: {
+        workflow_run: {
+          workflows: ["CI", "Release"],
+          types: ["completed"],
+          "branches-ignore": ["dependabot/**", "renovate/**"],
+        },
+      },
+      jobs: {
+        report: {
+          "runs-on": "ubuntu-latest",
+          steps: [
+            {
+              run: "bun test",
+            },
+          ],
+        },
+      },
+    });
+  });
+
   it("renders trigger payload fields in canonical order with all filter types", () => {
     const workflow = defineWorkflow({
       id: createWorkflowId("push_all_negation"),
@@ -2137,6 +2243,30 @@ describe("workflow renderer", () => {
         environment: "production",
       },
       uses: "./.github/workflows/deploy.yml@main",
+    });
+  });
+
+  it("renders job environment objects without url", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("job_environment_name_only"),
+      name: "Job Environment Name Only",
+    })
+      .onPush()
+      .addJob(createJobId("deploy"), (job) => {
+        job.environment({ name: "production" }).runsOn("ubuntu-latest").run("bun run deploy");
+      })
+      .build();
+
+    expect(createWorkflowRenderPayload(workflow).jobs.deploy).toEqual({
+      environment: {
+        name: "production",
+      },
+      "runs-on": "ubuntu-latest",
+      steps: [
+        {
+          run: "bun run deploy",
+        },
+      ],
     });
   });
 

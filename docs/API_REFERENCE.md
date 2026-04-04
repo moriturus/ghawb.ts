@@ -120,10 +120,13 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 | Method | Description |
 |--------|-------------|
 | `.run(script, metadata?)` | Add a run step. |
+| `.nodeCi(options)` | Append a standard Node CI step sequence: checkout, setup-node, install, and test. |
 | `.uses(action, metadata?)` | Add a uses step. Accepts either an `ActionRef` string or a typed action wrapper object. |
 | `.scriptReference(options, metadata?)` | Add a script file reference step. |
 
 **Step metadata fields:** `name`, `id`, `if`, `env`, `shell`, `with`, `workingDirectory`, `continueOnError`, `timeoutMinutes`.
+
+`nodeCi(options)` requires `nodeVersion` and defaults `install` to `npm ci` plus `test` to `npm test`. Optional `cache` follows the `actions/setup-node` allowlist (`npm`, `pnpm`, `yarn`), and `cacheDependencyPath` accepts either a string or string array.
 
 ---
 

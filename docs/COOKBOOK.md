@@ -32,15 +32,7 @@ export default defineWorkflow({
   .onPush({ branches: ["main"] })
   .onPullRequest({ branches: ["main"] })
   .addJob(createJobId("test"), (job) => {
-    job
-      .runsOn("ubuntu-latest")
-      .uses("actions/checkout@v4", { name: "Checkout" })
-      .uses("actions/setup-node@v4", {
-        name: "Setup Node",
-        with: { "node-version": "22" },
-      })
-      .run("npm ci", { name: "Install" })
-      .run("npm test", { name: "Test" });
+    job.runsOn("ubuntu-latest").nodeCi({ nodeVersion: "22" });
   })
   .build();
 ```

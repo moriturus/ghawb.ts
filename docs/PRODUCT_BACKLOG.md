@@ -35,15 +35,15 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ### Item 56: String shorthand for step name in `uses()` and `run()`
 
-- Why: `uses()` と `run()` の第二パラメータは `StepMetadata` オブジェクトだが、実際の使用で最も頻繁に指定されるフィールドは `name` のみである。`job.uses("actions/checkout@v4", { name: "Checkout" })` のようなボイラープレートを `job.uses("actions/checkout@v4", "Checkout")` と短縮できれば、日常的なワークフロー記述の可読性と簡潔さが向上する。
+- Why: The second parameter of `uses()` and `run()` is a `StepMetadata` object, but in practice the most frequently specified field is `name` alone. Allowing `job.uses("actions/checkout@v4", "Checkout")` instead of `job.uses("actions/checkout@v4", { name: "Checkout" })` would reduce boilerplate and improve readability for everyday workflow authoring.
 - Prerequisites: None.
-- Implementation Plan: `uses()` と `run()` の第二パラメータの型を `StepMetadata | string` に拡張し、文字列が渡された場合は `{ name: value }` として解釈する。既存の `StepMetadata` オブジェクト渡しは後方互換で維持する。`runScript()` も同様のメタデータパラメータを持つため、スコープに含めるか判断する。バリデーション（空文字列拒否など）は既存の `name` フィールドのルールに従う。
-- Definition of Done: `uses()` と `run()` が第二パラメータとして文字列を受け付け `name` として解釈する。既存のオブジェクト渡しが後方互換で動作する。テストとコードレビューが完了している。
-- Acceptance Criteria: `job.uses("actions/checkout@v4", "Checkout")` が `{ name: "Checkout", uses: "actions/checkout@v4" }` と等価に動作する。`job.run("npm test", "Run tests")` が `{ name: "Run tests", run: "npm test" }` と等価に動作する。既存の `StepMetadata` オブジェクト渡しは変更なく動作する。
+- Implementation Plan: Widen the second parameter type of `uses()` and `run()` to `StepMetadata | string`. When a string is passed, interpret it as `{ name: value }`. Preserve full backward compatibility for existing `StepMetadata` object usage. Evaluate whether `runScript()` should receive the same treatment, since it carries a similar metadata parameter. Validation (e.g. empty-string rejection) follows the existing `name` field rules.
+- Definition of Done: `uses()` and `run()` accept a string as the second parameter and interpret it as the step name. Existing object-form usage remains backward compatible. Tests and code review are completed.
+- Acceptance Criteria: `job.uses("actions/checkout@v4", "Checkout")` behaves equivalently to `job.uses("actions/checkout@v4", { name: "Checkout" })`. `job.run("npm test", "Run tests")` behaves equivalently to `job.run("npm test", { name: "Run tests" })`. Existing `StepMetadata` object usage works without changes.
 - Story Points: 2
 - Status: new
 - Completed At: N/A
-- Notes/Links: Sprint 16 review後のPOフィードバックから発案。`runScript()` への適用は実装時に判断する。
+- Notes/Links: Originated from PO feedback after the Sprint 16 review. Applicability to `runScript()` to be decided during implementation.
 
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.
 - Sprint 16 selection note: Items 51–55 (19 SP total) were committed to Sprint 16 after estimate validation and acceptance-criteria refinement. See [Sprint 16 Backlog](./sprint_backlogs/sp16.md) for committed scope and planning notes.

@@ -30,6 +30,16 @@ interface RenderTarget {
   readonly outputPath: string;
 }
 
+interface RenderCommandOptions {
+  readonly target: RenderTarget;
+  readonly lint: boolean;
+}
+
+interface RenderBatchCommandOptions {
+  readonly targets: readonly RenderTarget[];
+  readonly lint: boolean;
+}
+
 export class CliUsageError extends Error {
   constructor(message: string) {
     super(message);
@@ -58,9 +68,10 @@ function isWorkflowDefinition(value: unknown): value is WorkflowDefinition {
   );
 }
 
-function parseRenderArguments(args: readonly string[]): RenderTarget {
+function parseRenderArguments(args: readonly string[]): RenderCommandOptions {
   let inputPath: string | undefined;
   let outputPath: string | undefined;
+  let lint = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -77,6 +88,11 @@ function parseRenderArguments(args: readonly string[]): RenderTarget {
       continue;
     }
 
+    if (arg === "--lint") {
+      lint = true;
+      continue;
+    }
+
     throw new CliUsageError(`unknown argument "${arg}"`);
   }
 
@@ -88,15 +104,13 @@ function parseRenderArguments(args: readonly string[]): RenderTarget {
     throw new CliUsageError("missing required --output argument");
   }
 
-  return {
-    inputPath,
-    outputPath,
-  };
+  return { target: { inputPath, outputPath }, lint };
 }
 
-function parseRenderBatchArguments(args: readonly string[]): readonly RenderTarget[] {
+function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandOptions {
   const targets: RenderTarget[] = [];
   let pendingInputPath: string | undefined;
+  let lint = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -136,6 +150,11 @@ function parseRenderBatchArguments(args: readonly string[]): readonly RenderTarg
       continue;
     }
 
+    if (arg === "--lint") {
+      lint = true;
+      continue;
+    }
+
     throw new CliUsageError(`unknown argument "${arg}"`);
   }
 
@@ -147,7 +166,7 @@ function parseRenderBatchArguments(args: readonly string[]): readonly RenderTarg
     throw new CliUsageError("missing required batch render targets");
   }
 
-  return targets;
+  return { targets, lint };
 }
 
 async function defaultImportModule(modulePath: string): Promise<unknown> {
@@ -187,8 +206,8 @@ async function defaultRunCommand(
 
 function usage(): string {
   return [
-    "Usage: ghawb render --input <workflow.ts> --output <workflow.yml>",
-    "       ghawb render-batch --input <workflow.ts> --output <workflow.yml> [--input <workflow.ts> --output <workflow.yml> ...]",
+    "Usage: ghawb render --input <workflow.ts> --output <workflow.yml> [--lint]",
+    "       ghawb render-batch --input <workflow.ts> --output <workflow.yml> [--input <workflow.ts> --output <workflow.yml> ...] [--lint]",
     "       ghawb lint <file.yml> [<file.yml> ...]",
   ].join("\n");
 }
@@ -212,6 +231,41 @@ async function renderTarget(
   return resolvedOutputPath;
 }
 
+async function runActionlint(
+  files: readonly string[],
+  io: CliIo,
+  findExecutable: CliRunDependencies["findExecutable"],
+  runCommand: CliRunDependencies["runCommand"]
+): Promise<number> {
+  if (files.length === 0) {
+    throw new CliUsageError("lint requires at least one file argument");
+  }
+
+  const actionlintPath = await findExecutable("actionlint");
+
+  if (!actionlintPath) {
+    io.stderr(
+      [
+        "actionlint is not installed or not found on PATH.",
+        "",
+        "Install it from: https://github.com/rhysd/actionlint",
+        "",
+        "  brew install actionlint              # macOS (Homebrew)",
+        "  go install github.com/rhysd/actionlint/cmd/actionlint@latest  # Go",
+        "  choco install actionlint             # Windows (Chocolatey)",
+        "",
+        "See https://github.com/rhysd/actionlint#install for more options.",
+      ].join("\n")
+    );
+    return 1;
+  }
+
+  const result = await runCommand(actionlintPath, files);
+  if (result.stdout.trim().length > 0) io.stdout(result.stdout.trimEnd());
+  if (result.stderr.trim().length > 0) io.stderr(result.stderr.trimEnd());
+  return result.exitCode === 0 ? 0 : 1;
+}
+
 export async function runCli(
   args: readonly string[],
   io: CliIo,
@@ -226,22 +280,21 @@ export async function runCli(
     const [command, ...rest] = args;
 
     if (command === "render") {
-      const outputPath = await renderTarget(
-        parseRenderArguments(rest),
-        importModule,
-        writeOutputFile
-      );
+      const { target, lint } = parseRenderArguments(rest);
+      const outputPath = await renderTarget(target, importModule, writeOutputFile);
       io.stdout(`Rendered ${outputPath}`);
-      return 0;
+      return lint ? await runActionlint([outputPath], io, findExecutable, runCommand) : 0;
     }
 
     if (command === "render-batch") {
-      const targets = parseRenderBatchArguments(rest);
+      const { targets, lint } = parseRenderBatchArguments(rest);
       const failures: string[] = [];
+      const outputPaths: string[] = [];
 
       for (const target of targets) {
         try {
           const outputPath = await renderTarget(target, importModule, writeOutputFile);
+          outputPaths.push(outputPath);
           io.stdout(`Rendered ${outputPath}`);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -254,37 +307,11 @@ export async function runCli(
         return 1;
       }
 
-      return 0;
+      return lint ? await runActionlint(outputPaths, io, findExecutable, runCommand) : 0;
     }
 
     if (command === "lint") {
-      if (rest.length === 0) {
-        throw new CliUsageError("lint requires at least one file argument");
-      }
-
-      const actionlintPath = await findExecutable("actionlint");
-
-      if (!actionlintPath) {
-        io.stderr(
-          [
-            "actionlint is not installed or not found on PATH.",
-            "",
-            "Install it from: https://github.com/rhysd/actionlint",
-            "",
-            "  brew install actionlint              # macOS (Homebrew)",
-            "  go install github.com/rhysd/actionlint/cmd/actionlint@latest  # Go",
-            "  choco install actionlint             # Windows (Chocolatey)",
-            "",
-            "See https://github.com/rhysd/actionlint#install for more options.",
-          ].join("\n")
-        );
-        return 1;
-      }
-
-      const result = await runCommand(actionlintPath, rest);
-      if (result.stdout) io.stdout(result.stdout);
-      if (result.stderr) io.stderr(result.stderr);
-      return result.exitCode;
+      return await runActionlint(rest, io, findExecutable, runCommand);
     }
 
     throw new CliUsageError(command ? `unknown command "${command}"` : "missing command");

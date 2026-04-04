@@ -8,7 +8,7 @@ import {
 
 import { readFileSync } from "node:fs";
 
-import type { TypedActionStep } from "./actions.js";
+import { actionsCheckout, actionsSetupNode, type TypedActionStep } from "./actions.js";
 
 import {
   WORKFLOW_PERMISSION_KEYS,
@@ -73,6 +73,14 @@ import {
 } from "./model.js";
 
 export type ReusableWorkflowSource = WorkflowRef | WorkflowBuilder | WorkflowDefinition;
+
+interface NodeCiOptions {
+  readonly nodeVersion: string;
+  readonly install?: string;
+  readonly test?: string;
+  readonly cache?: "npm" | "pnpm" | "yarn";
+  readonly cacheDependencyPath?: string | readonly string[];
+}
 
 interface WorkflowStepDraft extends StepMetadata {
   readonly kind: "run" | "uses";
@@ -1912,6 +1920,41 @@ class JobBuilder {
       run: command,
       ...cloneRunStepMetadata(resolved),
     });
+    return this;
+  }
+
+  nodeCi(options: NodeCiOptions): this {
+    if (typeof options.nodeVersion !== "string" || options.nodeVersion.trim().length === 0) {
+      throw new WorkflowValidationError([
+        'nodeCi() requires "nodeVersion" to be a non-empty string.',
+      ]);
+    }
+
+    if (options.install !== undefined && options.install.trim().length === 0) {
+      throw new WorkflowValidationError([
+        'nodeCi() requires "install" to be omitted or a non-empty string.',
+      ]);
+    }
+
+    if (options.test !== undefined && options.test.trim().length === 0) {
+      throw new WorkflowValidationError([
+        'nodeCi() requires "test" to be omitted or a non-empty string.',
+      ]);
+    }
+
+    this.uses(actionsCheckout(), "Checkout");
+    this.uses(
+      actionsSetupNode({
+        nodeVersion: options.nodeVersion.trim(),
+        ...(options.cache !== undefined ? { cache: options.cache } : {}),
+        ...(options.cacheDependencyPath !== undefined
+          ? { cacheDependencyPath: options.cacheDependencyPath }
+          : {}),
+      }),
+      "Setup Node"
+    );
+    this.run(options.install ?? "npm ci", "Install");
+    this.run(options.test ?? "npm test", "Test");
     return this;
   }
 

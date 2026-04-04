@@ -33,30 +33,6 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-### Item 65: Job preset / recipe discovery
-
-- Why: The current backlog identifies repeated CI-pattern boilerplate, but the correct solution is still open. The team needs to determine whether the right answer is Cookbook-first guidance, a narrow helper layer, or a broader preset / recipe API before committing implementation work.
-- Prerequisites: None. Benefits from Sprint 18 typed-action and expression-helper work as discovery inputs.
-- Implementation Plan: Compare at least three options for repeated job patterns: Cookbook-only guidance, narrow SDK helpers, and a broader preset / recipe layer. Evaluate candidate patterns (for example Node CI, Bun CI, pnpm install/test), API shape, package placement, interaction with typed action wrappers, relationship to the Cookbook, and architecture risks. Produce a recommendation plus a sprint-safe first implementation slice.
-- Definition of Done: A documented recommendation exists for the preferred direction, the rejected alternatives are recorded briefly, and the resulting first implementation slice is backlog-ready with narrowed scope, acceptance criteria, and estimate.
-- Acceptance Criteria: Discovery explicitly evaluates Cookbook-only guidance, a narrow helper API, and a broader preset / recipe layer. The output identifies the first concrete pattern to implement, the package/API boundary, and the smallest defensible next slice. The follow-up implementation item no longer contains major open design questions.
-- Story Points: 2
-- Status: new
-- Completed At: N/A
-- Notes/Links: Signal from `gpt/new_functions.md` §6. Refined by Sprint 18 review and retrospective decisions to compare API and documentation-first alternatives explicitly.
-
-### Item 66: Job preset / recipe initial implementation slice
-
-- Why: Once discovery closes the design questions, users still need an actual first reusable recipe or helper for the most repeated workflow pattern. This item converts the discovery result into a concrete product slice.
-- Prerequisites: Item 65.
-- Implementation Plan: Implement the first sprint-safe preset / recipe slice chosen by Item 65. Scope is intentionally limited to one well-defined pattern family, such as a single Node/Bun CI recipe or a narrow helper set, rather than a full preset catalog. Update docs, examples, and tests so the new surface is demonstrably better than hand-assembling the same pattern repeatedly.
-- Definition of Done: The first preset / recipe slice selected by Item 65 exists in code with tests, docs, and code review, and can be used to author at least one repeated workflow pattern with less boilerplate than the current builder-only path.
-- Acceptance Criteria: The implemented slice matches the design output of Item 65, is additive to the existing builder API, and ships with at least one concrete example showing reduced boilerplate. Major unanswered design decisions do not remain inside this implementation slice.
-- Story Points: 3
-- Status: new
-- Completed At: N/A
-- Notes/Links: Follow-up implementation item created by splitting the original Item 65 into discovery and delivery phases.
-
 ### Item 67: CLI short flags for render input/output
 
 - Why: `ghawb render` and `ghawb render-batch` currently require verbose `--input` / `--output` flags for every mapping. Short aliases `-i` and `-o` would reduce command noise and make repeated CLI usage less tedious, especially in batch mode and shell snippets.
@@ -111,6 +87,8 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Sprint 18 selection note: Items 61, 62, 63, and 64 were committed to Sprint 18 for a total of 13 SP. The PO explicitly chose continued feature maturation over a `0.1.0` release decision, so Sprint 18 proceeds as a feature-expansion sprint while `0.1.0` remains unreleased. Item 65 was deferred because it still requires discovery and estimate refinement. See [Sprint 18 Backlog](./sprint_backlogs/sp18.md) for committed scope and planning notes.
 - Sprint 18 review decision: Sprint 18 delivered all committed scope (Items 61–64, 13/13 SP) without carry-over. No active-backlog reprioritization is needed because only Item 65 remains. The next priority is discovery for Item 65 before Sprint 19 planning; the standing PO decision remains that `0.1.0` stays unreleased until the product is mature enough. See [Sprint 18 Review](./sprint_reviews/sp18.md).
 - Sprint 18 retrospective decision: Item 65 discovery should explicitly compare at least three options before Sprint 19 planning: Cookbook-only guidance, a narrow helper API, and a broader preset/recipe layer. Sprint 18 reinforced the product preference for additive explicit APIs over magic abstractions. See [Sprint 18 Retrospective](./sprint_retrospectives/sp18.md).
+- Sprint 19 selection note: Items 65 and 66 were committed to Sprint 19 for a total of 5 SP. The PO chose to preserve a focused discovery-first sequence for the job preset / recipe theme rather than mixing lower-priority CLI, trigger, or composite-action work into the sprint. Items 67–70 remain active backlog in unchanged priority order. See [Sprint 19 Backlog](./sprint_backlogs/sp19.md) for committed scope and planning notes.
+- Sprint 19 discovery decision: Item 65 completed by selecting a narrow helper API in `@ghawb/sdk` as the first reusable job-pattern slice and rejecting both cookbook-only guidance and a broader preset framework for Sprint 19. The implementation target for Item 66 is one additive Node CI job helper for the repeated `checkout -> setup-node -> install -> test` sequence. See [ADR 0002](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md).
 
 ## Sprint Backlog Records
 
@@ -132,3 +110,4 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - [Sprint 16 Backlog](./sprint_backlogs/sp16.md)
 - [Sprint 17 Backlog](./sprint_backlogs/sp17.md)
 - [Sprint 18 Backlog](./sprint_backlogs/sp18.md)
+- [Sprint 19 Backlog](./sprint_backlogs/sp19.md)

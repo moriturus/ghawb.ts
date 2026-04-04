@@ -30,6 +30,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_backlogs/sp16.md](./sprint_backlogs/sp16.md): Sprint 16 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp17.md](./sprint_backlogs/sp17.md): Sprint 17 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp18.md](./sprint_backlogs/sp18.md): Sprint 18 backlog record, planning notes, and committed items.
+- [sprint_backlogs/sp19.md](./sprint_backlogs/sp19.md): Sprint 19 backlog record, planning notes, and committed items.
 - [scrum_master/BOARD.md](./scrum_master/BOARD.md): Scrum Master owned team-improvement follow-ups in priority order.
 - [scrum_master/PLAYBOOK.md](./scrum_master/PLAYBOOK.md): Scrum Master operating guide for sprint start, planning, and closeout improvements.
 - [TEAM.md](./TEAM.md): Scrum team roles and working personas.
@@ -70,6 +71,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp17.md](./sprint_retrospectives/sp17.md): Sprint 17 retrospective summary, role reflections, pre-execution validation, README feature-status sync, and release readiness evaluation.
 - [sprint_retrospectives/sp18.md](./sprint_retrospectives/sp18.md): Sprint 18 retrospective summary, role reflections, sub-agent usage threshold, sprint-review evidence expectations, Item 65 discovery framing, and follow-up routing.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
+- [adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md): Sprint 19 discovery decision selecting a narrow `@ghawb/sdk` Node CI helper over cookbook-only guidance or a broader preset layer.
 - [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
 - [RELEASING.md](../RELEASING.md) — Release workflow and publishing documentation.
 - [SECURITY.md](../SECURITY.md) — Security vulnerability reporting policy.

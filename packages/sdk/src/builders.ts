@@ -8,6 +8,8 @@ import {
 
 import { readFileSync } from "node:fs";
 
+import type { TypedActionStep } from "./actions.js";
+
 import {
   WORKFLOW_PERMISSION_KEYS,
   PULL_REQUEST_ACTIVITY_TYPES,
@@ -1892,12 +1894,38 @@ class JobBuilder {
     return this;
   }
 
-  uses(action: ActionRef, metadata: StepMetadata | string = {}): this {
-    const resolved: StepMetadata = typeof metadata === "string" ? { name: metadata } : metadata;
+  uses(action: ActionRef, metadata?: StepMetadata | string): this;
+  uses<TWith extends object>(
+    action: TypedActionStep<TWith>,
+    metadata?: Omit<StepMetadata, "with"> | string
+  ): this;
+  uses(
+    action: ActionRef | TypedActionStep,
+    metadata: StepMetadata | Omit<StepMetadata, "with"> | string = {}
+  ): this {
+    const resolved = typeof metadata === "string" ? { name: metadata } : metadata;
+
+    if (typeof action !== "string" && "with" in resolved && resolved.with !== undefined) {
+      throw new WorkflowValidationError([
+        'uses() does not allow "metadata.with" when the first argument is a typed action wrapper. Expected: pass typed action inputs through the wrapper function.',
+      ]);
+    }
+
+    const finalizedAction = typeof action === "string" ? action : action.uses;
+    const finalizedMetadata: StepMetadata =
+      typeof action === "string"
+        ? (resolved as StepMetadata)
+        : {
+            ...resolved,
+            ...(action.with !== undefined
+              ? { with: action.with as Readonly<Record<string, string>> }
+              : {}),
+          };
+
     this.jobSteps.push({
       kind: "uses",
-      uses: action,
-      ...cloneStepMetadata(resolved),
+      uses: finalizedAction,
+      ...cloneStepMetadata(finalizedMetadata),
     });
     return this;
   }

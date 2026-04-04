@@ -216,6 +216,7 @@ The SDK covers the majority of the [GitHub Actions workflow syntax](https://docs
 - **Defaults:** `defaults.run` for shell and working-directory
 - **Step metadata:** `id`, `if`, `name`, `shell`, `working-directory`, `with`, `env`, `continue-on-error`, `timeout-minutes`
 - **Typed helpers:** `actionRef()` / `workflowRef()` for validated references, `RunnerLabel` constants for standard runners
+- **Typed action wrappers:** `actionsCheckout()`, `actionsSetupNode()`, `actionsUploadArtifact()`, and `actionsDownloadArtifact()` for typed `with` inputs on common first-party actions
 - **Expression helpers:** `expr()`, context accessors (`github`, `env`, `secrets`, `matrix`, `inputs`, `steps`), and status-check functions (`success`, `failure`, `always`, `cancelled`) for type-safe `${{ }}` construction
 - **Identifiers:** branded `WorkflowId` and `JobId` types with format validation
 
@@ -223,7 +224,6 @@ For the full support matrix, see [docs/SYNTAX_COVERAGE.md](docs/SYNTAX_COVERAGE.
 
 ### Not Yet Supported
 
-- Typed action wrappers (e.g. a dedicated `actionsCheckout()` helper)
 - Composite action definitions (actions-level, not workflow-level)
 - A small number of niche trigger types (`branch_protection_rule`, `deployment_protection_rule`, GitHub App events)
 

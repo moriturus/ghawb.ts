@@ -8,6 +8,8 @@ import {
 
 import { readFileSync } from "node:fs";
 
+import type { TypedActionStep } from "./actions.js";
+
 import {
   WORKFLOW_PERMISSION_KEYS,
   PULL_REQUEST_ACTIVITY_TYPES,
@@ -117,6 +119,7 @@ interface ReusableWorkflowJobDraft extends WorkflowJobDraftBase {
   readonly kind: "reusable-workflow";
   readonly secrets?: ReusableWorkflowJobSecrets;
   readonly with?: Readonly<Record<string, string>>;
+  readonly outputNames?: readonly string[];
   readonly uses?: string;
   readonly usesSource?: WorkflowBuilder | WorkflowDefinition;
   readonly steps: readonly WorkflowStepDraft[];
@@ -312,6 +315,14 @@ function cloneStepMetadata(metadata: StepMetadata): StepMetadata {
       : {}),
     ...(metadata.timeoutMinutes !== undefined ? { timeoutMinutes: metadata.timeoutMinutes } : {}),
   };
+}
+
+function normalizeTypedActionWith(
+  withInputs: Readonly<Partial<Record<string, string>>>
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    Object.entries(withInputs).filter(([, value]) => value !== undefined)
+  ) as Readonly<Record<string, string>>;
 }
 
 function cloneRunStepMetadata(metadata: RunStepMetadata): RunStepMetadata {
@@ -959,6 +970,18 @@ function createValidationIssues(
           issues.push(
             `job "${jobId}" reusable workflow target "${job.usesSource.id}" does not declare a workflow_call trigger. Expected: the target workflow must include onWorkflowCall()`
           );
+        }
+      }
+
+      if (job.outputNames !== undefined) {
+        for (const outputName of job.outputNames) {
+          if (outputName.trim().length === 0) {
+            issues.push(`job "${jobId}" reusable workflow outputs must not contain blank names`);
+          } else if (!matchesIdentifierFormat(outputName)) {
+            issues.push(
+              `job "${jobId}" reusable workflow output "${outputName}" must match ${IDENTIFIER_FORMAT_SOURCE}. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens`
+            );
+          }
         }
       }
 
@@ -1648,6 +1671,25 @@ function finalizeReusableWorkflowJobSecrets(
   return Object.fromEntries(Object.entries(secrets).map(([key, value]) => [key, value.trim()]));
 }
 
+function inferWorkflowCallOutputNames(
+  workflow: WorkflowBuilder | WorkflowDefinition
+): readonly string[] | undefined {
+  const workflowCallTrigger =
+    workflow instanceof WorkflowBuilder
+      ? workflow.triggers.find((trigger) => trigger.type === "workflow_call")
+      : workflow.on.find((trigger) => trigger.type === "workflow_call");
+
+  if (
+    workflowCallTrigger?.type === "workflow_call" &&
+    workflowCallTrigger.outputs !== undefined &&
+    Object.keys(workflowCallTrigger.outputs).length > 0
+  ) {
+    return Object.keys(workflowCallTrigger.outputs);
+  }
+
+  return undefined;
+}
+
 class JobBuilder {
   readonly id: JobId;
 
@@ -1678,6 +1720,7 @@ class JobBuilder {
   private jobUses?: string;
   private jobWith?: Readonly<Record<string, string>>;
   private jobSecrets?: ReusableWorkflowJobSecrets;
+  private jobOutputNames?: readonly string[];
   private jobUsesSource?: WorkflowBuilder | WorkflowDefinition;
   private readonly jobSteps: WorkflowStepDraft[] = [];
 
@@ -1807,21 +1850,46 @@ class JobBuilder {
     options: Readonly<{
       with?: Readonly<Record<string, string>>;
       secrets?: ReusableWorkflowJobSecrets;
+      outputs?: readonly string[];
     }> = {}
   ): this {
     this.jobKind = "reusable-workflow";
     if (typeof workflow === "string") {
       this.jobUses = workflow;
       delete this.jobUsesSource;
+      if (options.outputs !== undefined) {
+        this.jobOutputNames = [...options.outputs];
+      } else {
+        delete this.jobOutputNames;
+      }
     } else if (workflow instanceof WorkflowBuilder) {
       this.jobUses = `./.github/workflows/${workflow.id}.yml`;
       this.jobUsesSource = workflow;
+      const inferredOutputNames =
+        options.outputs !== undefined
+          ? [...options.outputs]
+          : inferWorkflowCallOutputNames(workflow);
+      if (inferredOutputNames !== undefined) {
+        this.jobOutputNames = inferredOutputNames;
+      } else {
+        delete this.jobOutputNames;
+      }
     } else if (workflow !== null && workflow !== undefined) {
       this.jobUses = `./.github/workflows/${(workflow as WorkflowDefinition).id}.yml`;
       this.jobUsesSource = workflow as WorkflowDefinition;
+      const inferredOutputNames =
+        options.outputs !== undefined
+          ? [...options.outputs]
+          : inferWorkflowCallOutputNames(workflow as WorkflowDefinition);
+      if (inferredOutputNames !== undefined) {
+        this.jobOutputNames = inferredOutputNames;
+      } else {
+        delete this.jobOutputNames;
+      }
     } else {
       this.jobUses = workflow as unknown as string;
       delete this.jobUsesSource;
+      delete this.jobOutputNames;
     }
     if (options.with !== undefined) {
       this.jobWith = { ...options.with };
@@ -1892,12 +1960,36 @@ class JobBuilder {
     return this;
   }
 
-  uses(action: ActionRef, metadata: StepMetadata | string = {}): this {
-    const resolved: StepMetadata = typeof metadata === "string" ? { name: metadata } : metadata;
+  uses(action: ActionRef, metadata?: StepMetadata | string): this;
+  uses<TWith extends Readonly<Partial<Record<string, string>>>>(
+    action: TypedActionStep<TWith>,
+    metadata?: Omit<StepMetadata, "with"> | string
+  ): this;
+  uses(
+    action: ActionRef | TypedActionStep,
+    metadata: StepMetadata | Omit<StepMetadata, "with"> | string = {}
+  ): this {
+    const resolved = typeof metadata === "string" ? { name: metadata } : metadata;
+
+    if (typeof action !== "string" && "with" in resolved && resolved.with !== undefined) {
+      throw new WorkflowValidationError([
+        'uses() does not allow "metadata.with" when the first argument is a typed action wrapper. Expected: pass typed action inputs through the wrapper function.',
+      ]);
+    }
+
+    const finalizedAction = typeof action === "string" ? action : action.uses;
+    const finalizedMetadata: StepMetadata =
+      typeof action === "string"
+        ? (resolved as StepMetadata)
+        : {
+            ...resolved,
+            ...(action.with !== undefined ? { with: normalizeTypedActionWith(action.with) } : {}),
+          };
+
     this.jobSteps.push({
       kind: "uses",
-      uses: action,
-      ...cloneStepMetadata(resolved),
+      uses: finalizedAction,
+      ...cloneStepMetadata(finalizedMetadata),
     });
     return this;
   }
@@ -1919,6 +2011,7 @@ class JobBuilder {
         ...(this.jobUses !== undefined ? { uses: this.jobUses } : {}),
         ...(this.jobUsesSource !== undefined ? { usesSource: this.jobUsesSource } : {}),
         ...(this.jobWith !== undefined ? { with: { ...this.jobWith } } : {}),
+        ...(this.jobOutputNames !== undefined ? { outputNames: [...this.jobOutputNames] } : {}),
         ...(this.jobSecrets !== undefined
           ? {
               secrets: this.jobSecrets === "inherit" ? "inherit" : { ...this.jobSecrets },
@@ -2211,6 +2304,9 @@ export class WorkflowBuilder {
             : {}),
           ...(job.with !== undefined && Object.keys(job.with).length > 0
             ? { with: { ...job.with } }
+            : {}),
+          ...(job.outputNames !== undefined && job.outputNames.length > 0
+            ? { outputNames: [...job.outputNames] }
             : {}),
           uses: job.uses!.trim() as WorkflowRef,
         } satisfies ReusableWorkflowJob;

@@ -116,7 +116,7 @@ All use `.onEvent(type, { types? })`.
 
 | Key | Status | Builder API | Notes |
 |-----|--------|-------------|-------|
-| `uses` | ✅ | `.usesWorkflow(ref, opts?)` | `owner/repo/path@ref` format |
+| `uses` | ✅ | `.usesWorkflow(ref, opts?)` | `owner/repo/path@ref` format; caller-side output names can be declared or inferred |
 | `with` | ✅ | via options | Input bindings |
 | `secrets` | ✅ | via options | Map or `'inherit'` |
 | `name`, `if`, `needs`, `permissions`, `continue-on-error` | ✅ | Same as step-based | |
@@ -132,8 +132,8 @@ All use `.onEvent(type, { types? })`.
 | `id` | ✅ | metadata arg | Unique within job; identifier format enforced |
 | `if` | ✅ | metadata arg | |
 | `run` | ✅ | `.run(cmd, meta?)` | |
-| `uses` | ✅ | `.uses(action, meta?)` | Raw string reference |
-| `with` | ✅ | metadata arg | `Record<string, string>` |
+| `uses` | ✅ | `.uses(action, meta?)` | `ActionRef` string or typed action wrapper |
+| `with` | ✅ | metadata arg / typed wrapper | `Record<string, string>` or wrapper-managed typed inputs for checkout/setup-node/upload-artifact/download-artifact |
 | `env` | ✅ | metadata arg | |
 | `shell` | ✅ | metadata arg | Run steps only |
 | `working-directory` | ✅ | metadata arg | Run steps only |
@@ -224,14 +224,25 @@ The SDK provides an expression helper API for constructing GitHub Actions `${{ }
 | `matrix` context | `matrix(key)` | `matrix.os` |
 | `inputs` context | `inputs(name)` | `inputs.target` |
 | `steps` outputs | `steps(id).outputs(name)` | `steps.build.outputs.result` |
+| `needs` outputs | `needs(jobId).outputs(name)` | `needs.deploy.outputs.artifact_url` |
+| literal helper | `literal(value)` | `'push'` / `1` / `true` / `null` |
+| equality | `eq(left, right)` | `github.ref == 'refs/heads/main'` |
+| inequality | `ne(left, right)` | `github.ref != 'refs/heads/main'` |
+| greater-than | `gt(left, right)` | `steps.check.outputs.count > 1` |
+| greater-than-or-equal | `gte(left, right)` | `steps.check.outputs.count >= 1` |
+| less-than | `lt(left, right)` | `steps.check.outputs.count < 10` |
+| less-than-or-equal | `lte(left, right)` | `steps.check.outputs.count <= 10` |
+| logical and | `and(a, b, ...)` | `success() && github.event_name == 'push'` |
+| logical or | `or(a, b, ...)` | `failure() || cancelled()` |
+| logical not | `not(value)` | `!cancelled()` |
 | `success()` | `success()` | `success()` |
 | `always()` | `always()` | `always()` |
 | `cancelled()` | `cancelled()` | `cancelled()` |
 | `failure()` | `failure()` | `failure()` |
 
-Helpers compose via template literals: `expr(\`${github("ref")} == 'refs/heads/main'\`)` produces `${{ github.ref == 'refs/heads/main' }}`.
+Helpers compose via templates or helper nesting: `expr(eq(github("ref"), literal("refs/heads/main")))` produces `${{ github.ref == 'refs/heads/main' }}`.
 
-All existing raw `string` entry points remain backward compatible. Empty or blank content is rejected at construction time. Semantic expression evaluation is an explicit non-goal for this MVP.
+All existing raw `string` entry points remain backward compatible. Empty or blank content is rejected at construction time. Semantic expression evaluation is an explicit non-goal for this helper family.
 
 ---
 
@@ -239,7 +250,4 @@ All existing raw `string` entry points remain backward compatible. Empty or blan
 
 | Feature | Notes |
 |---------|-------|
-| Typed action wrappers (`actions/checkout`, etc.) | Backlog Item 46 |
 | Composite actions | Actions-level construct, not workflow-level |
-| Reusable workflow `outputs` at caller side | |
-| Step-level `uses` type-safe `with` | Backlog Item 46 |

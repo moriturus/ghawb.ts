@@ -9,17 +9,36 @@ export {
 } from "@ghawb/shared";
 export { defineWorkflow, WorkflowBuilder, type ReusableWorkflowSource } from "./builders.js";
 export {
+  actionsCheckout,
+  actionsDownloadArtifact,
+  actionsSetupNode,
+  actionsUploadArtifact,
+} from "./actions.js";
+export {
   expr,
   github,
   env,
   secrets,
   matrix,
   inputs,
+  needs,
   steps,
   success,
   always,
   cancelled,
   failure,
+  literal,
+  eq,
+  ne,
+  gt,
+  gte,
+  lt,
+  lte,
+  and,
+  or,
+  not,
+  type ExpressionLiteral,
+  type NeedsOutputRef,
   type StepOutputRef,
 } from "./expressions.js";
 export {
@@ -109,3 +128,14 @@ export type {
   WorkflowStep,
   WorkflowTrigger,
 } from "./model.js";
+export type {
+  ActionsCheckoutInputs,
+  ActionsCheckoutWith,
+  ActionsDownloadArtifactInputs,
+  ActionsDownloadArtifactWith,
+  ActionsSetupNodeInputs,
+  ActionsSetupNodeWith,
+  ActionsUploadArtifactInputs,
+  ActionsUploadArtifactWith,
+  TypedActionStep,
+} from "./actions.js";

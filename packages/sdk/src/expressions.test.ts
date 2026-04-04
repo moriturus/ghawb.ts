@@ -6,11 +6,22 @@ import {
   secrets,
   matrix,
   inputs,
+  needs,
   steps,
   success,
   always,
   cancelled,
   failure,
+  literal,
+  eq,
+  ne,
+  gt,
+  gte,
+  lt,
+  lte,
+  and,
+  or,
+  not,
 } from "./expressions.js";
 
 describe("expression helpers", () => {
@@ -216,6 +227,30 @@ describe("expression helpers", () => {
     });
   });
 
+  describe("needs", () => {
+    it("creates reusable workflow output references", () => {
+      expect(needs("deploy").outputs("artifact")).toBe("needs.deploy.outputs.artifact");
+    });
+
+    it("wraps reusable workflow output references in expr for full expression", () => {
+      expect(expr(needs("deploy").outputs("artifact"))).toBe(
+        "${{ needs.deploy.outputs.artifact }}"
+      );
+    });
+
+    it("rejects blank job ids", () => {
+      expect(() => needs("   ")).toThrowError(
+        "needs id must not be empty or blank. Expected: a job identifier"
+      );
+    });
+
+    it("rejects blank output names", () => {
+      expect(() => needs("deploy").outputs("")).toThrowError(
+        "needs outputs name must not be empty or blank. Expected: an output name"
+      );
+    });
+  });
+
   describe("status check functions", () => {
     it("success returns function call string", () => {
       expect(success()).toBe("success()");
@@ -250,6 +285,102 @@ describe("expression helpers", () => {
     });
   });
 
+  describe("literal", () => {
+    it("serializes string literals with single quotes", () => {
+      expect(literal("push")).toBe("'push'");
+    });
+
+    it("escapes embedded single quotes", () => {
+      expect(literal("it's-live")).toBe("'it''s-live'");
+    });
+
+    it("serializes numbers", () => {
+      expect(literal(42)).toBe("42");
+    });
+
+    it("serializes booleans", () => {
+      expect(literal(true)).toBe("true");
+      expect(literal(false)).toBe("false");
+    });
+
+    it("serializes null", () => {
+      expect(literal(null)).toBe("null");
+    });
+
+    it("rejects non-finite numbers", () => {
+      expect(() => literal(Number.NaN)).toThrowError(
+        "literal number must be finite. Expected: a JSON-compatible number"
+      );
+    });
+  });
+
+  describe("comparison helpers", () => {
+    it("builds equality expressions", () => {
+      expect(eq(github("event_name"), literal("push"))).toBe("github.event_name == 'push'");
+    });
+
+    it("builds inequality expressions", () => {
+      expect(ne(github("ref"), literal("refs/heads/main"))).toBe("github.ref != 'refs/heads/main'");
+    });
+
+    it("builds greater-than expressions", () => {
+      expect(gt(steps("check").outputs("count"), literal(1))).toBe("steps.check.outputs.count > 1");
+    });
+
+    it("builds greater-than-or-equal expressions", () => {
+      expect(gte(steps("check").outputs("count"), literal(1))).toBe(
+        "steps.check.outputs.count >= 1"
+      );
+    });
+
+    it("builds less-than expressions", () => {
+      expect(lt(steps("check").outputs("count"), literal(10))).toBe(
+        "steps.check.outputs.count < 10"
+      );
+    });
+
+    it("builds less-than-or-equal expressions", () => {
+      expect(lte(steps("check").outputs("count"), literal(10))).toBe(
+        "steps.check.outputs.count <= 10"
+      );
+    });
+
+    it("rejects blank operands", () => {
+      expect(() => eq(" ", github("ref"))).toThrowError(
+        "eq left operand must not be empty or blank. Expected: a non-blank expression fragment"
+      );
+    });
+  });
+
+  describe("logical helpers", () => {
+    it("builds and expressions", () => {
+      expect(and(success(), eq(github("event_name"), literal("push")))).toBe(
+        "success() && github.event_name == 'push'"
+      );
+    });
+
+    it("builds or expressions", () => {
+      expect(or(eq(github("ref"), literal("refs/heads/main")), failure())).toBe(
+        "github.ref == 'refs/heads/main' || failure()"
+      );
+    });
+
+    it("builds not expressions", () => {
+      expect(not(cancelled())).toBe("!cancelled()");
+    });
+
+    it("rejects blank logical operands", () => {
+      expect(() => and(success(), " ")).toThrowError(
+        "and operand must not be empty or blank. Expected: a non-blank expression fragment"
+      );
+    });
+    it("rejects blank not operands", () => {
+      expect(() => not(" ")).toThrowError(
+        "not operand must not be empty or blank. Expected: a non-blank expression fragment"
+      );
+    });
+  });
+
   describe("composition patterns", () => {
     it("composes context reference with comparison operator", () => {
       expect(expr(`${github("event_name")} == 'push'`)).toBe("${{ github.event_name == 'push' }}");
@@ -270,6 +401,18 @@ describe("expression helpers", () => {
     it("composes status check with logical operator", () => {
       expect(expr(`${always()} && ${github("event_name")} == 'pull_request'`)).toBe(
         "${{ always() && github.event_name == 'pull_request' }}"
+      );
+    });
+
+    it("composes comparison helpers without raw string interpolation", () => {
+      expect(expr(eq(github("event_name"), literal("pull_request")))).toBe(
+        "${{ github.event_name == 'pull_request' }}"
+      );
+    });
+
+    it("composes logical helpers without raw string interpolation", () => {
+      expect(expr(and(always(), eq(github("ref"), literal("refs/heads/main"))))).toBe(
+        "${{ always() && github.ref == 'refs/heads/main' }}"
       );
     });
 

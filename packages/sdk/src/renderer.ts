@@ -725,6 +725,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
           "needs",
           "continueOnError",
           "permissions",
+          "outputNames",
           "secrets",
           "with",
           "uses",

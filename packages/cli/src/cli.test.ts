@@ -206,6 +206,34 @@ export default defineWorkflow({
     }
   });
 
+  it("infers the default output path for short render input flags", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+    const io = createIo();
+    const originalCwd = process.cwd();
+
+    try {
+      process.chdir(tempDir);
+
+      const exitCode = await runCliDirect(
+        ["render", "-i", "workflows/ci.ts"],
+        io,
+        mockDeps({
+          importModule: async () => ({ default: defineMinimalWorkflow() }),
+          writeOutputFile: async () => {},
+        })
+      );
+
+      expect(exitCode).toBe(0);
+      expect(io.stderr_lines).toEqual([]);
+      expect(io.stdout_lines.join("\n")).toContain(
+        join(tempDir, ".github", "workflows", "ci.yml")
+      );
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
   it("fails clearly when default output inference is unsupported", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
     tempDirs.push(tempDir);
@@ -396,6 +424,14 @@ export default defineWorkflow({
     expect(result.stderr).toBe("");
     await expect(readFile(firstOutputPath, "utf8")).resolves.toContain("name: First");
     await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("name: Second");
+  });
+
+  it("still requires explicit output paths for render-batch", async () => {
+    const result = await runCli(["render-batch", "-i", "workflows/ci.ts"], process.cwd());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain('missing required --output argument for "workflows/ci.ts"');
   });
 
   it("accepts mixed long and short flags across render-batch targets", async () => {

@@ -14,12 +14,7 @@ const workflow = defineWorkflow({
   .onPush({ branches: ["main"] })
   .onPullRequest({ branches: ["main"] })
   .addJob(createJobId("test"), (job) => {
-    job
-      .runsOn("ubuntu-latest")
-      .uses("actions/checkout@v4")
-      .uses("actions/setup-node@v4", { with: { "node-version": "22" } })
-      .run("npm ci", { name: "Install" })
-      .run("npm test", { name: "Test" });
+    job.runsOn("ubuntu-latest").nodeCi({ nodeVersion: "22" });
   })
   .build();
 
@@ -66,12 +61,7 @@ export default defineWorkflow({
 })
   .onPush({ branches: ["main"] })
   .addJob(createJobId("build"), (job) => {
-    job
-      .runsOn("ubuntu-latest")
-      .uses("actions/checkout@v4")
-      .run("npm ci")
-      .run("npm run build")
-      .run("npm test");
+    job.runsOn("ubuntu-latest").nodeCi({ nodeVersion: "22" }).run("npm run build", "Build");
   })
   .build();
 ```
@@ -104,12 +94,7 @@ export default defineWorkflow({
     cancelInProgress: true,
   })
   .addJob(createJobId("check"), (job) => {
-    job
-      .runsOn("ubuntu-latest")
-      .permissions({ contents: "read" })
-      .uses("actions/checkout@v4")
-      .run("npm ci")
-      .run("npm test");
+    job.runsOn("ubuntu-latest").permissions({ contents: "read" }).nodeCi({ nodeVersion: "22" });
   })
   .build();
 ```

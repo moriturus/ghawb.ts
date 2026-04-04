@@ -161,6 +161,51 @@ export default defineWorkflow({
   .build();
 ```
 
+### Typed Action Wrappers
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import {
+  actionsCache,
+  actionsCheckout,
+  actionsSetupNode,
+  actionsUploadArtifact,
+} from "@ghawb/typed-actions";
+
+export default defineWorkflow({
+  id: createWorkflowId("typed-actions"),
+  name: "Typed Actions",
+})
+  .onPush({ branches: ["main"] })
+  .addJob(createJobId("build"), (job) => {
+    job
+      .runsOn("ubuntu-latest")
+      .uses(actionsCheckout({ fetchDepth: 0 }), "Checkout")
+      .uses(
+        actionsSetupNode({
+          nodeVersion: "22",
+          cache: "pnpm",
+          cacheDependencyPath: ["pnpm-lock.yaml", "packages/*/pnpm-lock.yaml"],
+        }),
+        "Setup Node"
+      )
+      .uses(
+        actionsCache({
+          path: "~/.pnpm-store",
+          key: "pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}",
+          restoreKeys: "pnpm-${{ runner.os }}-",
+        }),
+        "Cache Store"
+      )
+      .run("pnpm install --frozen-lockfile")
+      .run("pnpm test")
+      .uses(actionsUploadArtifact({ name: "coverage", path: "coverage" }), "Upload Coverage");
+  })
+  .build();
+```
+
+Use `@ghawb/typed-actions` when you want autocomplete and typed `with` inputs for stable, common actions. Use raw `.uses("owner/repo@ref", { with: ... })` for one-off actions that do not justify a wrapper, and prefer `job.nodeCi()` when the default Node CI sequence is sufficient without action-level customization.
+
 ### Reusable Workflow
 
 ```ts

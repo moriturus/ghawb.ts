@@ -6,6 +6,7 @@ Practical workflow patterns using `@ghawb/sdk`. Each recipe is a self-contained 
 
 - [CI Pipeline](#ci-pipeline)
 - [Matrix Build](#matrix-build)
+- [Typed Action Wrappers](#typed-action-wrappers)
 - [Deploy with Environment](#deploy-with-environment)
 - [Manual Dispatch with Inputs](#manual-dispatch-with-inputs)
 - [Reusable Workflow](#reusable-workflow)
@@ -65,6 +66,51 @@ export default defineWorkflow({
   })
   .build();
 ```
+
+---
+
+## Typed Action Wrappers
+
+Use `@ghawb/typed-actions` when you want explicit, typed inputs for common actions instead of hand-writing `with` maps.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import {
+  actionsCheckout,
+  actionsConfigurePages,
+  actionsDeployPages,
+  actionsSetupNode,
+  actionsUploadPagesArtifact,
+} from "@ghawb/typed-actions";
+
+export default defineWorkflow({
+  id: createWorkflowId("pages"),
+  name: "Pages",
+})
+  .onPush({ branches: ["main"] })
+  .addJob(createJobId("build"), (job) => {
+    job
+      .runsOn("ubuntu-latest")
+      .permissions({ contents: "read", pages: "write", "id-token": "write" })
+      .uses(actionsCheckout(), "Checkout")
+      .uses(
+        actionsSetupNode({
+          nodeVersion: "22",
+          cache: "npm",
+          cacheDependencyPath: "package-lock.json",
+        }),
+        "Setup Node"
+      )
+      .run("npm ci")
+      .run("npm run build")
+      .uses(actionsConfigurePages(), "Configure Pages")
+      .uses(actionsUploadPagesArtifact({ path: "dist" }), "Upload Pages Artifact")
+      .uses(actionsDeployPages({ artifactName: "github-pages" }), "Deploy Pages");
+  })
+  .build();
+```
+
+Prefer wrappers when the upstream action is common and its `with` surface is large or error-prone. Prefer raw action refs for rare actions or for inputs that are still too niche to warrant a maintained wrapper. Prefer `job.nodeCi()` when you want the standard checkout/setup/install/test sequence instead of action-by-action control.
 
 ---
 

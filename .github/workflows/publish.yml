@@ -21,7 +21,7 @@ jobs:
       - name: Install Dependencies
         run: npm ci
       - name: Build Packages
-        run: tsc -p packages/shared/tsconfig.build.json && tsc -p packages/sdk/tsconfig.build.json && tsc -p packages/cli/tsconfig.build.json
+        run: bun run build:check
       - name: Run Tests
         run: npm test
       - name: Publish to npm

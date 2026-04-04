@@ -45,6 +45,18 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: User-requested documentation backlog intake focused on stronger onboarding and recipe depth rather than a single API slice.
 
+### Item 74: Rewrite committed `workflows/` sources to use the latest authoring features
+
+- Why: The repository's committed `workflows/*.ts` files are the project's most visible self-hosting examples, but they still reflect older authoring patterns in places. Rewriting them to use the latest stable authoring features would both reduce maintenance friction and turn the repository itself into a stronger proof point for `@ghawb/sdk`, `@ghawb/typed-actions`, and adjacent ergonomics work.
+- Prerequisites: None, but the work should stay aligned with the current supported feature set and should not force new APIs just to make the rewrite possible.
+- Implementation Plan: Audit the committed `workflows/*.ts` modules and refactor them to use the current preferred surfaces where that materially improves clarity or maintenance. Candidate upgrades include `job.nodeCi()`, typed action wrappers from `@ghawb/typed-actions`, current runner-label constants, clearer reusable patterns already supported by the SDK, and removal of stale hand-written step sequences where the newer abstractions are now stable. Regenerate `.github/workflows/*.yml`, update any affected docs, and verify that self-hosting guardrails and hosted-CI-facing workflow contracts remain green.
+- Definition of Done: The committed workflow source modules under `workflows/` consistently reflect the repository's current recommended authoring style where applicable, generated workflow YAML stays in sync, review is complete, and the rewrite does not introduce behavior drift or reduce explicitness.
+- Acceptance Criteria: At least the primary committed CI/publish workflow sources are rewritten to use the latest stable authoring features already shipped by the repository. The generated `.github/workflows/*.yml` files are updated from those sources. `bun run verify:workflows`, `bun run check`, and the relevant Node compatibility verification continue to pass after the rewrite.
+- Story Points: 3
+- Status: new
+- Completed At: N/A
+- Notes/Links: User-requested backlog intake to modernize self-hosted workflow definitions so repository examples track the current public authoring surface rather than older transitional patterns.
+
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.
 - Sprint 16 selection note: Items 51–55 (19 SP total) were committed to Sprint 16 after estimate validation and acceptance-criteria refinement. See [Sprint 16 Backlog](./sprint_backlogs/sp16.md) for committed scope and planning notes.
 - Sprint 17 selection note: Items 57–60 (discovery intake, 6 SP) and Item 56 (prior backlog, 2 SP) were committed to Sprint 17 for a total of 8 SP. Items 57–60 address quality-gate, coverage-enforcement, documentation-accuracy, and date-integrity gaps identified during product discovery as release prerequisites. Items 61–65 were added to the backlog from feature proposals (`gpt/new_functions.md`) but deferred to post-release sprints per PO decision. See [Sprint 17 Backlog](./sprint_backlogs/sp17.md) for committed scope and planning notes.

@@ -4419,6 +4419,99 @@ describe("workflow builder", () => {
       expect((result.jobs[0] as ReusableWorkflowJob).outputNames).toEqual(["artifact_url"]);
     });
 
+    it("prefers explicit output names over inferred ones for WorkflowBuilder injection", () => {
+      const reusable = defineWorkflow({
+        id: createWorkflowId("deploy_override"),
+        name: "Deploy Override",
+      }).onWorkflowCall({
+        outputs: {
+          inferred_output: {
+            value: "${{ jobs.build.outputs.url }}",
+          },
+        },
+      });
+
+      const result = defineWorkflow({
+        id: createWorkflowId("caller_override_builder"),
+        name: "Caller Override Builder",
+      })
+        .onPush()
+        .addJob(createJobId("deploy"), (job) => {
+          job.usesWorkflow(reusable, {
+            outputs: ["explicit_output"],
+          });
+        })
+        .build();
+
+      expect((result.jobs[0] as ReusableWorkflowJob).outputNames).toEqual(["explicit_output"]);
+    });
+
+    it("prefers explicit output names over inferred ones for WorkflowDefinition injection", () => {
+      const reusable = defineWorkflow({
+        id: createWorkflowId("deploy_override_definition"),
+        name: "Deploy Override Definition",
+      })
+        .onWorkflowCall({
+          outputs: {
+            inferred_output: {
+              value: "${{ jobs.build.outputs.url }}",
+            },
+          },
+        })
+        .addJob(createJobId("build"), (job) => {
+          job.runsOn("ubuntu-latest").run("echo build");
+        })
+        .build();
+
+      const result = defineWorkflow({
+        id: createWorkflowId("caller_override_definition"),
+        name: "Caller Override Definition",
+      })
+        .onPush()
+        .addJob(createJobId("deploy"), (job) => {
+          job.usesWorkflow(reusable, {
+            outputs: ["explicit_output"],
+          });
+        })
+        .build();
+
+      expect((result.jobs[0] as ReusableWorkflowJob).outputNames).toEqual(["explicit_output"]);
+    });
+
+    it("rejects invalid explicit reusable workflow output names", () => {
+      expect(() =>
+        defineWorkflow({
+          id: createWorkflowId("caller_invalid_outputs"),
+          name: "Caller Invalid Outputs",
+        })
+          .onPush()
+          .addJob(createJobId("deploy"), (job) => {
+            job.usesWorkflow("org/repo/.github/workflows/deploy.yml@main", {
+              outputs: ["invalid output"],
+            });
+          })
+          .build()
+      ).toThrowError(
+        `job "deploy" reusable workflow output "invalid output" must match ^[a-zA-Z_][a-zA-Z0-9_-]*$. Expected: a letter or underscore start, followed by letters, digits, underscores, or hyphens`
+      );
+    });
+
+    it("rejects blank explicit reusable workflow output names", () => {
+      expect(() =>
+        defineWorkflow({
+          id: createWorkflowId("caller_blank_outputs"),
+          name: "Caller Blank Outputs",
+        })
+          .onPush()
+          .addJob(createJobId("deploy"), (job) => {
+            job.usesWorkflow("org/repo/.github/workflows/deploy.yml@main", {
+              outputs: ["   "],
+            });
+          })
+          .build()
+      ).toThrowError(`job "deploy" reusable workflow outputs must not contain blank names`);
+    });
+
     it("rejects a WorkflowBuilder without workflow_call trigger at build time", () => {
       const notReusable = defineWorkflow({
         id: createWorkflowId("not_reusable"),

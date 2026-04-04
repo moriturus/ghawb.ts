@@ -68,6 +68,14 @@ function isWorkflowDefinition(value: unknown): value is WorkflowDefinition {
   );
 }
 
+function isInputFlag(arg: string | undefined): boolean {
+  return arg === "--input" || arg === "-i";
+}
+
+function isOutputFlag(arg: string | undefined): boolean {
+  return arg === "--output" || arg === "-o";
+}
+
 function parseRenderArguments(args: readonly string[]): RenderCommandOptions {
   let inputPath: string | undefined;
   let outputPath: string | undefined;
@@ -76,13 +84,13 @@ function parseRenderArguments(args: readonly string[]): RenderCommandOptions {
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
-    if (arg === "--input") {
+    if (isInputFlag(arg)) {
       inputPath = args[index + 1];
       index += 1;
       continue;
     }
 
-    if (arg === "--output") {
+    if (isOutputFlag(arg)) {
       outputPath = args[index + 1];
       index += 1;
       continue;
@@ -115,7 +123,7 @@ function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandO
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
-    if (arg === "--input") {
+    if (isInputFlag(arg)) {
       if (pendingInputPath) {
         throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
       }
@@ -130,7 +138,7 @@ function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandO
       continue;
     }
 
-    if (arg === "--output") {
+    if (isOutputFlag(arg)) {
       const outputPath = args[index + 1];
       index += 1;
 
@@ -206,8 +214,8 @@ async function defaultRunCommand(
 
 function usage(): string {
   return [
-    "Usage: ghawb render --input <workflow.ts> --output <workflow.yml> [--lint]",
-    "       ghawb render-batch --input <workflow.ts> --output <workflow.yml> [--input <workflow.ts> --output <workflow.yml> ...] [--lint]",
+    "Usage: ghawb render (--input|-i) <workflow.ts> (--output|-o) <workflow.yml> [--lint]",
+    "       ghawb render-batch (--input|-i) <workflow.ts> (--output|-o) <workflow.yml> [(--input|-i) <workflow.ts> (--output|-o) <workflow.yml> ...] [--lint]",
     "       ghawb lint <file.yml> [<file.yml> ...]",
   ].join("\n");
 }

@@ -74,8 +74,8 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - injects an emitter function instead of binding the core to a YAML library
   - fails explicitly before emission when unsupported fields are present at runtime
 - The CLI currently:
-  - exposes `ghawb render --input <workflow.ts> --output <workflow.yml>`
-  - exposes `ghawb render-batch --input <workflow.ts> --output <workflow.yml> ...` for explicit multi-workflow rendering without repository scanning
+  - exposes `ghawb render --input <workflow.ts> --output <workflow.yml>` with short aliases `-i` and `-o`
+  - exposes `ghawb render-batch --input <workflow.ts> --output <workflow.yml> ...` with short aliases `-i` and `-o` for explicit multi-workflow rendering without repository scanning
   - exposes `ghawb lint <file.yml> [<file.yml> ...]` for verifying generated workflow YAML files with `actionlint`; when `actionlint` is not found on `PATH`, the CLI exits non-zero with a clear message naming the missing tool and linking to installation instructions
   - loads a directly specified TypeScript module whose default export is a built workflow definition
   - renders YAML through one concrete adapter backed by the `yaml` Node module

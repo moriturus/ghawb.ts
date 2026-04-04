@@ -144,6 +144,37 @@ jobs:
 `);
   });
 
+  it("accepts short input and output flags for render", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const inputPath = join(tempDir, "workflow.ts");
+    const outputPath = join(tempDir, "ci.yml");
+
+    await writeFile(
+      inputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('ci'),
+  name: 'CI',
+})
+  .onPush()
+  .addJob(createJobId('test'), (job) => {
+    job.runsOn('ubuntu-latest').run('echo ok');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    const result = await runCli(["render", "-i", inputPath, "-o", outputPath], process.cwd());
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    await expect(readFile(outputPath, "utf8")).resolves.toContain("name: CI");
+  });
+
   it("fails with a non-zero exit code when required arguments are missing", async () => {
     const result = await runCli(["render", "--input", "workflow.ts"], process.cwd());
 
@@ -259,6 +290,132 @@ export default defineWorkflow({
     expect(result.stdout).toContain(secondOutputPath);
     await expect(readFile(firstOutputPath, "utf8")).resolves.toContain("name: First");
     await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("workflow_dispatch: null");
+  });
+
+  it("accepts short input and output flags for render-batch", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const firstInputPath = join(tempDir, "first-workflow.ts");
+    const firstOutputPath = join(tempDir, "first.yml");
+    const secondInputPath = join(tempDir, "second-workflow.ts");
+    const secondOutputPath = join(tempDir, "second.yml");
+
+    await writeFile(
+      firstInputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('first'),
+  name: 'First',
+})
+  .onPush()
+  .addJob(createJobId('check'), (job) => {
+    job.runsOn('ubuntu-latest').run('bun test');
+  })
+  .build();
+`,
+      "utf8"
+    );
+    await writeFile(
+      secondInputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('second'),
+  name: 'Second',
+})
+  .onWorkflowDispatch()
+  .addJob(createJobId('verify'), (job) => {
+    job.runsOn('ubuntu-latest').run('bun run verify:workflows');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    const result = await runCli(
+      [
+        "render-batch",
+        "-i",
+        firstInputPath,
+        "-o",
+        firstOutputPath,
+        "-i",
+        secondInputPath,
+        "-o",
+        secondOutputPath,
+      ],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    await expect(readFile(firstOutputPath, "utf8")).resolves.toContain("name: First");
+    await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("name: Second");
+  });
+
+  it("accepts mixed long and short flags across render-batch targets", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const firstInputPath = join(tempDir, "first-workflow.ts");
+    const firstOutputPath = join(tempDir, "first.yml");
+    const secondInputPath = join(tempDir, "second-workflow.ts");
+    const secondOutputPath = join(tempDir, "second.yml");
+
+    await writeFile(
+      firstInputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('first'),
+  name: 'First',
+})
+  .onPush()
+  .addJob(createJobId('check'), (job) => {
+    job.runsOn('ubuntu-latest').run('bun test');
+  })
+  .build();
+`,
+      "utf8"
+    );
+    await writeFile(
+      secondInputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('second'),
+  name: 'Second',
+})
+  .onWorkflowDispatch()
+  .addJob(createJobId('verify'), (job) => {
+    job.runsOn('ubuntu-latest').run('bun run verify:workflows');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    const result = await runCli(
+      [
+        "render-batch",
+        "--input",
+        firstInputPath,
+        "-o",
+        firstOutputPath,
+        "-i",
+        secondInputPath,
+        "--output",
+        secondOutputPath,
+      ],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    await expect(readFile(firstOutputPath, "utf8")).resolves.toContain("name: First");
+    await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("name: Second");
   });
 
   it("reports partial batch failures with a non-zero exit code while keeping successful outputs", async () => {

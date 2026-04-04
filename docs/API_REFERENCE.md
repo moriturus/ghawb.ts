@@ -250,6 +250,23 @@ expr("github.ref == 'refs/heads/main'");
 | `steps(id).outputs(name)` | `${{ steps.build.outputs.artifact }}` |
 | `needs(jobId).outputs(name)` | `${{ needs.deploy.outputs.artifact_url }}` |
 
+### Literal And Operator Helpers
+
+| Helper | Output |
+|--------|--------|
+| `literal("push")` | `'push'` |
+| `literal(1)` | `1` |
+| `literal(true)` | `true` |
+| `eq(left, right)` | `github.ref == 'refs/heads/main'` |
+| `ne(left, right)` | `github.ref != 'refs/heads/main'` |
+| `gt(left, right)` | `steps.check.outputs.count > 1` |
+| `gte(left, right)` | `steps.check.outputs.count >= 1` |
+| `lt(left, right)` | `steps.check.outputs.count < 10` |
+| `lte(left, right)` | `steps.check.outputs.count <= 10` |
+| `and(a, b, ...)` | `success() && github.event_name == 'push'` |
+| `or(a, b, ...)` | `failure() || cancelled()` |
+| `not(value)` | `!cancelled()` |
+
 ### Status Check Helpers
 
 | Helper | Output |

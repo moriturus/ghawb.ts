@@ -224,14 +224,25 @@ The SDK provides an expression helper API for constructing GitHub Actions `${{ }
 | `matrix` context | `matrix(key)` | `matrix.os` |
 | `inputs` context | `inputs(name)` | `inputs.target` |
 | `steps` outputs | `steps(id).outputs(name)` | `steps.build.outputs.result` |
+| `needs` outputs | `needs(jobId).outputs(name)` | `needs.deploy.outputs.artifact_url` |
+| literal helper | `literal(value)` | `'push'` / `1` / `true` / `null` |
+| equality | `eq(left, right)` | `github.ref == 'refs/heads/main'` |
+| inequality | `ne(left, right)` | `github.ref != 'refs/heads/main'` |
+| greater-than | `gt(left, right)` | `steps.check.outputs.count > 1` |
+| greater-than-or-equal | `gte(left, right)` | `steps.check.outputs.count >= 1` |
+| less-than | `lt(left, right)` | `steps.check.outputs.count < 10` |
+| less-than-or-equal | `lte(left, right)` | `steps.check.outputs.count <= 10` |
+| logical and | `and(a, b, ...)` | `success() && github.event_name == 'push'` |
+| logical or | `or(a, b, ...)` | `failure() || cancelled()` |
+| logical not | `not(value)` | `!cancelled()` |
 | `success()` | `success()` | `success()` |
 | `always()` | `always()` | `always()` |
 | `cancelled()` | `cancelled()` | `cancelled()` |
 | `failure()` | `failure()` | `failure()` |
 
-Helpers compose via template literals: `expr(\`${github("ref")} == 'refs/heads/main'\`)` produces `${{ github.ref == 'refs/heads/main' }}`.
+Helpers compose via templates or helper nesting: `expr(eq(github("ref"), literal("refs/heads/main")))` produces `${{ github.ref == 'refs/heads/main' }}`.
 
-All existing raw `string` entry points remain backward compatible. Empty or blank content is rejected at construction time. Semantic expression evaluation is an explicit non-goal for this MVP.
+All existing raw `string` entry points remain backward compatible. Empty or blank content is rejected at construction time. Semantic expression evaluation is an explicit non-goal for this helper family.
 
 ---
 

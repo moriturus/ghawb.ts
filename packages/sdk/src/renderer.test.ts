@@ -2064,6 +2064,7 @@ describe("workflow renderer", () => {
             with: {
               environment: "production",
             },
+            outputs: ["artifact_url"],
           });
       })
       .build();

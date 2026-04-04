@@ -480,6 +480,7 @@ export type ReusableWorkflowJobSecrets = "inherit" | Readonly<Record<string, str
 export interface ReusableWorkflowJob extends WorkflowJobBase {
   readonly kind: "reusable-workflow";
   readonly uses: WorkflowRef;
+  readonly outputNames?: readonly string[];
 }
 
 export type WorkflowJob = StepsJob | ReusableWorkflowJob;

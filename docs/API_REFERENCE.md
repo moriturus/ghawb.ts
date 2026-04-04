@@ -72,7 +72,7 @@ const workflow = defineWorkflow({
 | Method | Description |
 |--------|-------------|
 | `.addJob(id, configureFn)` | Add a step-based job. The callback receives a `JobBuilder`. |
-| `.usesWorkflow(id, source, options?)` | Add a reusable workflow job. |
+| `.usesWorkflow(id, source, options?)` | Add a reusable workflow job. `options.outputs` declares caller-side reusable workflow output names when they cannot be inferred from an injected workflow object. |
 
 #### Build
 
@@ -248,6 +248,7 @@ expr("github.ref == 'refs/heads/main'");
 | `matrix(key)` | `${{ matrix.os }}` |
 | `inputs(name)` | `${{ inputs.target }}` |
 | `steps(id).outputs(name)` | `${{ steps.build.outputs.artifact }}` |
+| `needs(jobId).outputs(name)` | `${{ needs.deploy.outputs.artifact_url }}` |
 
 ### Status Check Helpers
 

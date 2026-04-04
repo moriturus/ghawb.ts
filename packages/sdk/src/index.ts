@@ -21,11 +21,13 @@ export {
   secrets,
   matrix,
   inputs,
+  needs,
   steps,
   success,
   always,
   cancelled,
   failure,
+  type NeedsOutputRef,
   type StepOutputRef,
 } from "./expressions.js";
 export {

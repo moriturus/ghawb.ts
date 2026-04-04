@@ -218,7 +218,7 @@ The SDK covers the majority of the [GitHub Actions workflow syntax](https://docs
 - **Step metadata:** `id`, `if`, `name`, `shell`, `working-directory`, `with`, `env`, `continue-on-error`, `timeout-minutes`
 - **Typed helpers:** `actionRef()` / `workflowRef()` for validated references, `RunnerLabel` constants for standard runners
 - **Typed action core:** `typedActionStep()` plus `TypedActionStep` for typed `uses` objects in the SDK
-- **Opt-in typed action wrappers:** `@ghawb/typed-actions` exports `actionsCheckout()`, `actionsSetupNode()`, `actionsUploadArtifact()`, and `actionsDownloadArtifact()` for typed `with` inputs on common first-party actions
+- **Opt-in typed action wrappers:** `@ghawb/typed-actions` exports typed wrappers for common first-party actions including checkout, cache, setup-node, setup-python, setup-go, setup-java, setup-dotnet, github-script, Pages deployment actions, labeler, and artifact upload/download
 - **Opt-in composite actions:** `@ghawb/composite-actions` exports `defineCompositeAction()` plus a dedicated `ghawb render-action` path for the first composite-action slice (`name`, `description`, `inputs`, `outputs`, and ordered composite `runs.steps`)
 - **Expression helpers:** `expr()`, context accessors (`github`, `env`, `secrets`, `matrix`, `inputs`, `steps`, `needs`), status-check functions (`success`, `failure`, `always`, `cancelled`), and comparison/logical helpers (`literal`, `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `and`, `or`, `not`) for type-safe `${{ }}` construction
 - **Identifiers:** branded `WorkflowId` and `JobId` types with format validation

@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
+import { runCli as runCliDirect, type CliIo, type CliRunDependencies } from "./index.js";
 
 function runCli(
   args: readonly string[],
@@ -241,5 +242,117 @@ export default defineWorkflow({
     expect(result.stderr).toContain(`${invalidInputPath} -> ${invalidOutputPath}`);
     expect(result.stderr).toContain("default export must be a built workflow definition");
     await expect(readFile(validOutputPath, "utf8")).resolves.toContain("name: Valid");
+  });
+});
+
+describe("ghawb CLI lint command", () => {
+  function createIo(): CliIo & { stdout_lines: string[]; stderr_lines: string[] } {
+    const stdout_lines: string[] = [];
+    const stderr_lines: string[] = [];
+    return {
+      stdout_lines,
+      stderr_lines,
+      stdout(message: string) {
+        stdout_lines.push(message);
+      },
+      stderr(message: string) {
+        stderr_lines.push(message);
+      },
+    };
+  }
+
+  function mockDeps(
+    overrides: Partial<Omit<CliRunDependencies, keyof CliIo>> = {}
+  ): Partial<Omit<CliRunDependencies, keyof CliIo>> {
+    return {
+      importModule: async () => ({}),
+      writeOutputFile: async () => {},
+      findExecutable: async () => undefined,
+      runCommand: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+      ...overrides,
+    };
+  }
+
+  it("exits non-zero with install instructions when actionlint is not found", async () => {
+    const io = createIo();
+    const exitCode = await runCliDirect(
+      ["lint", "workflow.yml"],
+      io,
+      mockDeps({ findExecutable: async () => undefined })
+    );
+
+    expect(exitCode).toBe(1);
+    expect(io.stderr_lines.join("\n")).toContain("actionlint");
+    expect(io.stderr_lines.join("\n")).toContain("https://github.com/rhysd/actionlint");
+    expect(io.stderr_lines.join("\n")).toContain("not installed");
+  });
+
+  it("exits zero when actionlint passes on all files", async () => {
+    const io = createIo();
+    const runCommandCalls: Array<{ command: string; args: readonly string[] }> = [];
+
+    const exitCode = await runCliDirect(
+      ["lint", "ci.yml", "deploy.yml"],
+      io,
+      mockDeps({
+        findExecutable: async (name) =>
+          name === "actionlint" ? "/usr/local/bin/actionlint" : undefined,
+        runCommand: async (command, args) => {
+          runCommandCalls.push({ command, args });
+          return { exitCode: 0, stdout: "", stderr: "" };
+        },
+      })
+    );
+
+    expect(exitCode).toBe(0);
+    expect(runCommandCalls).toHaveLength(1);
+    expect(runCommandCalls[0]!.command).toBe("/usr/local/bin/actionlint");
+    expect(runCommandCalls[0]!.args).toContain("ci.yml");
+    expect(runCommandCalls[0]!.args).toContain("deploy.yml");
+  });
+
+  it("exits non-zero and surfaces actionlint errors", async () => {
+    const io = createIo();
+    const lintOutput = 'ci.yml:10:5: property "unknown" is not defined in object type\n';
+
+    const exitCode = await runCliDirect(
+      ["lint", "ci.yml"],
+      io,
+      mockDeps({
+        findExecutable: async () => "/usr/local/bin/actionlint",
+        runCommand: async () => ({ exitCode: 1, stdout: lintOutput, stderr: "" }),
+      })
+    );
+
+    expect(exitCode).toBe(1);
+    expect(io.stdout_lines.join("\n")).toContain("not defined in object type");
+  });
+
+  it("surfaces actionlint stderr output on failure", async () => {
+    const io = createIo();
+
+    const exitCode = await runCliDirect(
+      ["lint", "ci.yml"],
+      io,
+      mockDeps({
+        findExecutable: async () => "/usr/local/bin/actionlint",
+        runCommand: async () => ({
+          exitCode: 1,
+          stdout: "",
+          stderr: "fatal: something went wrong",
+        }),
+      })
+    );
+
+    expect(exitCode).toBe(1);
+    expect(io.stderr_lines.join("\n")).toContain("fatal: something went wrong");
+  });
+
+  it("fails with usage error when no files are provided", async () => {
+    const io = createIo();
+    const exitCode = await runCliDirect(["lint"], io, mockDeps());
+
+    expect(exitCode).toBe(1);
+    expect(io.stderr_lines.join("\n")).toContain("lint requires at least one file");
   });
 });

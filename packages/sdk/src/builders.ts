@@ -28,6 +28,8 @@ import {
   type PullRequestTriggerFilter,
   type RunStepMetadata,
   type RunsOnTarget,
+  type RunsOnObject,
+  isRunsOnObject,
   type RunsOnValue,
   type ScriptReference,
   type SimpleEventTrigger,
@@ -103,7 +105,7 @@ interface StepsJobDraft extends WorkflowJobDraftBase {
     readonly include?: readonly Readonly<Record<string, unknown>>[];
     readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
-  readonly runsOn?: string | readonly string[];
+  readonly runsOn?: string | readonly string[] | RunsOnObject;
   readonly environment?: string | { readonly name: string; readonly url?: string };
   readonly container?: ContainerConfig;
   readonly services?: WorkflowServices;
@@ -118,7 +120,7 @@ interface ReusableWorkflowJobDraft extends WorkflowJobDraftBase {
   readonly uses?: string;
   readonly usesSource?: WorkflowBuilder | WorkflowDefinition;
   readonly steps: readonly WorkflowStepDraft[];
-  readonly runsOn?: string | readonly string[];
+  readonly runsOn?: string | readonly string[] | RunsOnObject;
   readonly environment?: string | { readonly name: string; readonly url?: string };
   readonly container?: ContainerConfig;
   readonly services?: WorkflowServices;
@@ -1010,8 +1012,33 @@ function createValidationIssues(
 
     if (job.runsOn === undefined) {
       issues.push(
-        `job "${jobId}" must define runs-on. Expected: a runner label string or array of labels`
+        `job "${jobId}" must define runs-on. Expected: a runner label string, array of labels, or object with group/labels`
       );
+    } else if (typeof job.runsOn === "object" && !Array.isArray(job.runsOn)) {
+      const obj = job.runsOn as RunsOnObject;
+      if (obj.group === undefined && obj.labels === undefined) {
+        issues.push(
+          `job "${jobId}" runs-on object must define at least one of "group" or "labels". Expected: { group?: string; labels?: string[] }`
+        );
+      }
+      if (
+        obj.group !== undefined &&
+        typeof obj.group === "string" &&
+        obj.group.trim().length === 0
+      ) {
+        issues.push(
+          `job "${jobId}" runs-on group must not be empty. Expected: a non-blank runner group name`
+        );
+      }
+      if (obj.labels !== undefined) {
+        if (!Array.isArray(obj.labels) || obj.labels.length === 0) {
+          issues.push(
+            `job "${jobId}" runs-on labels must be a non-empty array. Expected: at least one runner label`
+          );
+        } else if (obj.labels.some((label: string) => label.trim().length === 0)) {
+          issues.push(`job "${jobId}" runs-on labels must not contain blank values`);
+        }
+      }
     } else if (typeof job.runsOn === "string") {
       if (job.runsOn.trim().length === 0) {
         issues.push(`job "${jobId}" runs-on must not be empty. Expected: a non-blank runner label`);
@@ -1520,12 +1547,25 @@ function finalizeStep(step: WorkflowStepDraft): WorkflowStep {
   };
 }
 
-function finalizeRunsOn(runsOn: string | readonly string[]): RunsOnTarget {
+function finalizeRunsOn(runsOn: string | readonly string[] | RunsOnObject): RunsOnTarget {
+  if (isRunsOnObject(runsOn as RunsOnTarget)) {
+    const runsOnObj = runsOn as RunsOnObject;
+    const obj: Record<string, unknown> = {};
+    if (runsOnObj.group !== undefined) obj.group = runsOnObj.group.trim();
+    if (runsOnObj.labels !== undefined) {
+      obj.labels = runsOnObj.labels.map((l) => l.trim()) as unknown as readonly [
+        string,
+        ...string[],
+      ];
+    }
+    return obj as RunsOnObject;
+  }
+
   if (typeof runsOn === "string") {
     return runsOn.trim();
   }
 
-  return runsOn.map((target) => target.trim()) as [string, ...string[]];
+  return (runsOn as readonly string[]).map((target) => target.trim()) as [string, ...string[]];
 }
 
 function finalizeEnvironment(
@@ -1629,7 +1669,7 @@ class JobBuilder {
     readonly include?: readonly Readonly<Record<string, unknown>>[];
     readonly exclude?: readonly Readonly<Record<string, unknown>>[];
   };
-  private jobRunsOn?: string | readonly string[];
+  private jobRunsOn?: string | readonly string[] | RunsOnObject;
   private jobEnvironment?: string | { readonly name: string; readonly url?: string };
   private jobContainer?: ContainerConfig;
   private jobServices?: WorkflowServices;
@@ -1732,8 +1772,13 @@ class JobBuilder {
     return this;
   }
 
-  runsOn(target: RunsOnValue | readonly RunsOnValue[]): this {
-    this.jobRunsOn = Array.isArray(target) ? [...target] : target;
+  runsOn(target: RunsOnValue | readonly RunsOnValue[] | RunsOnObject): this {
+    if (isRunsOnObject(target as RunsOnTarget)) {
+      const obj = target as RunsOnObject;
+      this.jobRunsOn = { ...obj, ...(obj.labels ? { labels: [...obj.labels] } : {}) };
+    } else {
+      this.jobRunsOn = Array.isArray(target) ? [...target] : (target as RunsOnValue);
+    }
     return this;
   }
 

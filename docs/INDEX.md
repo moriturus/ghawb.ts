@@ -6,6 +6,8 @@ This directory contains the source-of-truth project documents for `ghawb`.
 
 - [INDEX.md](./INDEX.md): Index of the documentation set under `docs/`.
 - [SPEC.md](./SPEC.md): Current product specification and quality constraints.
+- [API_REFERENCE.md](./API_REFERENCE.md): SDK public API reference covering builders, expressions, renderer, validation, and known gotchas.
+- [COOKBOOK.md](./COOKBOOK.md): Practical workflow recipes and patterns using `@ghawb/sdk`.
 - [SYNTAX_COVERAGE.md](./SYNTAX_COVERAGE.md): GitHub Actions workflow syntax support/non-support matrix.
 - [CONTRIBUTING.md](./CONTRIBUTING.md): Supported contributor verification flow and workflow authoring guidance.
 - [PRODUCT_BACKLOG.md](./PRODUCT_BACKLOG.md): Prioritized product backlog and delivery order.
@@ -25,6 +27,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_backlogs/sp13.md](./sprint_backlogs/sp13.md): Sprint 13 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp14.md](./sprint_backlogs/sp14.md): Sprint 14 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp15.md](./sprint_backlogs/sp15.md): Sprint 15 backlog record, planning notes, and committed items.
+- [sprint_backlogs/sp16.md](./sprint_backlogs/sp16.md): Sprint 16 backlog record, planning notes, and committed items.
 - [scrum_master/BOARD.md](./scrum_master/BOARD.md): Scrum Master owned team-improvement follow-ups in priority order.
 - [scrum_master/PLAYBOOK.md](./scrum_master/PLAYBOOK.md): Scrum Master operating guide for sprint start, planning, and closeout improvements.
 - [TEAM.md](./TEAM.md): Scrum team roles and working personas.
@@ -43,6 +46,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp13.md](./sprint_reviews/sp13.md): Sprint 13 review summary, typed `uses` helpers, npm packaging, governance documents, and Product Owner decision.
 - [sprint_reviews/sp14.md](./sprint_reviews/sp14.md): Sprint 14 review summary, run script references, README rewrite, release automation, CI fix findings, and Product Owner decision.
 - [sprint_reviews/sp15.md](./sprint_reviews/sp15.md): Sprint 15 review summary, npm workspace fix, tsc build-config gap closure, reusable workflow object injection, backlog exhaustion, and Product Owner decision.
+- [sprint_reviews/sp16.md](./sprint_reviews/sp16.md): Sprint 16 review summary, expression helpers, advanced runs-on, actionlint bridge, API reference and cookbook, YAML import package, and Product Owner decision.
 - [sprint_retrospectives/sp1.md](./sprint_retrospectives/sp1.md): Sprint 1 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp2.md](./sprint_retrospectives/sp2.md): Sprint 2 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp3.md](./sprint_retrospectives/sp3.md): Sprint 3 retrospective summary, role reflections, and routed improvement actions.
@@ -58,6 +62,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp13.md](./sprint_retrospectives/sp13.md): Sprint 13 retrospective summary, typed `uses` helpers, npm packaging, governance documents, and follow-up routing.
 - [sprint_retrospectives/sp14.md](./sprint_retrospectives/sp14.md): Sprint 14 retrospective summary, Bun-vs-tsc gap, validation enforcement points, npm compatibility, and follow-up routing.
 - [sprint_retrospectives/sp15.md](./sprint_retrospectives/sp15.md): Sprint 15 retrospective summary, role reflections, backlog exhaustion, bun/npm gotcha, and product discovery recommendations.
+- [sprint_retrospectives/sp16.md](./sprint_retrospectives/sp16.md): Sprint 16 retrospective summary, role reflections, new-package config checklist, test helper parameterization, and release evaluation recommendation.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 - [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
 - [RELEASING.md](../RELEASING.md) — Release workflow and publishing documentation.

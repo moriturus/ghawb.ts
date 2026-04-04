@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createJobId, createWorkflowId, WorkflowValidationError } from "@ghawb/shared";
 
 import { defineWorkflow, createWorkflowRenderPayload, actionRef, workflowRef } from "./index.js";
-import type { ActionRef, ReusableWorkflowJob, WorkflowRef } from "./index.js";
+import type { ActionRef, ReusableWorkflowJob, StepsJob, WorkflowRef } from "./index.js";
 
 describe("workflow builder", () => {
   it("builds a representative Sprint 1 workflow model", () => {
@@ -91,6 +91,117 @@ describe("workflow builder", () => {
         ],
       },
     ]);
+  });
+
+  it("builds jobs with runs-on group-only object form", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("runs_on_group"),
+      name: "Runs On Group",
+    })
+      .onPush()
+      .addJob(createJobId("deploy"), (job) => {
+        job.runsOn({ group: "production" }).run("echo deploy");
+      })
+      .build();
+
+    const job = workflow.jobs[0] as StepsJob;
+    expect(job.runsOn).toEqual({ group: "production" });
+  });
+
+  it("builds jobs with runs-on labels-only object form", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("runs_on_labels"),
+      name: "Runs On Labels",
+    })
+      .onPush()
+      .addJob(createJobId("build"), (job) => {
+        job.runsOn({ labels: ["self-hosted", "linux"] }).run("echo build");
+      })
+      .build();
+
+    const job = workflow.jobs[0] as StepsJob;
+    expect(job.runsOn).toEqual({ labels: ["self-hosted", "linux"] });
+  });
+
+  it("builds jobs with runs-on group+labels object form", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("runs_on_group_labels"),
+      name: "Runs On Group Labels",
+    })
+      .onPush()
+      .addJob(createJobId("build"), (job) => {
+        job.runsOn({ group: "production", labels: ["self-hosted", "x64"] }).run("echo build");
+      })
+      .build();
+
+    const job = workflow.jobs[0] as StepsJob;
+    expect(job.runsOn).toEqual({ group: "production", labels: ["self-hosted", "x64"] });
+  });
+
+  it("rejects runs-on object with neither group nor labels", () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId("empty_runs_on_obj"),
+      name: "Empty Runs On Object",
+    })
+      .onPush()
+      .addJob(createJobId("build"), (job) => {
+        job.runsOn({} as any).run("echo build");
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "build" runs-on object must define at least one of "group" or "labels". Expected: { group?: string; labels?: string[] }',
+      ])
+    );
+  });
+
+  it("rejects runs-on object with blank group", () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId("blank_group"),
+      name: "Blank Group",
+    })
+      .onPush()
+      .addJob(createJobId("build"), (job) => {
+        job.runsOn({ group: "  " }).run("echo build");
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "build" runs-on group must not be empty. Expected: a non-blank runner group name',
+      ])
+    );
+  });
+
+  it("rejects runs-on object with empty labels array", () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId("empty_labels"),
+      name: "Empty Labels",
+    })
+      .onPush()
+      .addJob(createJobId("build"), (job) => {
+        job.runsOn({ labels: [] as any }).run("echo build");
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError([
+        'job "build" runs-on labels must be a non-empty array. Expected: at least one runner label',
+      ])
+    );
+  });
+
+  it("rejects runs-on object with blank label values", () => {
+    const builder = defineWorkflow({
+      id: createWorkflowId("blank_labels"),
+      name: "Blank Labels",
+    })
+      .onPush()
+      .addJob(createJobId("build"), (job) => {
+        job.runsOn({ labels: ["self-hosted", "  "] }).run("echo build");
+      });
+
+    expect(() => builder.build()).toThrowError(
+      new WorkflowValidationError(['job "build" runs-on labels must not contain blank values'])
+    );
   });
 
   it("builds workflows with workflow_dispatch triggers", () => {
@@ -473,7 +584,7 @@ describe("workflow builder", () => {
         'job "job" step 1 if must not be empty',
         'job "job" step 1 env must not contain blank keys',
         'duplicate job id "job"',
-        'job "job" must define runs-on. Expected: a runner label string or array of labels',
+        'job "job" must define runs-on. Expected: a runner label string, array of labels, or object with group/labels',
       ])
     );
   });

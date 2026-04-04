@@ -1,8 +1,18 @@
 import {
+  always,
   createJobId,
   createWorkflowId,
   defineWorkflow,
+  env,
+  expr,
+  failure,
+  github,
+  inputs,
+  matrix,
   RunnerLabel,
+  secrets,
+  steps,
+  success,
   type PullRequestTriggerFilter,
   type WorkflowDefinition,
   type WorkflowRenderPayload,
@@ -1325,6 +1335,108 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
           secrets: "inherit",
           with: { env: "production" },
           uses: "./.github/workflows/shared_deploy.yml",
+        },
+      },
+    }
+  ),
+
+  createRenderFixture(
+    "expression_helpers",
+    defineWorkflow({
+      id: createWorkflowId("expression_helpers"),
+      name: "Expression Helpers",
+    })
+      .onPush({ branches: ["main"] })
+      .addJob(createJobId("build"), (job) => {
+        job
+          .runsOn("ubuntu-latest")
+          .ifCondition(expr(github("event_name")))
+          .uses("actions/checkout@v4" as const, {
+            id: "checkout",
+          })
+          .run("echo build", {
+            id: "compile",
+            if: expr(success()),
+            env: { TOKEN: expr(secrets("GITHUB_TOKEN")) },
+          })
+          .run("echo test", {
+            if: expr(always()),
+          })
+          .run("echo deploy", {
+            if: expr(`${steps("compile").outputs("result")} == 'true'`),
+          })
+          .run(`echo ${expr(matrix("os"))}`)
+          .run(`echo ${expr(env("CI"))}`)
+          .run(`echo ${expr(inputs("target"))}`)
+          .run("echo done", {
+            if: expr(failure()),
+          });
+      })
+      .build(),
+    {
+      name: "Expression Helpers",
+      on: {
+        push: { branches: ["main"] },
+      },
+      jobs: {
+        build: {
+          if: "${{ github.event_name }}",
+          "runs-on": "ubuntu-latest",
+          steps: [
+            { id: "checkout", uses: "actions/checkout@v4" },
+            {
+              id: "compile",
+              if: "${{ success() }}",
+              env: { TOKEN: "${{ secrets.GITHUB_TOKEN }}" },
+              run: "echo build",
+            },
+            { if: "${{ always() }}", run: "echo test" },
+            {
+              if: "${{ steps.compile.outputs.result == 'true' }}",
+              run: "echo deploy",
+            },
+            { run: "echo ${{ matrix.os }}" },
+            { run: "echo ${{ env.CI }}" },
+            { run: "echo ${{ inputs.target }}" },
+            { if: "${{ failure() }}", run: "echo done" },
+          ],
+        },
+      },
+    }
+  ),
+
+  createRenderFixture(
+    "runs_on_object_forms",
+    defineWorkflow({
+      id: createWorkflowId("runs_on_object"),
+      name: "Runs On Object Forms",
+    })
+      .onPush()
+      .addJob(createJobId("group_only"), (job) => {
+        job.runsOn({ group: "production" }).run("echo group");
+      })
+      .addJob(createJobId("labels_only"), (job) => {
+        job.runsOn({ labels: ["self-hosted", "linux"] }).run("echo labels");
+      })
+      .addJob(createJobId("group_and_labels"), (job) => {
+        job.runsOn({ group: "staging", labels: ["x64"] }).run("echo both");
+      })
+      .build(),
+    {
+      name: "Runs On Object Forms",
+      on: { push: null },
+      jobs: {
+        group_only: {
+          "runs-on": { group: "production" },
+          steps: [{ run: "echo group" }],
+        },
+        labels_only: {
+          "runs-on": { labels: ["self-hosted", "linux"] },
+          steps: [{ run: "echo labels" }],
+        },
+        group_and_labels: {
+          "runs-on": { group: "staging", labels: ["x64"] },
+          steps: [{ run: "echo both" }],
         },
       },
     }

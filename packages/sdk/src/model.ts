@@ -382,7 +382,19 @@ export function workflowRef(ref: string): WorkflowRef {
 }
 
 export type RunsOnValue = RunnerLabel | (string & {});
-export type RunsOnTarget = RunsOnValue | readonly [RunsOnValue, ...RunsOnValue[]];
+
+export interface RunsOnObject {
+  readonly group?: string;
+  readonly labels?: readonly [string, ...string[]];
+}
+
+export type RunsOnTarget = RunsOnValue | readonly [RunsOnValue, ...RunsOnValue[]] | RunsOnObject;
+
+export function isRunsOnObject(value: RunsOnTarget): value is RunsOnObject {
+  return (
+    typeof value === "object" && !Array.isArray(value) && ("group" in value || "labels" in value)
+  );
+}
 export type MatrixAxisValues = readonly [string, ...string[]];
 export type WorkflowMatrix = Readonly<Record<string, MatrixAxisValues>>;
 export type MatrixIncludeEntry = Readonly<Record<string, string>>;

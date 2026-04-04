@@ -668,6 +668,7 @@ export function createWorkflowRenderPayload(workflow: WorkflowDefinition): Workf
     "workflow_call",
     "workflow_run",
     "schedule",
+    "branch_protection_rule",
     "check_run",
     "check_suite",
     "create",

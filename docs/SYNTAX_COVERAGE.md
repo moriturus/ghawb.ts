@@ -46,6 +46,7 @@ All use `.onEvent(type, { types? })`.
 
 | Trigger | Status | Activity Types |
 |---------|--------|----------------|
+| `branch_protection_rule` | ✅ | `created`, `edited`, `deleted` |
 | `check_run` | ✅ | `created`, `rerequested`, `completed`, `requested_action` |
 | `check_suite` | ✅ | `completed`, `requested`, `rerequested` |
 | `create` | ✅ | _(bare event)_ |
@@ -74,8 +75,7 @@ All use `.onEvent(type, { types? })`.
 
 | Trigger | Notes |
 |---------|-------|
-| `branch_protection_rule` | |
-| `deployment_protection_rule` | |
+| `deployment_protection_rule` | GitHub App webhook event, not listed as a GitHub Actions workflow trigger |
 | `installation` | GitHub App event |
 | `installation_repositories` | GitHub App event |
 | `installation_target` | GitHub App event |

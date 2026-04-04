@@ -45,6 +45,30 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: Signal from `gpt/new_functions.md` §6. Novel concept — no prior backlog precedent.
 
+### Item 66: CLI short flags for render input/output
+
+- Why: `ghawb render` and `ghawb render-batch` currently require verbose `--input` / `--output` flags for every mapping. Short aliases `-i` and `-o` would reduce command noise and make repeated CLI usage less tedious, especially in batch mode and shell snippets.
+- Prerequisites: None. Builds on the existing render and render-batch argument parser.
+- Implementation Plan: Add `-i` as a shorthand for `--input` and `-o` as a shorthand for `--output` in both `render` and `render-batch`. Preserve existing long flags unchanged. Update CLI usage text, README examples where appropriate, and tests covering mixed long/short flag usage.
+- Definition of Done: The CLI accepts `-i` / `-o` anywhere `--input` / `--output` are currently accepted, with unchanged semantics and validation behavior. Tests, docs, and code review completed.
+- Acceptance Criteria: `ghawb render -i workflows/ci.ts -o .github/workflows/ci.yml` works. `ghawb render-batch` accepts repeated `-i` / `-o` pairs. Existing long-flag usage remains backward compatible.
+- Story Points: 1
+- Status: new
+- Completed At: N/A
+- Notes/Links: User-requested CLI ergonomics improvement after Sprint 18.
+
+### Item 67: CLI inferred default output path for render
+
+- Why: Requiring `--output` for the common case creates friction when the desired destination is the conventional `.github/workflows/<name>.yml`. Inferring the output path from the input filename would make the CLI more convenient for routine repository-local rendering.
+- Prerequisites: Item 66 is adjacent but not technically required. Depends on clarifying the supported inference contract before implementation.
+- Implementation Plan: Design and implement a default-output rule for `ghawb render` that derives `.github/workflows/<input-basename>.yml` when `--output` is omitted. Clarify whether the same rule applies to `render-batch`, what happens for non-`.ts` inputs, and whether inference is limited to repository-local workflow source paths. Update CLI help text, README, SPEC, and tests.
+- Definition of Done: `ghawb render --input workflows/ci.ts` can emit `.github/workflows/ci.yml` without an explicit `--output`, under a documented and tested inference contract. Documentation and code review completed.
+- Acceptance Criteria: Omitting `--output` on `render` writes to the inferred `.github/workflows/<basename>.yml` path for supported inputs. The inference rule is documented precisely, including error behavior when inference is unsupported or ambiguous. Existing explicit `--output` usage remains unchanged.
+- Story Points: 2
+- Status: new
+- Completed At: N/A
+- Notes/Links: User-requested CLI ergonomics improvement after Sprint 18. Requires a documented contract for output-path inference to avoid implicit behavior drift.
+
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.
 - Sprint 16 selection note: Items 51–55 (19 SP total) were committed to Sprint 16 after estimate validation and acceptance-criteria refinement. See [Sprint 16 Backlog](./sprint_backlogs/sp16.md) for committed scope and planning notes.
 - Sprint 17 selection note: Items 57–60 (discovery intake, 6 SP) and Item 56 (prior backlog, 2 SP) were committed to Sprint 17 for a total of 8 SP. Items 57–60 address quality-gate, coverage-enforcement, documentation-accuracy, and date-integrity gaps identified during product discovery as release prerequisites. Items 61–65 were added to the backlog from feature proposals (`gpt/new_functions.md`) but deferred to post-release sprints per PO decision. See [Sprint 17 Backlog](./sprint_backlogs/sp17.md) for committed scope and planning notes.

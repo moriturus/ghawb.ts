@@ -6,6 +6,10 @@ This board tracks Scrum Master owned team-improvement follow-up items.
 
 (No open items.)
 
+## Recently Closed
+
+- (Closed during Sprint 16 retrospective) Document new-package root config checklist as a LEARN.md entry. Closed: LEARN.md entry "New-package root config checklist" added covering the 5-file update ceremony (vitest.config.ts, tsconfig.json, deno.json, jsr.json, package.json).
+
 ## Closed Items
 
 - (Closed during Sprint 15 — Item 50) Consider adding `tsc` compilation to `bun run check` or a pre-push hook to close the Bun-vs-tsc type checking gap that caused a CI failure in Sprint 14. See [LEARN.md](../LEARN.md) for the recorded lesson. Closed: per-package `tsconfig.build.json` compilation added to `bun run check` via `build:check` script.

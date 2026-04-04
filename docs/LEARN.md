@@ -138,3 +138,21 @@ Use this document to capture durable lessons discovered during implementation.
 - Why it matters: The project's primary development environment uses Bun, but npm compatibility is a stated goal. Switching between package managers without a clean slate creates silent failures that are difficult to diagnose.
 - Recommendation: Always run `rm -rf node_modules packages/*/node_modules` before switching from `bun install` to `npm install` or vice versa. Do not assume that one package manager can operate on another's `node_modules` tree.
 - Links: [package.json](../package.json), [package-lock.json](../package-lock.json)
+
+### New-package root config checklist
+
+- Date: 2026-04-04
+- Context: Sprint 16, Item 55 (opt-in YAML import package) added the fourth package to the monorepo.
+- What happened: Adding `@ghawb/yaml-import` required coordinated updates across five root configuration files. Missing any single update causes silent test discovery failures or module resolution errors that are difficult to diagnose.
+- Why it matters: The five-file update ceremony is easy to forget, and each missing update produces a different class of failure (tests not found, imports not resolved, build:check not covering the package, Deno imports missing, JSR workspace incomplete).
+- Recommendation: When adding a new package to the monorepo, update all five root files in the same commit: (1) `vitest.config.ts` — add test include glob and resolve alias, (2) `tsconfig.json` — add paths alias, (3) `deno.json` — add import mapping, (4) `jsr.json` — add to workspace members, (5) `package.json` — add to `build:check` script.
+- Links: [vitest.config.ts](../vitest.config.ts), [tsconfig.json](../tsconfig.json), [deno.json](../deno.json), [jsr.json](../jsr.json), [package.json](../package.json)
+
+### Parameterize test helpers to avoid latent basename collisions
+
+- Date: 2026-04-04
+- Context: Sprint 16, Item 55 (opt-in YAML import package) test suite.
+- What happened: A `createTempYaml()` test helper always wrote to a fixed filename (`shared-build.yml`). Three tests expected different basenames in the returned `WorkflowRef` and failed because the helper's embedded filename did not match the test's intent.
+- Why it matters: Test helpers with hardcoded embedded values create latent bugs when tests are written independently. The failure message ("expected list-triggers.yml, got shared-build.yml") is confusing because it does not point at the helper as the root cause.
+- Recommendation: Design test helpers to accept explicit parameters for any value they embed in their output (filenames, paths, identifiers). When a helper creates files, require the caller to specify the filename rather than defaulting to a constant.
+- Links: [packages/yaml-import/src/index.test.ts](../packages/yaml-import/src/index.test.ts)

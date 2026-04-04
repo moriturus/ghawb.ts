@@ -5,6 +5,48 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { runCli as runCliDirect, type CliIo, type CliRunDependencies } from "./index.js";
 
+function defineMinimalWorkflow() {
+  return {
+    name: "CI",
+    on: [{ type: "push" as const }],
+    jobs: [
+      {
+        kind: "steps" as const,
+        id: "build",
+        runsOn: "ubuntu-latest",
+        steps: [{ kind: "run" as const, run: "echo ok" }],
+      },
+    ],
+  };
+}
+
+function createIo(): CliIo & { stdout_lines: string[]; stderr_lines: string[] } {
+  const stdout_lines: string[] = [];
+  const stderr_lines: string[] = [];
+  return {
+    stdout_lines,
+    stderr_lines,
+    stdout(message: string) {
+      stdout_lines.push(message);
+    },
+    stderr(message: string) {
+      stderr_lines.push(message);
+    },
+  };
+}
+
+function mockDeps(
+  overrides: Partial<Omit<CliRunDependencies, keyof CliIo>> = {}
+): Partial<Omit<CliRunDependencies, keyof CliIo>> {
+  return {
+    importModule: async () => ({}),
+    writeOutputFile: async () => {},
+    findExecutable: async () => undefined,
+    runCommand: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+    ...overrides,
+  };
+}
+
 function runCli(
   args: readonly string[],
   cwd: string
@@ -129,6 +171,31 @@ jobs:
     expect(result.stderr).toContain("default export must be a built workflow definition");
   });
 
+  it("runs actionlint after render when --lint is set", async () => {
+    const io = createIo();
+    const runCommandCalls: Array<{ command: string; args: readonly string[] }> = [];
+
+    const exitCode = await runCliDirect(
+      ["render", "--input", "workflow.ts", "--output", "ci.yml", "--lint"],
+      io,
+      mockDeps({
+        importModule: async () => ({ default: defineMinimalWorkflow() }),
+        writeOutputFile: async () => {},
+        findExecutable: async () => "/usr/local/bin/actionlint",
+        runCommand: async (command, args) => {
+          runCommandCalls.push({ command, args });
+          return { exitCode: 0, stdout: "", stderr: "" };
+        },
+      })
+    );
+
+    expect(exitCode).toBe(0);
+    expect(io.stdout_lines.join("\n")).toContain("Rendered");
+    expect(runCommandCalls).toHaveLength(1);
+    expect(runCommandCalls[0]!.command).toBe("/usr/local/bin/actionlint");
+    expect(runCommandCalls[0]!.args).toEqual([expect.stringContaining("ci.yml")]);
+  });
+
   it("renders multiple workflow modules in one explicit batch command", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
     tempDirs.push(tempDir);
@@ -243,36 +310,47 @@ export default defineWorkflow({
     expect(result.stderr).toContain("default export must be a built workflow definition");
     await expect(readFile(validOutputPath, "utf8")).resolves.toContain("name: Valid");
   });
+
+  it("runs actionlint after render-batch when --lint is set", async () => {
+    const io = createIo();
+    const runCommandCalls: Array<{ command: string; args: readonly string[] }> = [];
+
+    const exitCode = await runCliDirect(
+      [
+        "render-batch",
+        "--input",
+        "first.ts",
+        "--output",
+        "first.yml",
+        "--input",
+        "second.ts",
+        "--output",
+        "second.yml",
+        "--lint",
+      ],
+      io,
+      mockDeps({
+        importModule: async () => ({ default: defineMinimalWorkflow() }),
+        writeOutputFile: async () => {},
+        findExecutable: async () => "/usr/local/bin/actionlint",
+        runCommand: async (command, args) => {
+          runCommandCalls.push({ command, args });
+          return { exitCode: 0, stdout: "", stderr: "" };
+        },
+      })
+    );
+
+    expect(exitCode).toBe(0);
+    expect(runCommandCalls).toHaveLength(1);
+    expect(runCommandCalls[0]!.command).toBe("/usr/local/bin/actionlint");
+    expect(runCommandCalls[0]!.args).toEqual([
+      expect.stringContaining("first.yml"),
+      expect.stringContaining("second.yml"),
+    ]);
+  });
 });
 
 describe("ghawb CLI lint command", () => {
-  function createIo(): CliIo & { stdout_lines: string[]; stderr_lines: string[] } {
-    const stdout_lines: string[] = [];
-    const stderr_lines: string[] = [];
-    return {
-      stdout_lines,
-      stderr_lines,
-      stdout(message: string) {
-        stdout_lines.push(message);
-      },
-      stderr(message: string) {
-        stderr_lines.push(message);
-      },
-    };
-  }
-
-  function mockDeps(
-    overrides: Partial<Omit<CliRunDependencies, keyof CliIo>> = {}
-  ): Partial<Omit<CliRunDependencies, keyof CliIo>> {
-    return {
-      importModule: async () => ({}),
-      writeOutputFile: async () => {},
-      findExecutable: async () => undefined,
-      runCommand: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
-      ...overrides,
-    };
-  }
-
   it("exits non-zero with install instructions when actionlint is not found", async () => {
     const io = createIo();
     const exitCode = await runCliDirect(

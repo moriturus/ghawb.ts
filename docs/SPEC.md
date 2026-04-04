@@ -132,6 +132,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - Load explicitly targeted TypeScript modules rather than scanning project state implicitly
 - Fail clearly when definitions are invalid, incomplete, or not exported as the module default
 - Verify generated workflow files with `actionlint` through a dedicated `lint` command; exit non-zero with actionable install instructions when `actionlint` is not available on `PATH`
+- `ghawb render` and `ghawb render-batch` support an opt-in `--lint` flag that runs the same `actionlint` verification after successful rendering and exits non-zero on missing tooling or lint failures
 
 ### Renderer / Internal Model
 

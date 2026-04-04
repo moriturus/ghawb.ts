@@ -242,6 +242,9 @@ The SDK catches structural and type-level problems at construction time, but it 
 ghawb render --input workflows/ci.ts --output .github/workflows/ci.yml
 ghawb lint .github/workflows/ci.yml
 
+# Render and lint in one step
+ghawb render --input workflows/ci.ts --output .github/workflows/ci.yml --lint
+
 # Lint multiple files
 ghawb lint .github/workflows/*.yml
 ```

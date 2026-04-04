@@ -216,6 +216,7 @@ The SDK covers the majority of the [GitHub Actions workflow syntax](https://docs
 - **Defaults:** `defaults.run` for shell and working-directory
 - **Step metadata:** `id`, `if`, `name`, `shell`, `working-directory`, `with`, `env`, `continue-on-error`, `timeout-minutes`
 - **Typed helpers:** `actionRef()` / `workflowRef()` for validated references, `RunnerLabel` constants for standard runners
+- **Expression helpers:** `expr()`, context accessors (`github`, `env`, `secrets`, `matrix`, `inputs`, `steps`), and status-check functions (`success`, `failure`, `always`, `cancelled`) for type-safe `${{ }}` construction
 - **Identifiers:** branded `WorkflowId` and `JobId` types with format validation
 
 For the full support matrix, see [docs/SYNTAX_COVERAGE.md](docs/SYNTAX_COVERAGE.md).
@@ -223,7 +224,6 @@ For the full support matrix, see [docs/SYNTAX_COVERAGE.md](docs/SYNTAX_COVERAGE.
 ### Not Yet Supported
 
 - Typed action wrappers (e.g. a dedicated `actionsCheckout()` helper)
-- Expression helpers for `${{ }}` construction
 - Composite action definitions (actions-level, not workflow-level)
 - A small number of niche trigger types (`branch_protection_rule`, `deployment_protection_rule`, GitHub App events)
 
@@ -235,13 +235,20 @@ Validated constraints include: required triggers, non-empty job lists, step pres
 
 ### Complementary YAML Validation with actionlint
 
-The SDK catches structural and type-level problems at construction time, but it does not validate the _rendered_ YAML against GitHub's full runtime semantics. For YAML-level static analysis of generated workflow files, use [actionlint](https://github.com/rhysd/actionlint):
+The SDK catches structural and type-level problems at construction time, but it does not validate the _rendered_ YAML against GitHub's full runtime semantics. For YAML-level static analysis of generated workflow files, use the built-in CLI bridge:
 
 ```bash
-# After rendering
+# After rendering, verify the generated YAML with actionlint
 ghawb render --input workflows/ci.ts --output .github/workflows/ci.yml
+ghawb lint .github/workflows/ci.yml
 
-# Validate the generated YAML
+# Lint multiple files
+ghawb lint .github/workflows/*.yml
+```
+
+If `actionlint` is not installed, the CLI will exit with a clear message and installation instructions. You can also invoke [actionlint](https://github.com/rhysd/actionlint) directly:
+
+```bash
 actionlint .github/workflows/ci.yml
 ```
 

@@ -33,19 +33,31 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-### Item 65: Job preset / recipe API
+### Item 65: Job preset / recipe discovery
 
-- Why: Common workflow patterns (Node CI, Bun CI, pnpm install/test) are repeatedly assembled from the same builder calls. A preset or recipe API could reduce boilerplate for standard patterns and bridge the gap between the Cookbook documentation and the SDK API.
-- Prerequisites: None. Benefits from typed action wrappers (Item 61) if available.
-- Implementation Plan: Needs discovery. Design decisions required: preset scope (which patterns), API shape (factory functions vs. builder mixins), relationship to Cookbook recipes, package placement, and whether the right answer is an SDK API at all versus Cookbook-first guidance or a narrower helper layer.
-- Definition of Done: TBD after design scoping.
-- Acceptance Criteria: TBD after design scoping.
-- Story Points: TBD (requires discovery before estimation)
+- Why: The current backlog identifies repeated CI-pattern boilerplate, but the correct solution is still open. The team needs to determine whether the right answer is Cookbook-first guidance, a narrow helper layer, or a broader preset / recipe API before committing implementation work.
+- Prerequisites: None. Benefits from Sprint 18 typed-action and expression-helper work as discovery inputs.
+- Implementation Plan: Compare at least three options for repeated job patterns: Cookbook-only guidance, narrow SDK helpers, and a broader preset / recipe layer. Evaluate candidate patterns (for example Node CI, Bun CI, pnpm install/test), API shape, package placement, interaction with typed action wrappers, relationship to the Cookbook, and architecture risks. Produce a recommendation plus a sprint-safe first implementation slice.
+- Definition of Done: A documented recommendation exists for the preferred direction, the rejected alternatives are recorded briefly, and the resulting first implementation slice is backlog-ready with narrowed scope, acceptance criteria, and estimate.
+- Acceptance Criteria: Discovery explicitly evaluates Cookbook-only guidance, a narrow helper API, and a broader preset / recipe layer. The output identifies the first concrete pattern to implement, the package/API boundary, and the smallest defensible next slice. The follow-up implementation item no longer contains major open design questions.
+- Story Points: 2
 - Status: new
 - Completed At: N/A
-- Notes/Links: Signal from `gpt/new_functions.md` §6. Novel concept — no prior backlog precedent.
+- Notes/Links: Signal from `gpt/new_functions.md` §6. Refined by Sprint 18 review and retrospective decisions to compare API and documentation-first alternatives explicitly.
 
-### Item 66: CLI short flags for render input/output
+### Item 66: Job preset / recipe initial implementation slice
+
+- Why: Once discovery closes the design questions, users still need an actual first reusable recipe or helper for the most repeated workflow pattern. This item converts the discovery result into a concrete product slice.
+- Prerequisites: Item 65.
+- Implementation Plan: Implement the first sprint-safe preset / recipe slice chosen by Item 65. Scope is intentionally limited to one well-defined pattern family, such as a single Node/Bun CI recipe or a narrow helper set, rather than a full preset catalog. Update docs, examples, and tests so the new surface is demonstrably better than hand-assembling the same pattern repeatedly.
+- Definition of Done: The first preset / recipe slice selected by Item 65 exists in code with tests, docs, and code review, and can be used to author at least one repeated workflow pattern with less boilerplate than the current builder-only path.
+- Acceptance Criteria: The implemented slice matches the design output of Item 65, is additive to the existing builder API, and ships with at least one concrete example showing reduced boilerplate. Major unanswered design decisions do not remain inside this implementation slice.
+- Story Points: 3
+- Status: new
+- Completed At: N/A
+- Notes/Links: Follow-up implementation item created by splitting the original Item 65 into discovery and delivery phases.
+
+### Item 67: CLI short flags for render input/output
 
 - Why: `ghawb render` and `ghawb render-batch` currently require verbose `--input` / `--output` flags for every mapping. Short aliases `-i` and `-o` would reduce command noise and make repeated CLI usage less tedious, especially in batch mode and shell snippets.
 - Prerequisites: None. Builds on the existing render and render-batch argument parser.
@@ -57,10 +69,10 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: User-requested CLI ergonomics improvement after Sprint 18.
 
-### Item 67: CLI inferred default output path for render
+### Item 68: CLI inferred default output path for render
 
 - Why: Requiring `--output` for the common case creates friction when the desired destination is the conventional `.github/workflows/<name>.yml`. Inferring the output path from the input filename would make the CLI more convenient for routine repository-local rendering.
-- Prerequisites: Item 66 is adjacent but not technically required. Depends on clarifying the supported inference contract before implementation.
+- Prerequisites: Item 67 is adjacent but not technically required. Depends on clarifying the supported inference contract before implementation.
 - Implementation Plan: Design and implement a default-output rule for `ghawb render` that derives `.github/workflows/<input-basename>.yml` when `--output` is omitted. Clarify whether the same rule applies to `render-batch`, what happens for non-`.ts` inputs, and whether inference is limited to repository-local workflow source paths. Update CLI help text, README, SPEC, and tests.
 - Definition of Done: `ghawb render --input workflows/ci.ts` can emit `.github/workflows/ci.yml` without an explicit `--output`, under a documented and tested inference contract. Documentation and code review completed.
 - Acceptance Criteria: Omitting `--output` on `render` writes to the inferred `.github/workflows/<basename>.yml` path for supported inputs. The inference rule is documented precisely, including error behavior when inference is unsupported or ambiguous. Existing explicit `--output` usage remains unchanged.
@@ -69,7 +81,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: User-requested CLI ergonomics improvement after Sprint 18. Requires a documented contract for output-path inference to avoid implicit behavior drift.
 
-### Item 68: Remaining niche trigger support
+### Item 69: Remaining niche trigger support
 
 - Why: The project still advertises a small set of unsupported trigger types in `README.md` and `docs/SYNTAX_COVERAGE.md`, leaving a visible syntax-coverage gap after the major trigger work is otherwise complete. Closing the remaining niche trigger set would reduce the "mostly complete except for edge cases" status of the SDK.
 - Prerequisites: None. Builds on the existing trigger model/builder/validation/renderer/conformance pattern.
@@ -81,7 +93,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: Intake from README "Not Yet Supported" and `docs/SYNTAX_COVERAGE.md` "Not Yet Supported Triggers".
 
-### Item 69: Composite action definition support
+### Item 70: Composite action definition support
 
 - Why: Composite actions remain the only feature listed under `docs/SYNTAX_COVERAGE.md` "Not Yet Supported Features". Although they are actions-level rather than workflow-level, their absence leaves an obvious capability gap for users who want to author reusable action logic in the same type-safe ecosystem.
 - Prerequisites: Needs design clarification because composite actions sit adjacent to, but outside, the current workflow-focused core contract.

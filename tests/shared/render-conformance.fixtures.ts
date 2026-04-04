@@ -1001,6 +1001,32 @@ export const renderConformanceFixtures: readonly RenderConformanceFixture[] = [
     }
   ),
   createRenderFixture(
+    "branch_protection_rule_with_types",
+    defineWorkflow({
+      id: createWorkflowId("branch_protection_rule_with_types"),
+      name: "Branch Protection Rule",
+    })
+      .onEvent("branch_protection_rule", { types: ["created", "deleted"] })
+      .addJob(createJobId("audit"), (job) => {
+        job.runsOn("ubuntu-latest").run('echo "branch protection changed"');
+      })
+      .build(),
+    {
+      name: "Branch Protection Rule",
+      on: {
+        branch_protection_rule: {
+          types: ["created", "deleted"],
+        },
+      },
+      jobs: {
+        audit: {
+          "runs-on": "ubuntu-latest",
+          steps: [{ run: 'echo "branch protection changed"' }],
+        },
+      },
+    }
+  ),
+  createRenderFixture(
     "pull_request_target_with_types",
     defineWorkflow({
       id: createWorkflowId("pull_request_target_with_types"),
@@ -1878,6 +1904,22 @@ export const validationConformanceFixtures: readonly ValidationConformanceFixtur
     },
     expectedIssues: [
       'job "call" reusable workflow job must not define environment. Only step-based jobs support environment',
+    ],
+  },
+  {
+    name: "branch_protection_rule_unknown_activity_type",
+    build: () =>
+      defineWorkflow({
+        id: createWorkflowId("branch_protection_bad_type"),
+        name: "Branch Protection Bad Type",
+      })
+        .onEvent("branch_protection_rule", { types: ["requested" as "created"] })
+        .addJob(createJobId("audit"), (job) => {
+          job.runsOn("ubuntu-latest").run('echo "branch protection changed"');
+        })
+        .build(),
+    expectedIssues: [
+      'trigger "branch_protection_rule" types contains unknown activity type "requested". Expected: one of "created", "edited", "deleted"',
     ],
   },
   {

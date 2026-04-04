@@ -197,7 +197,7 @@ The CLI dynamically imports your TypeScript module, validates the default export
 
 The SDK covers the majority of the [GitHub Actions workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions):
 
-- **Triggers:** `push`, `pull_request`, `pull_request_target`, `workflow_dispatch`, `workflow_call`, `workflow_run`, `schedule`, and 20+ simple event types with activity-type filtering
+- **Triggers:** `push`, `pull_request`, `pull_request_target`, `workflow_dispatch`, `workflow_call`, `workflow_run`, `schedule`, `branch_protection_rule`, and 20+ simple event types with activity-type filtering
 - **Jobs:** step-based and reusable-workflow jobs with `needs` dependency validation
 - **Steps:** `run` (inline commands), `uses` (action references), script file references with optional expand mode
 - **Strategy:** `matrix` with include/exclude, `fail-fast`, `max-parallel`
@@ -218,7 +218,7 @@ For the full support matrix, see [docs/SYNTAX_COVERAGE.md](docs/SYNTAX_COVERAGE.
 ### Not Yet Supported
 
 - Composite action definitions (actions-level, not workflow-level)
-- A small number of niche trigger types (`branch_protection_rule`, `deployment_protection_rule`, GitHub App events)
+- A few GitHub App-only or deprecated webhook events are not modeled as workflow triggers (`deployment_protection_rule`, `installation*`, classic `project*`)
 
 ## Validation
 

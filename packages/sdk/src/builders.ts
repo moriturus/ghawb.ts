@@ -1837,19 +1837,21 @@ class JobBuilder {
     return this;
   }
 
-  run(command: string, metadata: RunStepMetadata = {}): this {
+  run(command: string, metadata: RunStepMetadata | string = {}): this {
+    const resolved: RunStepMetadata = typeof metadata === "string" ? { name: metadata } : metadata;
     this.jobSteps.push({
       kind: "run",
       run: command,
-      ...cloneRunStepMetadata(metadata),
+      ...cloneRunStepMetadata(resolved),
     });
     return this;
   }
 
   runScript(
     config: Readonly<{ path: string; shell?: string; expand?: boolean }>,
-    metadata: RunStepMetadata = {}
+    metadata: RunStepMetadata | string = {}
   ): this {
+    const resolved: RunStepMetadata = typeof metadata === "string" ? { name: metadata } : metadata;
     if (config.path.trim().length === 0) {
       throw new WorkflowValidationError(['runScript() requires "path" to be a non-empty string.']);
     }
@@ -1885,16 +1887,17 @@ class JobBuilder {
       kind: "run",
       run,
       scriptReference,
-      ...cloneRunStepMetadata(metadata),
+      ...cloneRunStepMetadata(resolved),
     });
     return this;
   }
 
-  uses(action: ActionRef, metadata: StepMetadata = {}): this {
+  uses(action: ActionRef, metadata: StepMetadata | string = {}): this {
+    const resolved: StepMetadata = typeof metadata === "string" ? { name: metadata } : metadata;
     this.jobSteps.push({
       kind: "uses",
       uses: action,
-      ...cloneStepMetadata(metadata),
+      ...cloneStepMetadata(resolved),
     });
     return this;
   }

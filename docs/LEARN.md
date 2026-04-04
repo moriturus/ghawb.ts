@@ -20,6 +20,10 @@ Use this document to capture durable lessons discovered during implementation.
 - Recommendation:
 - Links:
 
+## Dating Convention
+
+Entry dates reflect the UTC date of the git commit that introduced the entry, derived from `git log` evidence. When a lesson is discovered during sprint execution but documented later (e.g., during a retrospective), use the commit date of the documentation change, not the date the lesson was originally encountered.
+
 ## Entries
 
 ### Keep workflow source modules inside the repository when the CLI imports TypeScript directly
@@ -69,7 +73,7 @@ Use this document to capture durable lessons discovered during implementation.
 
 ### Sub-agent prompts must include counter-examples for exactOptionalPropertyTypes
 
-- Date: 2026-04-05
+- Date: 2026-04-01
 - Context: Sprint 8, Item 22 (trigger filter negation and tag filters).
 - What happened: A test-writing sub-agent produced `tagsIgnore: undefined` in a test fixture despite the prompt explicitly warning against it. This is the same class of error that was first documented as a lesson during Sprint 1 and that is reinforced in AGENTS.md. The warning-only approach is not sufficient to prevent the recurrence.
 - Why it matters: Under `exactOptionalPropertyTypes: true`, writing `prop: undefined` for an optional property is a type error. When sub-agents produce this pattern, it requires manual correction after the delegation completes.
@@ -78,7 +82,7 @@ Use this document to capture durable lessons discovered during implementation.
 
 ### Narrow regex capture groups under strict TypeScript
 
-- Date: 2026-04-05
+- Date: 2026-04-01
 - Context: Sprint 8, Item 23 (step identifiers and job output declarations).
 - What happened: The `steps.<id>` referential validation used `String.prototype.matchAll()` to extract step IDs from output value expressions. The regex match group `match[1]` is typed as `string | undefined` under `strictNullChecks`, but the developer initially treated it as `string` without narrowing. The type-check pass caught the error.
 - Why it matters: Regex capture groups always have an `undefined` element type in their match arrays under strict TypeScript, even when the group is not optional in the pattern. Forgetting to narrow creates type errors that are only caught at the type-check stage rather than at authoring time.
@@ -87,7 +91,7 @@ Use this document to capture durable lessons discovered during implementation.
 
 ### Sub-agent prompts must require format-before-verify
 
-- Date: 2026-06-22
+- Date: 2026-04-02
 - Context: Sprint 11, Item 35 (validation diagnostic enrichment).
 - What happened: The sub-agent performing the cross-cutting validation message enrichment did not run `bun run format` before its verification step. The coordinator had to intervene to format the code and verify the result. This is the same class of formatting friction noted in Sprint 9 and Sprint 10.
 - Why it matters: When sub-agents skip formatting, the coordinator loses time debugging whether test failures are logic errors or style violations. For cross-cutting changes that touch many files (Item 35 touched ~70 messages across 3 source files), the formatting delta can be large and confusing.
@@ -96,7 +100,7 @@ Use this document to capture durable lessons discovered during implementation.
 
 ### Sub-agents must not commit temporary test files
 
-- Date: 2026-06-22
+- Date: 2026-04-02
 - Context: Sprint 11, Item 33 (container and services).
 - What happened: The sub-agent committed a stray `test-yaml-render.ts` temporary file alongside the Item 33 deliverables. The coordinator had to `git rm` it and amend the commit.
 - Why it matters: Temporary artifacts in commits create noise in reviews and can break CI if they contain invalid imports or duplicate test names. The cleanup cost is small but avoidable.
@@ -123,7 +127,7 @@ Use this document to capture durable lessons discovered during implementation.
 
 ### Bun runtime accepts mismatched constructor argument types that strict tsc rejects
 
-- Date: 2026-04-06
+- Date: 2026-04-03
 - Context: Sprint 14, Item 47 (run script reference support).
 - What happened: `runScript()` passed a plain `string` to `new WorkflowValidationError(...)` which expects `readonly string[]`. Bun's runtime TypeScript execution accepted this silently, so all local tests passed. CI's `tsc` step (TypeScript 5.9.3 strict mode) caught the type mismatch and failed.
 - Why it matters: Bun transpiles TypeScript to JavaScript without full type checking, so constructor argument mismatches and other type-level errors are invisible at runtime. The CI pipeline runs `tsc` with strict settings, creating a gap between local development and CI.

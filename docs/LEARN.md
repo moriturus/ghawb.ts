@@ -160,3 +160,12 @@ Entry dates reflect the UTC date of the git commit that introduced the entry, de
 - Why it matters: Test helpers with hardcoded embedded values create latent bugs when tests are written independently. The failure message ("expected list-triggers.yml, got shared-build.yml") is confusing because it does not point at the helper as the root cause.
 - Recommendation: Design test helpers to accept explicit parameters for any value they embed in their output (filenames, paths, identifiers). When a helper creates files, require the caller to specify the filename rather than defaulting to a constant.
 - Links: [packages/yaml-import/src/index.test.ts](../packages/yaml-import/src/index.test.ts)
+
+### New workspace packages require manual updates to multiple root configs
+
+- Date: 2025-07-25
+- Context: Sprint 22, Item 75b (migrate nodeCi to @ghawb/job-helpers).
+- What happened: Adding a new workspace package required touching six root-level config files beyond the package itself: `tsconfig.json` (paths), `deno.json` (imports), `vitest.config.ts` (alias + test include), `jsr.json` (workspace array), `package.json` (build:check script), and `bun.lock`/`deno.lock`. The root `package.json` workspace glob (`"packages/*"`) auto-discovers for npm/bun, but all other configs need explicit entries.
+- Why it matters: Forgetting any one of these configs causes subtle failures: missing path aliases break imports, missing vitest includes silently skip tests, missing jsr workspace entries break JSR publishing. A checklist or automation would prevent gaps.
+- Recommendation: When adding a new workspace package, follow a checklist: (1) package scaffolding (package.json, jsr.json, deno.json, tsconfig.build.json, src/index.ts), (2) root tsconfig.json paths, (3) root deno.json imports, (4) vitest.config.ts alias + test include, (5) jsr.json workspace, (6) package.json build:check, (7) bun install + deno cache.
+- Links: [ADR 0006](adrs/0006-migrate-node-ci-helper-to-opt-in-package.md), [packages/job-helpers](../packages/job-helpers/)

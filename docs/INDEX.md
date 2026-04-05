@@ -33,6 +33,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_backlogs/sp19.md](./sprint_backlogs/sp19.md): Sprint 19 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp20.md](./sprint_backlogs/sp20.md): Sprint 20 backlog record, planning notes, and committed items.
 - [sprint_backlogs/sp21.md](./sprint_backlogs/sp21.md): Sprint 21 backlog record, planning notes, and committed items.
+- [sprint_backlogs/sp22.md](./sprint_backlogs/sp22.md): Sprint 22 backlog record, planning notes, and committed items.
 - [scrum_master/BOARD.md](./scrum_master/BOARD.md): Scrum Master owned team-improvement follow-ups in priority order.
 - [scrum_master/PLAYBOOK.md](./scrum_master/PLAYBOOK.md): Scrum Master operating guide for sprint start, planning, and closeout improvements.
 - [TEAM.md](./TEAM.md): Scrum team roles and working personas.
@@ -56,6 +57,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp18.md](./sprint_reviews/sp18.md): Sprint 18 review summary, typed action wrappers, render lint integration, reusable workflow caller-side outputs, expression helper expansion, and Product Owner decision.
 - [sprint_reviews/sp19.md](./sprint_reviews/sp19.md): Sprint 19 review summary, job preset discovery decision, narrow `nodeCi()` helper delivery, and Product Owner decision.
 - [sprint_reviews/sp20.md](./sprint_reviews/sp20.md): Sprint 20 review summary, CLI ergonomics, composite action authoring, typed action wrapper expansion, CI closeout finding, and Product Owner decision.
+- [sprint_reviews/sp21.md](./sprint_reviews/sp21.md): Sprint 21 review summary, workflow-source modernization, Deno compatibility hardening, onboarding documentation expansion, and Product Owner decision.
 - [sprint_retrospectives/sp1.md](./sprint_retrospectives/sp1.md): Sprint 1 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp2.md](./sprint_retrospectives/sp2.md): Sprint 2 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp3.md](./sprint_retrospectives/sp3.md): Sprint 3 retrospective summary, role reflections, and routed improvement actions.
@@ -76,10 +78,13 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp18.md](./sprint_retrospectives/sp18.md): Sprint 18 retrospective summary, role reflections, sub-agent usage threshold, sprint-review evidence expectations, Item 65 discovery framing, and follow-up routing.
 - [sprint_retrospectives/sp19.md](./sprint_retrospectives/sp19.md): Sprint 19 retrospective summary, discovery-first delivery reflections, sprint-branch/closeout process gaps, and follow-up routing.
 - [sprint_retrospectives/sp20.md](./sprint_retrospectives/sp20.md): Sprint 20 retrospective summary, closeout CI discipline, branch cleanup hygiene, workflow contract hardening, and follow-up routing.
+- [sprint_retrospectives/sp21.md](./sprint_retrospectives/sp21.md): Sprint 21 retrospective summary, hardening-first delivery reflections, documentation sync follow-up, yaml-import Deno compatibility debt, and follow-up routing.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 - [adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md): Sprint 19 discovery decision selecting a narrow `@ghawb/sdk` Node CI helper over cookbook-only guidance or a broader preset layer.
 - [adrs/0003-separate-typed-action-wrappers-from-sdk-core.md](./adrs/0003-separate-typed-action-wrappers-from-sdk-core.md): Stakeholder decision keeping typed action core support in `@ghawb/sdk` while moving concrete wrappers into opt-in `@ghawb/typed-actions`.
 - [adrs/0004-separate-composite-action-authoring-from-workflow-sdk.md](./adrs/0004-separate-composite-action-authoring-from-workflow-sdk.md): Sprint 20 discovery decision separating composite action authoring from the workflow SDK and choosing a dedicated CLI action-emitter flow.
+- [adrs/0005-retain-node-ci-helper-in-sdk.md](./adrs/0005-retain-node-ci-helper-in-sdk.md): Sprint 22 initial discovery decision retaining `JobBuilder.nodeCi()` in `@ghawb/sdk` (superseded by ADR 0006).
+- [adrs/0006-migrate-node-ci-helper-to-opt-in-package.md](./adrs/0006-migrate-node-ci-helper-to-opt-in-package.md): Sprint 22 corrected discovery decision migrating `nodeCi()` from `@ghawb/sdk` to opt-in `@ghawb/job-helpers` package.
 - [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
 - [RELEASING.md](../RELEASING.md) — Release workflow and publishing documentation.
 - [SECURITY.md](../SECURITY.md) — Security vulnerability reporting policy.

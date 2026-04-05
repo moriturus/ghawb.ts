@@ -120,13 +120,20 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 | Method | Description |
 |--------|-------------|
 | `.run(script, metadata?)` | Add a run step. |
-| `.nodeCi(options)` | Append a standard Node CI step sequence: checkout, setup-node, install, and test. |
 | `.uses(action, metadata?)` | Add a uses step. Accepts either an `ActionRef` string or a typed action step object. |
 | `.runScript(options, metadata?)` | Add a script file reference step. |
 
 **Step metadata fields:** `name`, `id`, `if`, `env`, `shell`, `with`, `workingDirectory`, `continueOnError`, `timeoutMinutes`.
 
-`nodeCi(options)` requires `nodeVersion` and defaults `install` to `npm ci` plus `test` to `npm test`. Optional `cache` follows the `actions/setup-node` allowlist (`npm`, `pnpm`, `yarn`), and `cacheDependencyPath` accepts either a string or string array.
+### Node CI Helper (`@ghawb/job-helpers`)
+
+```ts
+import { nodeCi } from "@ghawb/job-helpers";
+
+nodeCi(job, options);
+```
+
+`nodeCi(job, options)` appends a standard Node CI step sequence (checkout, setup-node, install, test) to the given job builder. Requires `nodeVersion` and defaults `install` to `npm ci` plus `test` to `npm test`. Optional `cache` follows the `actions/setup-node` allowlist (`npm`, `pnpm`, `yarn`), and `cacheDependencyPath` accepts either a string or string array. Returns the job builder for optional chaining.
 
 ---
 

@@ -7,6 +7,7 @@ This board tracks Scrum Master owned team-improvement follow-up items.
 - (Opened during Sprint 20 retrospective) Add a sprint-closeout check requiring explicit hosted GitHub Actions success confirmation immediately before merging the sprint PR.
 - (Opened during Sprint 20 retrospective) Add a post-closeout cleanup check requiring merged item branches and the sprint branch to be deleted locally and on `origin`.
 - (Opened during Sprint 20 retrospective) Add a closeout check that package-surface changes have been reflected in committed workflow sources and generated workflow YAML before merge.
+- (Opened during Sprint 21 retrospective) Add an item-closeout documentation sync check requiring README, Cookbook, or other onboarding-doc changes to trigger API reference and contributor-doc consistency review before merge.
 - (Opened during Sprint 19 retrospective) Add a sprint-start check requiring the agreed sprint branch to be pushed to `origin` before the first backlog-item PR is opened.
 - (Opened during Sprint 19 retrospective) Add an item-closeout check requiring durable PR/review evidence before a sprint backlog item can be marked `done`.
 - (Opened during Sprint 18 retrospective) Clarify in TEAM.md and/or PLAYBOOK.md that sub-agent or multi-agent collaboration is preferred when it materially helps, but is not mandatory for every small, tightly coupled, sequential sprint item.

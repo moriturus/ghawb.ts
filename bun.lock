@@ -36,6 +36,14 @@
         "@ghawb/shared": "^0.1.0",
       },
     },
+    "packages/job-helpers": {
+      "name": "@ghawb/job-helpers",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ghawb/sdk": "^0.1.0",
+        "@ghawb/shared": "^0.1.0",
+      },
+    },
     "packages/sdk": {
       "name": "@ghawb/sdk",
       "version": "0.1.0",
@@ -171,6 +179,8 @@
     "@ghawb/cli": ["@ghawb/cli@workspace:packages/cli"],
 
     "@ghawb/composite-actions": ["@ghawb/composite-actions@workspace:packages/composite-actions"],
+
+    "@ghawb/job-helpers": ["@ghawb/job-helpers@workspace:packages/job-helpers"],
 
     "@ghawb/sdk": ["@ghawb/sdk@workspace:packages/sdk"],
 

@@ -33,66 +33,6 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-### Item 79: Standardize repository-owned workflows and examples on Node 24 defaults
-
-- Why: The product compatibility policy is already `Node 24+`, but repository-owned workflow sources and public examples still contain older Node 22 defaults. That drift weakens the self-hosting story and makes the most visible examples lag behind the documented runtime contract.
-- Prerequisites: None.
-- Implementation Plan: Audit committed `workflows/*.ts`, README examples, Cookbook examples, and reusable-workflow snippets for Node version defaults, then update the maintained defaults and examples to Node 24 where they represent the current recommended path. Regenerate affected workflow YAML and update any specification text that still embeds older defaults.
-- Definition of Done: Repository-owned workflow sources and maintained public examples consistently use Node 24 as the default version where the project intends to model the recommended path, generated workflow outputs stay in sync, and the change completes with code review.
-- Acceptance Criteria: `workflows/manual-verify.ts` no longer pins Node 22, maintained README/Cookbook examples no longer present Node 22 as the default happy path, generated `.github/workflows/*.yml` outputs are updated when source modules change, and docs/SPEC remain internally consistent with the `Node 24+` compatibility policy.
-- Story Points: 2
-- Status: proposed
-- Completed At: N/A
-- Notes/Links: Intake created from Sprint 23 product discovery and Product Owner reprioritization. Evidence: [Specification](./SPEC.md), [README](../README.md), [Cookbook](./COOKBOOK.md), and committed workflow sources under [`workflows/`](../workflows).
-
-### Item 80: Extend workflow guardrails to enforce current repository authoring conventions
-
-- Why: `bun run verify:workflows` currently proves layout correctness and generated-workflow drift, but it does not enforce the repository's current self-hosting conventions such as the agreed Node default and other maintained workflow-authoring expectations. That leaves convention drift detectable only through manual review.
-- Prerequisites: Item 79. The repository should first settle the current preferred workflow defaults before turning them into automated guardrails.
-- Implementation Plan: Extend the existing workflow guardrail path, or add a closely related command within the same verification surface, so committed workflow source modules are checked against a reviewed set of repository-owned conventions. Keep the scope narrow to the repository's self-hosted workflow contract rather than attempting broad GitHub Actions style linting.
-- Definition of Done: The repository's workflow guardrail path fails when committed workflow sources drift from the reviewed self-hosting conventions, the supported convention set is documented, and the change completes with code review.
-- Acceptance Criteria: At least the maintained Node default and other agreed current workflow-source conventions are checked automatically; the new checks integrate with the existing `verify:workflows` / `verify:pre-push` flow; failures name the drifting source module clearly; and the new guardrail remains scoped to repository-owned workflow conventions rather than generic workflow linting.
-- Story Points: 3
-- Status: proposed
-- Completed At: N/A
-- Notes/Links: Intake created from Sprint 23 product discovery. Evidence: [Sprint 23 Review](./sprint_reviews/sp23.md), [Contributing](./CONTRIBUTING.md), and [`scripts/verify-workflows.ts`](../scripts/verify-workflows.ts).
-
-### Item 81: Fold `render-batch` into `render` and deprecate the batch-specific command
-
-- Why: The current CLI splits workflow rendering across `render` and `render-batch`, but the two commands differ only in whether they accept one target or multiple explicit `--input` / `--output` pairs. That extra command surface increases learning cost without providing a distinct product capability.
-- Prerequisites: None.
-- Implementation Plan: Extend `ghawb render` so it accepts either one target or multiple explicit `--input` / `--output` pairs, preserve the existing single-target output-path inference only when exactly one target is rendered, and keep `render-batch` as a compatibility alias that delegates to the unified `render` path with deprecation guidance.
-- Definition of Done: The primary workflow-rendering contract is a single `render` command that supports both single-target and multi-target authoring flows, compatibility coverage exists for the migrated batch path, documentation is updated, and the change completes with code review.
-- Acceptance Criteria: `ghawb render -i a.ts -o a.yml -i b.ts -o b.yml` succeeds as the supported multi-target path; single-target inference for `workflows/<name>.ts` still works only when a single render target is present; `render-batch` remains available only as a compatibility/deprecation path; tests cover both direct multi-target rendering and the alias behavior; docs and SPEC describe `render` as the canonical command.
-- Story Points: 3
-- Status: proposed
-- Completed At: N/A
-- Notes/Links: Intake created from Product Owner follow-up after Sprint 23 discovery. Rationale: batch-specific command surface is redundant when rendering semantics remain otherwise identical. See [Sprint 23 Review](./sprint_reviews/sp23.md) and [Specification](./SPEC.md).
-
-### Item 82: Unify `render-action` under `render` with explicit kind selection or safe export auto-detection
-
-- Why: Unlike `render-batch`, `render-action` still reflects a real distinction in rendered artifact type and validation behavior, but the long-term CLI can still be simpler if workflow and composite-action rendering converge behind one `render` entrypoint.
-- Prerequisites: Item 81. The workflow rendering contract should be unified first so action unification builds on the final `render` shape rather than on a superseded command split.
-- Implementation Plan: Design and implement a single-entry rendering contract for workflows and composite actions, choosing either an explicit `--kind workflow|action` flag or safe export-type auto-detection as the supported path. Preserve existing validation clarity, keep workflow-only output inference scoped to supported workflow sources, and provide a compatibility path for existing `render-action` callers before eventual removal.
-- Definition of Done: `render` can handle both workflow and composite-action rendering through one reviewed contract, the chosen disambiguation strategy is documented and tested, backward compatibility is handled explicitly, and the change completes with code review.
-- Acceptance Criteria: The unified command makes it clear whether the input is treated as a workflow or composite action; invalid or ambiguous inputs fail with explicit diagnostics; workflow output inference remains limited to the documented `workflows/<name>.ts` path; composite-action output handling remains explicit unless a reviewed replacement is adopted; `render-action` is either a deprecated alias or remains only as a temporary compatibility shim; docs and SPEC reflect the new canonical CLI.
-- Story Points: 5
-- Status: proposed
-- Completed At: N/A
-- Notes/Links: Intake created from Product Owner follow-up after Sprint 23 discovery. This item intentionally keeps the design choice between `--kind` and safe export auto-detection open inside the backlog item because both are plausible unification paths and should be decided during implementation refinement. See [Sprint 23 Review](./sprint_reviews/sp23.md) and [Specification](./SPEC.md).
-
-### Item 83: Design CLI config-manifest support for workflow and action rendering
-
-- Why: Users want to inject render configuration through JSON, YAML, or TOML files, but the CLI does not yet define a stable config schema, precedence order, or command-scope boundary for that capability. The config contract should be designed after the canonical `render` command surface is settled so the first config slice targets the right abstraction.
-- Prerequisites: Item 81. Item 82 may inform the final scope, but this item should at minimum decide whether composite-action rendering is in scope or intentionally deferred for the first config slice.
-- Implementation Plan: Define a CLI-owned config schema and precedence model for render commands, covering allowed target declarations, format support (JSON / YAML / TOML), flag-overrides-config behavior, and explicit out-of-scope cases. Keep the responsibility at the CLI edge rather than expanding the SDK or core renderer into a general config-loading layer.
-- Definition of Done: A reviewed CLI config contract exists for render flows, the scope boundary is documented in SPEC and CLI-facing docs, and the chosen contract is ready to implement without reopening the command-surface decisions from Items 81 and 82.
-- Acceptance Criteria: The config design states how multiple targets are declared, how JSON/YAML/TOML inputs are interpreted, what wins between CLI flags and config values, whether composite-action rendering is supported in the first slice, and which invalid shapes fail explicitly; the design keeps config parsing at the CLI boundary rather than in the SDK.
-- Story Points: 2
-- Status: proposed
-- Completed At: N/A
-- Notes/Links: Intake created from Sprint 23 product discovery and direct user request for config-file injection. Evidence: [`packages/cli/src/index.ts`](../packages/cli/src/index.ts), [ADR 0001](./adrs/0001-record-architecture-principles.md), and [Specification](./SPEC.md).
-
 ### Item 84: Add JSON/YAML/TOML config-file injection support to the CLI render flow
 
 - Why: The CLI currently requires direct command-line declaration of render targets, which is workable for ad hoc usage but repetitive for stable repository workflows. A reviewed config-manifest path would make repeated rendering flows easier to maintain and easier to combine with self-hosted workflow generation.
@@ -103,7 +43,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Story Points: 5
 - Status: proposed
 - Completed At: N/A
-- Notes/Links: Intake created from Sprint 23 product discovery and direct user request for config-file injection. See [Specification](./SPEC.md) and [`packages/cli/src/cli.test.ts`](../packages/cli/src/cli.test.ts).
+- Notes/Links: Intake created from Product Owner follow-up after Sprint 23 discovery and direct user request for config-file injection. See [Specification](./SPEC.md) and [`packages/cli/src/cli.test.ts`](../packages/cli/src/cli.test.ts).
 
 ### Item 85: Resync README, Cookbook, and API-facing docs with the current product contract
 
@@ -115,7 +55,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Story Points: 2
 - Status: proposed
 - Completed At: N/A
-- Notes/Links: Intake created from Sprint 23 product discovery. Evidence: [Sprint 23 Review](./sprint_reviews/sp23.md), [README](../README.md), [Cookbook](./COOKBOOK.md), and [API Reference](./API_REFERENCE.md).
+- Notes/Links: Intake created from Product Owner product discovery. Evidence: [Sprint 23 Review](./sprint_reviews/sp23.md), [README](../README.md), [Cookbook](./COOKBOOK.md), and [API Reference](./API_REFERENCE.md).
 
 ### Item 86: Add automated drift checks for maintained docs and examples
 
@@ -127,11 +67,12 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Story Points: 3
 - Status: proposed
 - Completed At: N/A
-- Notes/Links: Intake created from Sprint 23 product discovery. Evidence: [Sprint 23 Review](./sprint_reviews/sp23.md), [Sprint 23 Retrospective](./sprint_retrospectives/sp23.md), and [Contributing](./CONTRIBUTING.md).
+- Notes/Links: Intake created from Product Owner product discovery. Evidence: [Sprint 23 Review](./sprint_reviews/sp23.md), [Sprint 23 Retrospective](./sprint_retrospectives/sp23.md), and [Contributing](./CONTRIBUTING.md).
 
 ## Notes
 
-- Sprint 23 product-discovery decision: New intake after Sprint 23 created Items 79–86. The Product Owner prioritized repository-owned Node 24 and workflow-convention hardening first (Items 79–80), then CLI surface simplification (Items 81–82), then config-manifest design and implementation (Items 83–84), and finally public-doc sync plus drift protection (Items 85–86).
+- Sprint 24 selection note: Items 79, 80, 81, 82, and 83 were committed to Sprint 24 for a total of 17 SP. The Product Owner prioritized user-facing CLI simplicity and explicit support for both workflow and composite-action flows, while deferring Item 84 to preserve capacity after the refined scope expanded.
+- Sprint 23 product-discovery decision: New intake after Sprint 23 created Items 79–86. The Product Owner prioritized repository-owned Node 24 and workflow-convention hardening first, then CLI surface simplification, then config-manifest design and implementation, and finally public-doc sync plus drift protection.
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.
 - Sprint 16 selection note: Items 51–55 (19 SP total) were committed to Sprint 16 after estimate validation and acceptance-criteria refinement. See [Sprint 16 Backlog](./sprint_backlogs/sp16.md) for committed scope and planning notes.
 - Sprint 17 selection note: Items 57–60 (discovery intake, 6 SP) and Item 56 (prior backlog, 2 SP) were committed to Sprint 17 for a total of 8 SP. Items 57–60 address quality-gate, coverage-enforcement, documentation-accuracy, and date-integrity gaps identified during product discovery as release prerequisites. Items 61–65 were added to the backlog from feature proposals (`gpt/new_functions.md`) but deferred to post-release sprints per PO decision. See [Sprint 17 Backlog](./sprint_backlogs/sp17.md) for committed scope and planning notes.

@@ -81,6 +81,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp19.md](./sprint_retrospectives/sp19.md): Sprint 19 retrospective summary, discovery-first delivery reflections, sprint-branch/closeout process gaps, and follow-up routing.
 - [sprint_retrospectives/sp20.md](./sprint_retrospectives/sp20.md): Sprint 20 retrospective summary, closeout CI discipline, branch cleanup hygiene, workflow contract hardening, and follow-up routing.
 - [sprint_retrospectives/sp21.md](./sprint_retrospectives/sp21.md): Sprint 21 retrospective summary, hardening-first delivery reflections, documentation sync follow-up, yaml-import Deno compatibility debt, and follow-up routing.
+- [sprint_retrospectives/sp23.md](./sprint_retrospectives/sp23.md): Sprint 23 retrospective summary, merge-strategy discipline, branch-state clarity, backlog exhaustion, and follow-up routing.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 - [adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md): Sprint 19 discovery decision selecting a narrow `@ghawb/sdk` Node CI helper over cookbook-only guidance or a broader preset layer.
 - [adrs/0003-separate-typed-action-wrappers-from-sdk-core.md](./adrs/0003-separate-typed-action-wrappers-from-sdk-core.md): Stakeholder decision keeping typed action core support in `@ghawb/sdk` while moving concrete wrappers into opt-in `@ghawb/typed-actions`.

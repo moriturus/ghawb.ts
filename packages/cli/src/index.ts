@@ -307,16 +307,6 @@ export async function runCli(
       return lint ? await runActionlint(renderedOutputs, io, findExecutable, runCommand) : 0;
     }
 
-    if (command === "render-action") {
-      const { targets, lint } = parseRenderArguments(rest);
-      if (targets.length !== 1) {
-        throw new CliUsageError("render-action accepts exactly one input/output pair");
-      }
-      const outputPath = await renderTarget(targets[0]!, importModule, writeOutputFile);
-      io.stdout(`Rendered ${outputPath}`);
-      return lint ? await runActionlint([outputPath], io, findExecutable, runCommand) : 0;
-    }
-
     if (command === "lint") {
       return await runActionlint(rest, io, findExecutable, runCommand);
     }

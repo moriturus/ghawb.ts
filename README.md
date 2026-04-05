@@ -272,7 +272,7 @@ The `@ghawb/cli` package provides the `ghawb` command.
 ghawb render -i workflows/ci.ts
 
 # Render a composite action definition
-ghawb render-action -i actions/setup-bun.ts -o actions/setup-bun/action.yml
+ghawb render -i actions/setup-bun.ts -o actions/setup-bun/action.yml
 
 # Render multiple workflows in one pass
 ghawb render \
@@ -280,7 +280,7 @@ ghawb render \
   -i workflows/deploy.ts  -o .github/workflows/deploy.yml
 ```
 
-The CLI dynamically imports your TypeScript module and renders it to YAML using the bundled YAML adapter. `render` auto-detects workflow or composite-action modules, validates the default export shape for the selected artifact type, and for the supported repository-local workflow path `workflows/<name>.ts` infers `.github/workflows/<name>.yml` when `--output` is omitted. When multiple explicit `--input` / `--output` pairs are provided, `render` processes each pair in order. `render-action` remains a compatibility alias for explicit composite-action rendering.
+The CLI dynamically imports your TypeScript module and renders it to YAML using the bundled YAML adapter. `render` auto-detects workflow or composite-action modules, validates the default export shape for the selected artifact type, and for the supported repository-local workflow path `workflows/<name>.ts` infers `.github/workflows/<name>.yml` when `--output` is omitted. When multiple explicit `--input` / `--output` pairs are provided, `render` processes each pair in order.
 
 ## Supported Features
 
@@ -299,7 +299,7 @@ The SDK covers the majority of the [GitHub Actions workflow syntax](https://docs
 - **Typed helpers:** `actionRef()` / `workflowRef()` for validated references, `RunnerLabel` constants for standard runners
 - **Typed action core:** `typedActionStep()` plus `TypedActionStep` for typed `uses` objects in the SDK
 - **Opt-in typed action wrappers:** `@ghawb/typed-actions` exports typed wrappers for common first-party actions including checkout, cache, setup-node, setup-python, setup-go, setup-java, setup-dotnet, github-script, Pages deployment actions, labeler, and artifact upload/download
-- **Opt-in composite actions:** `@ghawb/composite-actions` exports `defineCompositeAction()` plus a dedicated `ghawb render-action` path for the first composite-action slice (`name`, `description`, `inputs`, `outputs`, and ordered composite `runs.steps`)
+- **Opt-in composite actions:** `@ghawb/composite-actions` exports `defineCompositeAction()` and renders through the canonical `ghawb render` path for the first composite-action slice (`name`, `description`, `inputs`, `outputs`, and ordered composite `runs.steps`)
 - **Expression helpers:** `expr()`, context accessors (`github`, `env`, `secrets`, `matrix`, `inputs`, `steps`, `needs`), status-check functions (`success`, `failure`, `always`, `cancelled`), and comparison/logical helpers (`literal`, `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `and`, `or`, `not`) for type-safe `${{ }}` construction
 - **Identifiers:** branded `WorkflowId` and `JobId` types with format validation
 

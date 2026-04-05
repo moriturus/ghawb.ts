@@ -728,19 +728,11 @@ runs:
 `);
   });
 
-  it("requires an explicit output path for render-action", async () => {
-    const io = createIo();
-    const exitCode = await runCliDirect(["render-action", "--input", "action.ts"], io, mockDeps());
-
-    expect(exitCode).toBe(1);
-    expect(io.stderr_lines.join("\n")).toContain("cannot infer default output path");
-  });
-
-  it("accepts short flags for render-action", async () => {
+  it("renders a composite action module through the render command", async () => {
     const io = createIo();
 
     const exitCode = await runCliDirect(
-      ["render-action", "-i", "action.ts", "-o", "action.yml"],
+      ["render", "-i", "action.ts", "-o", "action.yml"],
       io,
       mockDeps({
         importModule: async () => ({
@@ -755,11 +747,11 @@ runs:
     expect(io.stdout_lines.join("\n")).toContain("action.yml");
   });
 
-  it("fails clearly when the input module does not export a built composite action", async () => {
+  it("fails clearly when the input module does not export a built workflow or composite action", async () => {
     const io = createIo();
 
     const exitCode = await runCliDirect(
-      ["render-action", "--input", "action.ts", "--output", "action.yml"],
+      ["render", "--input", "action.ts", "--output", "action.yml"],
       io,
       mockDeps({
         importModule: async () => ({ default: {} }),
@@ -770,6 +762,15 @@ runs:
     expect(io.stderr_lines.join("\n")).toContain(
       "default export must be a built workflow or composite action definition"
     );
+  });
+
+  it("rejects the removed render-action command", async () => {
+    const io = createIo();
+
+    const exitCode = await runCliDirect(["render-action", "--input", "action.ts"], io, mockDeps());
+
+    expect(exitCode).toBe(1);
+    expect(io.stderr_lines.join("\n")).toContain('unknown command "render-action"');
   });
 });
 

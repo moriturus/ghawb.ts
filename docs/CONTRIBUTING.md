@@ -42,4 +42,4 @@ This command fails if the worktree is not clean, including untracked files. It i
 - `bun run verify:pre-push`: run the local pre-push verification path that matches the current hosted CI sequence
 - `bun run check`: run format, lint, type-check, Bun Vitest, and Deno compatibility checks
 - `bun run coverage`: measure `packages/sdk/src/` coverage with Vitest v8 and emit `coverage/lcov.info`
-- `ghawb render --input <workflow.ts> --output <workflow.yml> ...`: render multiple declared workflow modules without repository scanning
+- `ghawb render --input <workflow.ts> --output <workflow.yml> ...`: render workflows or composite-action modules without repository scanning

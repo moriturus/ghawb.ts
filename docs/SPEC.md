@@ -121,7 +121,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - Documenting every GitHub Actions syntax detail up front
 - Defining packaging, versioning, or release automation in detail before the core model exists (now implemented — see [Distribution](#distribution))
 
-Composite action support currently covers only the Sprint 20 initial slice through the separate `@ghawb/composite-actions` package. The CLI now auto-detects workflow versus composite-action modules behind the canonical `ghawb render` command, while `ghawb render-action` remains a compatibility alias for explicit composite-action rendering. Advanced action metadata such as branding and pre/post hooks remains intentionally unsupported.
+Composite action support currently covers only the Sprint 20 initial slice through the separate `@ghawb/composite-actions` package. The CLI auto-detects workflow versus composite-action modules behind the canonical `ghawb render` command. Advanced action metadata such as branding and pre/post hooks remains intentionally unsupported.
 
 ## Planned Core Responsibilities
 

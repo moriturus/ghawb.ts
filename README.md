@@ -15,7 +15,7 @@ const workflow = defineWorkflow({
   .onPush({ branches: ["main"] })
   .onPullRequest({ branches: ["main"] })
   .addJob(createJobId("test"), (job) => {
-    job.runsOn("ubuntu-latest").apply(nodeCi({ nodeVersion: "22" }));
+    job.runsOn("ubuntu-latest").apply(nodeCi({ nodeVersion: "24" }));
   })
   .build();
 
@@ -96,7 +96,7 @@ export default defineWorkflow({
   .addJob(createJobId("build"), (job) => {
     job
       .runsOn("ubuntu-latest")
-      .apply(nodeCi({ nodeVersion: "22" }))
+      .apply(nodeCi({ nodeVersion: "24" }))
       .run("npm run build", "Build");
   })
   .build();
@@ -141,7 +141,7 @@ export default defineWorkflow({
     job
       .runsOn("ubuntu-latest")
       .permissions({ contents: "read" })
-      .apply(nodeCi({ nodeVersion: "22" }));
+      .apply(nodeCi({ nodeVersion: "24" }));
   })
   .build();
 ```
@@ -196,6 +196,8 @@ export default defineWorkflow({
   .build();
 ```
 
+This example shows application test coverage across multiple Node versions; it is independent from the repository's `Node 24+` support floor.
+
 ### Typed Action Wrappers
 
 ```ts
@@ -218,7 +220,7 @@ export default defineWorkflow({
       .uses(actionsCheckout({ fetchDepth: 0 }), "Checkout")
       .uses(
         actionsSetupNode({
-          nodeVersion: "22",
+          nodeVersion: "24",
           cache: "pnpm",
           cacheDependencyPath: ["pnpm-lock.yaml", "packages/*/pnpm-lock.yaml"],
         }),

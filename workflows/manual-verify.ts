@@ -13,7 +13,7 @@ export default defineWorkflow({
       .uses("oven-sh/setup-bun@v2", {
         name: "Setup Bun",
       })
-      .uses(actionsSetupNode({ nodeVersion: "22" }), "Setup Node")
+      .uses(actionsSetupNode({ nodeVersion: "24" }), "Setup Node")
       .uses("denoland/setup-deno@v2", {
         name: "Setup Deno",
         with: {

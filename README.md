@@ -58,6 +58,25 @@ npm install @ghawb/composite-actions    # or pnpm / yarn / bun
 > **Runtime support:** Node 24+, Bun 1.x, Deno 2.x.
 > The SDK and shared packages have zero production dependencies beyond Node built-ins.
 
+## Choose The Right Package
+
+Start with `@ghawb/sdk`, then add opt-in packages only when they solve a real authoring problem for you.
+
+| Package | Use it when | Avoid it when |
+|--------|-------------|---------------|
+| `@ghawb/sdk` | You want typed workflow builders, validation, and deterministic render payloads. | You only need a shell command to render an existing module and do not need to author workflows in code. |
+| `@ghawb/typed-actions` | Repeated action refs like checkout, setup-node, cache, Pages, or artifacts are making raw `with` maps noisy or error-prone. | You mostly use one-off actions whose input surface is too niche to justify a maintained wrapper. |
+| `@ghawb/cli` | You want a command-line path to render workflow or composite-action modules into committed YAML files. | You are embedding rendering inside your own TypeScript process and do not need a CLI entrypoint. |
+| `@ghawb/yaml-import` | You need to call an existing reusable workflow YAML file from `ghawb` without rewriting that reusable workflow into builders immediately. | You are already authoring the reusable workflow in `@ghawb/sdk` and can pass the builder or built definition directly to `usesWorkflow()`. |
+| `@ghawb/composite-actions` | You want to author `action.yml` metadata with the same explicit builder style used for workflows. | You only need workflow authoring; composite actions are a separate opt-in surface. |
+
+Recommended adoption path:
+
+1. Start with `@ghawb/sdk`.
+2. Add `@ghawb/typed-actions` when common first-party actions dominate your workflows.
+3. Add `@ghawb/cli` when you want a repository-local render step that writes committed YAML.
+4. Add `@ghawb/yaml-import` when you are integrating existing reusable workflow YAML instead of rewriting it right away.
+
 ## Quick Start
 
 ### 1. Define a workflow
@@ -86,7 +105,14 @@ npx ghawb render -i workflows/ci.ts
 
 ### 3. Commit both files
 
-Treat the `.yml` as generated output from your TypeScript source.
+Treat the `.yml` as generated output from your TypeScript source. For the supported repository-local path, keep workflow source modules under `workflows/` and generated outputs under `.github/workflows/`.
+
+### 4. Pick the next authoring path
+
+- Want the shortest path for standard Node CI? Stay with `@ghawb/sdk` and use `job.nodeCi()`.
+- Want typed `with` inputs for common actions? Add `@ghawb/typed-actions`.
+- Want a repository command that renders and checks committed YAML? Add `@ghawb/cli`.
+- Need to keep an existing reusable workflow YAML file in the flow? Add `@ghawb/yaml-import`.
 
 ## Examples
 

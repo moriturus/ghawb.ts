@@ -72,7 +72,6 @@ const workflow = defineWorkflow({
 | Method | Description |
 |--------|-------------|
 | `.addJob(id, configureFn)` | Add a step-based job. The callback receives a `JobBuilder`. |
-| `.usesWorkflow(id, source, options?)` | Add a reusable workflow job. `options.outputs` declares caller-side reusable workflow output names when they cannot be inferred from an injected workflow object. |
 
 #### Build
 
@@ -104,14 +103,15 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 | `.outputs(map)` | Declare job outputs. Values reference step outputs. |
 | `.container(config)` | Run steps in a container. |
 | `.services(map)` | Define service containers. |
+| `.usesWorkflow(source, options?)` | Convert this job into a reusable-workflow job. `options.outputs` declares caller-side reusable workflow output names when they cannot be inferred from an injected workflow object. |
 
 ### Strategy
 
 | Method | Description |
 |--------|-------------|
-| `.matrix(axes)` | Define matrix axes. Each key maps to a non-empty string array. |
-| `.matrixInclude(entries)` | Add matrix include entries. |
-| `.matrixExclude(entries)` | Add matrix exclude entries. |
+| `.strategyMatrix(axes)` | Define matrix axes. Each key maps to a non-empty string array. |
+| `.strategyInclude(entries)` | Add matrix include entries. |
+| `.strategyExclude(entries)` | Add matrix exclude entries. |
 | `.failFast(value)` | Control whether to cancel remaining jobs on failure. |
 | `.maxParallel(count)` | Limit concurrent matrix jobs. |
 

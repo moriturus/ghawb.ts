@@ -10,7 +10,7 @@ describe("nodeCi", () => {
     })
       .onPush()
       .addJob(createJobId("test"), (job) => {
-        nodeCi(job.runsOn("ubuntu-latest"), { nodeVersion: "22" });
+        job.runsOn("ubuntu-latest").apply(nodeCi({ nodeVersion: "22" }));
       })
       .build();
 
@@ -53,13 +53,15 @@ describe("nodeCi", () => {
     })
       .onPush()
       .addJob(createJobId("test"), (job) => {
-        nodeCi(job.runsOn("ubuntu-latest"), {
-          nodeVersion: "24",
-          cache: "pnpm",
-          cacheDependencyPath: ["pnpm-lock.yaml", "packages/*/pnpm-lock.yaml"],
-          install: "pnpm install --frozen-lockfile",
-          test: "pnpm test",
-        });
+        job.runsOn("ubuntu-latest").apply(
+          nodeCi({
+            nodeVersion: "24",
+            cache: "pnpm",
+            cacheDependencyPath: ["pnpm-lock.yaml", "packages/*/pnpm-lock.yaml"],
+            install: "pnpm install --frozen-lockfile",
+            test: "pnpm test",
+          })
+        );
       })
       .build();
 
@@ -104,11 +106,13 @@ describe("nodeCi", () => {
     })
       .onPush()
       .addJob(createJobId("test"), (job) => {
-        nodeCi(job.runsOn("ubuntu-latest"), {
-          nodeVersion: "24",
-          cache: "npm",
-          cacheDependencyPath: "package-lock.json",
-        });
+        job.runsOn("ubuntu-latest").apply(
+          nodeCi({
+            nodeVersion: "24",
+            cache: "npm",
+            cacheDependencyPath: "package-lock.json",
+          })
+        );
       })
       .build();
 
@@ -153,7 +157,10 @@ describe("nodeCi", () => {
     })
       .onPush()
       .addJob(createJobId("test"), (job) => {
-        nodeCi(job.runsOn("ubuntu-latest"), { nodeVersion: "22" }).run("npm run lint", "Lint");
+        job
+          .runsOn("ubuntu-latest")
+          .apply(nodeCi({ nodeVersion: "22" }))
+          .run("npm run lint", "Lint");
       })
       .build();
 
@@ -164,6 +171,26 @@ describe("nodeCi", () => {
       kind: "run",
       name: "Lint",
       run: "npm run lint",
+    });
+  });
+
+  it("keeps the positional helper signature for migration compatibility", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("node_ci_legacy"),
+      name: "Node CI Legacy",
+    })
+      .onPush()
+      .addJob(createJobId("test"), (job) => {
+        nodeCi(job.runsOn("ubuntu-latest"), { nodeVersion: "22" });
+      })
+      .build();
+
+    const steps = workflow.jobs[0]!.steps;
+    expect(steps).toHaveLength(4);
+    expect(steps![0]).toEqual({
+      kind: "uses",
+      name: "Checkout",
+      uses: "actions/checkout@v4",
     });
   });
 

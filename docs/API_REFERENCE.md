@@ -101,6 +101,7 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 | `.continueOnError(value)` | Allow the job to continue on step failure. |
 | `.timeoutMinutes(minutes)` | Set job timeout. |
 | `.outputs(map)` | Declare job outputs. Values reference step outputs. |
+| `.apply(helper)` | Apply a generic opt-in job helper and return the job builder for chaining. |
 | `.container(config)` | Run steps in a container. |
 | `.services(map)` | Define service containers. |
 | `.usesWorkflow(source, options?)` | Convert this job into a reusable-workflow job. `options.outputs` declares caller-side reusable workflow output names when they cannot be inferred from an injected workflow object. |
@@ -130,10 +131,10 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 ```ts
 import { nodeCi } from "@ghawb/job-helpers";
 
-nodeCi(job, options);
+job.apply(nodeCi(options));
 ```
 
-`nodeCi(job, options)` appends a standard Node CI step sequence (checkout, setup-node, install, test) to the given job builder. Requires `nodeVersion` and defaults `install` to `npm ci` plus `test` to `npm test`. Optional `cache` follows the `actions/setup-node` allowlist (`npm`, `pnpm`, `yarn`), and `cacheDependencyPath` accepts either a string or string array. Returns the job builder for optional chaining.
+`nodeCi(options)` returns a helper function for `JobBuilder.apply(...)` that appends a standard Node CI step sequence (checkout, setup-node, install, test) to the given job builder. Requires `nodeVersion` and defaults `install` to `npm ci` plus `test` to `npm test`. Optional `cache` follows the `actions/setup-node` allowlist (`npm`, `pnpm`, `yarn`), and `cacheDependencyPath` accepts either a string or string array. Existing `nodeCi(job, options)` calls remain supported as a migration path.
 
 ---
 

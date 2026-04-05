@@ -33,29 +33,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-### Item 77: Harden `@ghawb/yaml-import` Deno compatibility for representative import flows
-
-- Why: Sprint 21 strengthened Deno compatibility evidence for most public entrypoints, but an attempted expansion into `@ghawb/yaml-import` exposed permission-sensitive behavior in the YAML parsing path under Deno. That leaves one public package with less proven Deno compatibility than adjacent surfaces and turns a sprint-discovered issue into explicit product debt.
-- Prerequisites: None. The work should treat the current `@ghawb/yaml-import` behavior as shipped, reproduce the Deno-specific failure mode directly, and decide whether the right fix is implementation hardening, dependency isolation, or an explicit compatibility boundary.
-- Implementation Plan: Reproduce the Deno permission-sensitive parser behavior triggered during representative reusable-workflow import tests, isolate whether the environment access comes from the package integration or the underlying YAML stack, and implement the smallest safe hardening slice. Add targeted Deno coverage for representative `@ghawb/yaml-import` entrypoint usage and document any compatibility boundary that remains intentional after the fix.
-- Definition of Done: The Deno failure mode is reproduced and either fixed or explicitly documented as an intentional boundary, `@ghawb/yaml-import` has representative Deno compatibility coverage aligned with the chosen boundary, affected docs are updated, and the change completes with code review.
-- Acceptance Criteria: The work identifies the concrete cause of the Deno permission-sensitive parser behavior, states whether `@ghawb/yaml-import` remains part of the repository's supported Deno compatibility story, adds at least one targeted Deno verification slice for the package's public entrypoint, and updates contributor or product docs if the supported boundary changes.
-- Story Points: 2
-- Status: new
-- Completed At: N/A
-- Notes/Links: Added from the Sprint 21 retrospective after Deno test-slice expansion work exposed a bounded but confirmed compatibility gap while attempting to cover representative reusable-workflow import flows.
-
-### Item 78: Add a generic `JobBuilder` helper-application hook for opt-in job helpers
-
-- Why: Sprint 22 correctly moved `nodeCi()` out of `@ghawb/sdk` into `@ghawb/job-helpers`, but the resulting `nodeCi(job, options)` call shape is less ergonomic than the prior builder-style method call. The product still wants an explicit, package-safe way to apply opt-in job helpers without falling back to prototype mutation or reintroducing helper-specific methods on the core SDK surface.
-- Prerequisites: Item 75b. The work should treat `@ghawb/job-helpers` as the approved package boundary and preserve the decision not to use TypeScript prototype extension as the integration mechanism.
-- Implementation Plan: Add the smallest safe generic hook on `JobBuilder` for applying externally defined helper functions, then adapt `@ghawb/job-helpers` so `nodeCi()` can be consumed through that hook in builder style (`j.apply(nodeCi({ nodeVersion: "22" }))`). Keep the API additive and explicit, document the chosen naming and usage pattern, and avoid reintroducing helper-specific behavior into `@ghawb/sdk`.
-- Definition of Done: `JobBuilder` exposes a reviewed generic helper-application hook, `nodeCi()` uses that hook from `@ghawb/job-helpers`, the resulting authoring pattern is documented with migration guidance, verification covers the new builder-style usage, and the change completes with code review.
-- Acceptance Criteria: The delivered API lets callers apply opt-in job helpers through a generic `JobBuilder` hook instead of passing the builder as a positional argument, does not rely on prototype mutation or helper-specific SDK methods, keeps `nodeCi()` in `@ghawb/job-helpers`, updates `docs/SPEC.md` and affected public docs, and proves through tests that the supported authoring contract remains intact.
-- Story Points: 3
-- Status: new
-- Completed At: N/A
-- Notes/Links: Added after Sprint 22 closeout as an ergonomics follow-up to the `nodeCi()` package-boundary migration. `apply` is the preferred hook name because it reads as builder transformation and avoids confusion with GitHub Actions `uses`.
+- No active backlog items remain after Sprint 23 planning. New intake should append here after Sprint 23 closes or if Product Owner reprioritization introduces additional work before sprint execution begins.
 
 ## Notes
 
@@ -78,6 +56,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Sprint 22 selection note: Items 75a and 75b were committed to Sprint 22 for a total of 5 SP. `Item 75b` remains gated on the Item 75a discovery outcome, and the Product Owner explicitly chose not to pull Item 77 into Sprint 22 if discovery recommends retaining `nodeCi()` in `@ghawb/sdk`. See [Sprint 22 Backlog](./sprint_backlogs/sp22.md) for committed scope and planning notes.
 - Sprint 22 discovery decision: Item 75a initially recommended retaining `nodeCi()` in `@ghawb/sdk`, but the Product Owner overrode that recommendation based on prior team consensus that `nodeCi()` is too specific for the core SDK. Corrected decision: migrate `nodeCi()` to a new opt-in package `@ghawb/job-helpers`. See [ADR 0005](./adrs/0005-retain-node-ci-helper-in-sdk.md) (superseded) and [ADR 0006](./adrs/0006-migrate-node-ci-helper-to-opt-in-package.md).
 - Sprint 22 delivery note: Sprint 22 delivered all committed scope (Items 75a and 75b, 5/5 SP). `nodeCi()` migrated from `@ghawb/sdk` to `@ghawb/job-helpers` per the corrected discovery decision. PR #92 (Item 75a docs) and PR #93 (Item 75b implementation) both merged into sprint-22 branch. See [Sprint 22 Backlog](./sprint_backlogs/sp22.md).
+- Sprint 23 selection note: Items 77 and 78 were committed to Sprint 23 for a total of 5 SP. The Product Owner intentionally accepts 15 SP of residual capacity because these are the only active backlog items and the repository forbids skipping order or pulling speculative new work into the sprint simply to fill capacity. See [Sprint 23 Backlog](./sprint_backlogs/sp23.md) for committed scope and planning notes.
 
 ## Sprint Backlog Records
 
@@ -103,3 +82,4 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - [Sprint 20 Backlog](./sprint_backlogs/sp20.md)
 - [Sprint 21 Backlog](./sprint_backlogs/sp21.md)
 - [Sprint 22 Backlog](./sprint_backlogs/sp22.md)
+- [Sprint 23 Backlog](./sprint_backlogs/sp23.md)

@@ -58,7 +58,7 @@ export async function generateWorkflows(cwd: string): Promise<readonly WorkflowM
   const renderResult = await runCommand(cwd, "bun", [
     "run",
     "packages/cli/src/bin.ts",
-    "render-batch",
+    "render",
     ...batchArgs,
   ]);
 

@@ -7,9 +7,9 @@ description: Execute a repository sprint backlog under explicit Scrum personas a
 
 ## Overview
 
-Execute the current sprint backlog one item at a time under explicit team personas. Gate execution on backlog readiness first, prefer sub-agent or multi-agent collaboration inside each current item, and keep Product Owner and Scrum Master personas out of implementation work. By default, continue from one backlog item to the next in sprint order until every committed item is `done` or a documented stop condition is hit. A response-turn boundary, status report, or progress summary is not itself a stop condition.
+Execute the current sprint backlog one item at a time under explicit team personas. Gate execution on backlog readiness first, prefer sub-agent or multi-agent collaboration inside each current item, and keep Product Owner and Scrum Master personas out of implementation work. By default, continue from one backlog item to the next in sprint order until every committed item is `done` or a documented stop condition is hit. A response-turn boundary, status report, or progress summary is not itself a stop condition, and it must not pause sprint execution.
 
-Treat user-facing progress reports as non-blocking side effects, not as completion boundaries. After any status update, summary, or item-complete report, immediately resume sprint execution in the same turn unless a listed stop condition is currently true.
+Treat user-facing progress reports as non-blocking side effects, not as completion boundaries. After any status update, summary, or item-complete report, immediately resume sprint execution in the same turn unless a listed stop condition is currently true. If no listed stop condition is present, keep executing instead of stopping.
 
 Each sprint should normally run on a dedicated sprint branch. Each backlog item should normally be delivered on its own feature branch created from the latest sprint branch state, reviewed through its own pull request targeting the sprint branch, and the sprint branch itself should be merged back to `main` only through a final sprint-level pull request.
 
@@ -181,6 +181,8 @@ Stop and report instead of pushing forward when any of these are true:
 
 Anything not listed above is not a stop condition. In particular, reaching a natural response boundary, pausing to summarize progress, or finishing one item while later committed items remain does not authorize stopping sprint execution.
 
+If the current situation does not match one of the stop conditions above, do not stop. Continue to the next executable sprint step and only report a pause when a listed stop condition applies.
+
 Use a conservative interpretation: if there is doubt whether stopping is allowed, continue executing and report the next active step while doing so.
 
 ## Output Contract
@@ -200,3 +202,4 @@ When using this skill, make the sprint state obvious in the response.
 - Do not end the overall response as if the task is complete while a later committed sprint item is still executable.
 - If any DoD evidence is still missing, name the missing evidence and do not present the item as complete.
 - If execution is blocked, stop there and list blockers instead of proposing implementation details.
+- Do not stop for any reason other than the listed stop conditions.

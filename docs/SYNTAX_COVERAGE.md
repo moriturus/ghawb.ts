@@ -250,4 +250,4 @@ All existing raw `string` entry points remain backward compatible. Empty or blan
 
 | Feature | Notes |
 |---------|-------|
-| Advanced composite action features | `@ghawb/composite-actions` now covers the first slice (`name`, `description`, `inputs`, `outputs`, and composite `runs.steps`) through `ghawb render-action`, but branding metadata, pre/post hooks, and other non-core action metadata remain unsupported. |
+| Advanced composite action features | `@ghawb/composite-actions` now covers the first slice (`name`, `description`, `inputs`, `outputs`, and composite `runs.steps`) through the canonical `ghawb render` path, but branding metadata, pre/post hooks, and other non-core action metadata remain unsupported. |

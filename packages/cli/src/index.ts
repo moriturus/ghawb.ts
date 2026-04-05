@@ -36,17 +36,8 @@ interface RenderTarget {
 }
 
 interface RenderCommandOptions {
-  readonly target: RenderTarget;
-  readonly lint: boolean;
-}
-
-interface RenderBatchCommandOptions {
   readonly targets: readonly RenderTarget[];
   readonly lint: boolean;
-}
-
-interface RenderActionCommandOptions {
-  readonly target: RenderTarget;
 }
 
 export class CliUsageError extends Error {
@@ -128,84 +119,32 @@ function inferDefaultRenderOutputPath(inputPath: string): string {
 }
 
 function parseRenderArguments(args: readonly string[]): RenderCommandOptions {
-  let inputPath: string | undefined;
-  let outputPath: string | undefined;
-  let lint = false;
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-
-    if (isInputFlag(arg)) {
-      inputPath = args[index + 1];
-      index += 1;
-      continue;
-    }
-
-    if (isOutputFlag(arg)) {
-      outputPath = args[index + 1];
-      index += 1;
-      continue;
-    }
-
-    if (arg === "--lint") {
-      lint = true;
-      continue;
-    }
-
-    throw new CliUsageError(`unknown argument "${arg}"`);
-  }
-
-  if (!inputPath) {
-    throw new CliUsageError("missing required --input argument");
-  }
-
-  if (!outputPath) {
-    outputPath = inferDefaultRenderOutputPath(inputPath);
-  }
-
-  return { target: { inputPath, outputPath }, lint };
-}
-
-function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandOptions {
   const targets: RenderTarget[] = [];
-  let pendingInputPath: string | undefined;
+  let currentInputPath: string | undefined;
+  let currentOutputPath: string | undefined;
   let lint = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
     if (isInputFlag(arg)) {
-      if (pendingInputPath) {
-        throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
+      if (currentInputPath !== undefined) {
+        if (currentOutputPath === undefined) {
+          throw new CliUsageError(`missing required --output argument for "${currentInputPath}"`);
+        }
+
+        targets.push({ inputPath: currentInputPath, outputPath: currentOutputPath });
+        currentOutputPath = undefined;
       }
 
-      pendingInputPath = args[index + 1];
+      currentInputPath = args[index + 1];
       index += 1;
-
-      if (!pendingInputPath) {
-        throw new CliUsageError("missing required value after --input");
-      }
-
       continue;
     }
 
     if (isOutputFlag(arg)) {
-      const outputPath = args[index + 1];
+      currentOutputPath = args[index + 1];
       index += 1;
-
-      if (!pendingInputPath) {
-        throw new CliUsageError("batch render requires --input before --output");
-      }
-
-      if (!outputPath) {
-        throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
-      }
-
-      targets.push({
-        inputPath: pendingInputPath,
-        outputPath,
-      });
-      pendingInputPath = undefined;
       continue;
     }
 
@@ -217,48 +156,16 @@ function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandO
     throw new CliUsageError(`unknown argument "${arg}"`);
   }
 
-  if (pendingInputPath) {
-    throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
-  }
-
-  if (targets.length === 0) {
-    throw new CliUsageError("missing required batch render targets");
-  }
-
-  return { targets, lint };
-}
-
-function parseRenderActionArguments(args: readonly string[]): RenderActionCommandOptions {
-  let inputPath: string | undefined;
-  let outputPath: string | undefined;
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-
-    if (isInputFlag(arg)) {
-      inputPath = args[index + 1];
-      index += 1;
-      continue;
-    }
-
-    if (isOutputFlag(arg)) {
-      outputPath = args[index + 1];
-      index += 1;
-      continue;
-    }
-
-    throw new CliUsageError(`unknown argument "${arg}"`);
-  }
-
-  if (!inputPath) {
+  if (!currentInputPath) {
     throw new CliUsageError("missing required --input argument");
   }
 
-  if (!outputPath) {
-    throw new CliUsageError("missing required --output argument");
+  if (!currentOutputPath) {
+    currentOutputPath = inferDefaultRenderOutputPath(currentInputPath);
   }
 
-  return { target: { inputPath, outputPath } };
+  targets.push({ inputPath: currentInputPath, outputPath: currentOutputPath });
+  return { targets, lint };
 }
 
 async function defaultImportModule(modulePath: string): Promise<unknown> {
@@ -298,9 +205,7 @@ async function defaultRunCommand(
 
 function usage(): string {
   return [
-    "Usage: ghawb render (--input|-i) <workflow.ts> [(--output|-o) <workflow.yml>] [--lint]",
-    "       ghawb render-batch (--input|-i) <workflow.ts> (--output|-o) <workflow.yml> [(--input|-i) <workflow.ts> (--output|-o) <workflow.yml> ...] [--lint]",
-    "       ghawb render-action (--input|-i) <action.ts> (--output|-o) <action.yml>",
+    "Usage: ghawb render (--input|-i) <workflow.ts> [(--output|-o) <workflow.yml>] [(--input|-i) <workflow.ts> (--output|-o) <workflow.yml> ...] [--lint]",
     "       ghawb lint <file.yml> [<file.yml> ...]",
   ].join("\n");
 }
@@ -313,34 +218,21 @@ async function renderTarget(
   const resolvedInputPath = resolve(target.inputPath);
   const resolvedOutputPath = resolve(target.outputPath);
   const loadedModule = await importModule(resolvedInputPath);
-  const workflow = (loadedModule as { default?: unknown }).default;
+  const entryPoint = (loadedModule as { default?: unknown }).default;
 
-  if (!isWorkflowDefinition(workflow)) {
-    throw new Error("default export must be a built workflow definition");
+  if (isWorkflowDefinition(entryPoint)) {
+    const renderedYaml = renderWorkflow(entryPoint, emitWorkflowYaml);
+    await writeOutputFile(resolvedOutputPath, renderedYaml);
+    return resolvedOutputPath;
   }
 
-  const renderedYaml = renderWorkflow(workflow, emitWorkflowYaml);
-  await writeOutputFile(resolvedOutputPath, renderedYaml);
-  return resolvedOutputPath;
-}
-
-async function renderActionTarget(
-  target: RenderTarget,
-  importModule: CliRunDependencies["importModule"],
-  writeOutputFile: CliRunDependencies["writeOutputFile"]
-): Promise<string> {
-  const resolvedInputPath = resolve(target.inputPath);
-  const resolvedOutputPath = resolve(target.outputPath);
-  const loadedModule = await importModule(resolvedInputPath);
-  const action = (loadedModule as { default?: unknown }).default;
-
-  if (!isCompositeActionDefinition(action)) {
-    throw new Error("default export must be a built composite action definition");
+  if (isCompositeActionDefinition(entryPoint)) {
+    const renderedYaml = renderCompositeAction(entryPoint, emitCompositeActionYaml);
+    await writeOutputFile(resolvedOutputPath, renderedYaml);
+    return resolvedOutputPath;
   }
 
-  const renderedYaml = renderCompositeAction(action, emitCompositeActionYaml);
-  await writeOutputFile(resolvedOutputPath, renderedYaml);
-  return resolvedOutputPath;
+  throw new Error("default export must be a built workflow or composite action definition");
 }
 
 async function runActionlint(
@@ -392,41 +284,27 @@ export async function runCli(
     const [command, ...rest] = args;
 
     if (command === "render") {
-      const { target, lint } = parseRenderArguments(rest);
-      const outputPath = await renderTarget(target, importModule, writeOutputFile);
-      io.stdout(`Rendered ${outputPath}`);
-      return lint ? await runActionlint([outputPath], io, findExecutable, runCommand) : 0;
-    }
-
-    if (command === "render-batch") {
-      const { targets, lint } = parseRenderBatchArguments(rest);
+      const { targets, lint } = parseRenderArguments(rest);
+      const renderedOutputs: string[] = [];
       const failures: string[] = [];
-      const outputPaths: string[] = [];
 
       for (const target of targets) {
         try {
           const outputPath = await renderTarget(target, importModule, writeOutputFile);
-          outputPaths.push(outputPath);
+          renderedOutputs.push(outputPath);
           io.stdout(`Rendered ${outputPath}`);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          failures.push(`${target.inputPath} -> ${target.outputPath}: ${message}`);
+          failures.push(`Render failed: ${target.inputPath} -> ${target.outputPath}\n${message}`);
         }
       }
 
       if (failures.length > 0) {
-        io.stderr(`Batch render failed:\n- ${failures.join("\n- ")}`);
+        io.stderr(failures.join("\n"));
         return 1;
       }
 
-      return lint ? await runActionlint(outputPaths, io, findExecutable, runCommand) : 0;
-    }
-
-    if (command === "render-action") {
-      const { target } = parseRenderActionArguments(rest);
-      const outputPath = await renderActionTarget(target, importModule, writeOutputFile);
-      io.stdout(`Rendered ${outputPath}`);
-      return 0;
+      return lint ? await runActionlint(renderedOutputs, io, findExecutable, runCommand) : 0;
     }
 
     if (command === "lint") {

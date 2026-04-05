@@ -31,6 +31,7 @@ Restate the team's standing working agreements before sprint execution begins.
 - Create or confirm the sprint branch name and base branch before any planning output or item work proceeds.
 - Confirm that each feature branch will be created from the latest sprint branch state.
 - Confirm that item pull requests will target the sprint branch and that the sprint will close through one final sprint-branch-to-`main` pull request.
+- Confirm that each item branch is squashed to a single commit before opening its pull request, and that merging the item pull request into the sprint branch uses `Create a merge commit` rather than squash merging the pull request itself.
 - Confirm which Developer persona is expected to carry the primary implementation responsibility for the current top item.
 - Confirm how sub-agents or multi-agent collaboration will be used first for the current sprint, and which persona owns each delegated slice.
 - Confirm that sprint execution does not stop merely because a response turn ended, a status report was sent, or a progress summary was provided. Execution continues to the next ready item unless a documented stop condition is met.

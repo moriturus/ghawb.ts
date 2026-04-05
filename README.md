@@ -15,7 +15,7 @@ const workflow = defineWorkflow({
   .onPush({ branches: ["main"] })
   .onPullRequest({ branches: ["main"] })
   .addJob(createJobId("test"), (job) => {
-    job.runsOn("ubuntu-latest").apply(nodeCi({ nodeVersion: "22" }));
+    job.runsOn("ubuntu-latest").apply(nodeCi({ nodeVersion: "24" }));
   })
   .build();
 
@@ -44,6 +44,12 @@ For CLI rendering to YAML:
 npm install @ghawb/cli    # or pnpm / yarn / bun
 ```
 
+For the standard Node CI helper path:
+
+```bash
+npm install @ghawb/job-helpers    # or pnpm / yarn / bun
+```
+
 For opt-in typed wrappers around common first-party actions:
 
 ```bash
@@ -66,6 +72,7 @@ Start with `@ghawb/sdk`, then add opt-in packages only when they solve a real au
 | Package                    | Use it when                                                                                                                               | Avoid it when                                                                                                                              |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `@ghawb/sdk`               | You want typed workflow builders, validation, and deterministic render payloads.                                                          | You only need a shell command to render an existing module and do not need to author workflows in code.                                    |
+| `@ghawb/job-helpers`       | You want the standard checkout/setup/install/test Node CI path without repeating common step sequences in every workflow.                 | You need fully custom job steps or action-level control for most workflows.                                                                |
 | `@ghawb/typed-actions`     | Repeated action refs like checkout, setup-node, cache, Pages, or artifacts are making raw `with` maps noisy or error-prone.               | You mostly use one-off actions whose input surface is too niche to justify a maintained wrapper.                                           |
 | `@ghawb/cli`               | You want a command-line path to render workflow or composite-action modules into committed YAML files.                                    | You are embedding rendering inside your own TypeScript process and do not need a CLI entrypoint.                                           |
 | `@ghawb/yaml-import`       | You need to call an existing reusable workflow YAML file from `ghawb` without rewriting that reusable workflow into builders immediately. | You are already authoring the reusable workflow in `@ghawb/sdk` and can pass the builder or built definition directly to `usesWorkflow()`. |
@@ -74,9 +81,10 @@ Start with `@ghawb/sdk`, then add opt-in packages only when they solve a real au
 Recommended adoption path:
 
 1. Start with `@ghawb/sdk`.
-2. Add `@ghawb/typed-actions` when common first-party actions dominate your workflows.
-3. Add `@ghawb/cli` when you want a repository-local render step that writes committed YAML.
-4. Add `@ghawb/yaml-import` when you are integrating existing reusable workflow YAML instead of rewriting it right away.
+2. Add `@ghawb/job-helpers` when you want the default Node 24 CI sequence with minimal boilerplate.
+3. Add `@ghawb/typed-actions` when common first-party actions dominate your workflows.
+4. Add `@ghawb/cli` when you want a repository-local render step that writes committed YAML.
+5. Add `@ghawb/yaml-import` when you are integrating existing reusable workflow YAML instead of rewriting it right away.
 
 ## Quick Start
 
@@ -96,7 +104,7 @@ export default defineWorkflow({
   .addJob(createJobId("build"), (job) => {
     job
       .runsOn("ubuntu-latest")
-      .apply(nodeCi({ nodeVersion: "22" }))
+      .apply(nodeCi({ nodeVersion: "24" }))
       .run("npm run build", "Build");
   })
   .build();
@@ -105,7 +113,7 @@ export default defineWorkflow({
 ### 2. Render to YAML
 
 ```bash
-npx ghawb render -i workflows/ci.ts
+ghawb render --input workflows/ci.ts
 ```
 
 ### 3. Commit both files
@@ -141,7 +149,7 @@ export default defineWorkflow({
     job
       .runsOn("ubuntu-latest")
       .permissions({ contents: "read" })
-      .apply(nodeCi({ nodeVersion: "22" }));
+      .apply(nodeCi({ nodeVersion: "24" }));
   })
   .build();
 ```
@@ -218,7 +226,7 @@ export default defineWorkflow({
       .uses(actionsCheckout({ fetchDepth: 0 }), "Checkout")
       .uses(
         actionsSetupNode({
-          nodeVersion: "22",
+          nodeVersion: "24",
           cache: "pnpm",
           cacheDependencyPath: ["pnpm-lock.yaml", "packages/*/pnpm-lock.yaml"],
         }),
@@ -269,15 +277,18 @@ The `@ghawb/cli` package provides the `ghawb` command.
 
 ```bash
 # Render a single workflow
-ghawb render -i workflows/ci.ts
+ghawb render --input workflows/ci.ts
 
 # Render a composite action definition
-ghawb render -i actions/setup-bun.ts -o actions/setup-bun/action.yml
+ghawb render --input actions/setup-bun.ts --output actions/setup-bun/action.yml
 
 # Render multiple workflows in one pass
 ghawb render \
-  -i workflows/ci.ts      -o .github/workflows/ci.yml \
-  -i workflows/deploy.ts  -o .github/workflows/deploy.yml
+  --input workflows/ci.ts      --output .github/workflows/ci.yml \
+  --input workflows/deploy.ts  --output .github/workflows/deploy.yml
+
+# Render from a config manifest
+ghawb render --config ghawb.render.json
 ```
 
 The CLI dynamically imports your TypeScript module and renders it to YAML using the bundled YAML adapter. `render` auto-detects workflow or composite-action modules, validates the default export shape for the selected artifact type, and for the supported repository-local workflow path `workflows/<name>.ts` infers `.github/workflows/<name>.yml` when `--output` is omitted. When multiple explicit `--input` / `--output` pairs are provided, `render` processes each pair in order.
@@ -324,11 +335,11 @@ The SDK catches structural and type-level problems at construction time, but it 
 
 ```bash
 # After rendering, verify the generated YAML with actionlint
-ghawb render -i workflows/ci.ts
+ghawb render --input workflows/ci.ts
 ghawb lint .github/workflows/ci.yml
 
 # Render and lint in one step
-ghawb render -i workflows/ci.ts --lint
+ghawb render --input workflows/ci.ts --lint
 
 # Lint multiple files
 ghawb lint .github/workflows/*.yml
@@ -348,6 +359,7 @@ Using `ghawb` and `actionlint` together gives you type-safe construction _and_ Y
 packages/
 ├── shared/   Branded identifiers (WorkflowId, JobId) and shared validation errors
 ├── sdk/      Workflow model, fluent builders, validation, deterministic renderer
+├── job-helpers/       Opt-in high-level helpers such as `nodeCi()`
 ├── composite-actions/  Opt-in composite action builder, validation, and renderer
 ├── typed-actions/      Opt-in typed wrappers for common action refs
 ├── yaml-import/        Opt-in reusable-workflow YAML import

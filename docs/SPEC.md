@@ -16,7 +16,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 
 ## Implemented Baseline
 
-- The repository is organized as a workspace with `@ghawb/sdk`, `@ghawb/shared`, `@ghawb/composite-actions`, `@ghawb/typed-actions`, `@ghawb/cli`, and `@ghawb/yaml-import`.
+- The repository is organized as a workspace with `@ghawb/sdk`, `@ghawb/shared`, `@ghawb/job-helpers`, `@ghawb/composite-actions`, `@ghawb/typed-actions`, `@ghawb/cli`, and `@ghawb/yaml-import`.
 - Root developer commands provide linting, formatting, type-checking, and test entrypoints across Bun, Node, and Deno.
 - `@ghawb/shared` owns branded workflow and job identifiers plus validating factories, using the shared identifier format `^[a-zA-Z_][a-zA-Z0-9_-]*$`.
 - `@ghawb/sdk` currently supports a minimal builder-centered workflow model with:
@@ -44,7 +44,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - typed action core support in `@ghawb/sdk` via `TypedActionStep` and `typedActionStep()` so `job.uses(...)` can accept typed `uses` objects without coupling the core builder to concrete action wrapper sets
   - opt-in composite action authoring via `@ghawb/composite-actions`, which keeps actions-level definition state out of the workflow-focused `@ghawb/sdk` package while providing a builder-centered first slice for `name`, optional `description`, optional `inputs`, optional `outputs`, and ordered composite `runs.steps`
   - opt-in typed action wrappers for common first-party actions via `@ghawb/typed-actions`; the package now covers checkout, cache, setup-node, setup-python, setup-go, setup-java, setup-dotnet, github-script, configure-pages, upload-pages-artifact, deploy-pages, labeler, and upload/download-artifact with pinned major refs and typed `with` surfaces; each helper returns a typed action-step object with autocompleted input names and string-serialized `with` values for use with `job.uses(...)`
-- a generic `JobBuilder.apply(helper)` hook for opt-in job helpers, plus a narrow additive Node CI helper in `@ghawb/job-helpers`; the preferred builder-style path is `job.apply(nodeCi({ nodeVersion: "22" }))`, while legacy `nodeCi(job, options)` remains supported for migration; `nodeCi` appends explicit `checkout`, `setup-node`, `install`, and `test` steps to a job builder for the common single-job Node CI path and accepts `NodeCiOptions` with `nodeVersion` (required), `install?`, `test?`, `cache?`, `cacheDependencyPath?`
+- a generic `JobBuilder.apply(helper)` hook for opt-in job helpers, plus a narrow additive Node CI helper in `@ghawb/job-helpers`; the preferred builder-style path is `job.apply(nodeCi({ nodeVersion: "24" }))`, while legacy `nodeCi(job, options)` remains supported for migration; `nodeCi` appends explicit `checkout`, `setup-node`, `install`, and `test` steps to a job builder for the common single-job Node CI path and accepts `NodeCiOptions` with `nodeVersion` (required), `install?`, `test?`, `cache?`, `cacheDependencyPath?`
   - typed reusable-workflow references via `WorkflowRef` template-literal type covering two forms: external (`owner/repo/.github/workflows/file@ref`) and local (`./.github/workflows/file`); factory function `workflowRef()` validates and returns typed values; `build()` validates all reusable-workflow job `uses` values at runtime regardless of entry path
   - steps using either `uses` (typed as `ActionRef`) or `run`
   - step metadata fields `name`, `env`, `with`, `if`, `continue-on-error` (boolean), and `timeout-minutes` (positive integer); the metadata parameter of `uses()`, `run()`, and `runScript()` also accepts a plain `string` as shorthand for `{ name: value }`, e.g., `job.uses("actions/checkout@v4", "Checkout")` is equivalent to `job.uses("actions/checkout@v4", { name: "Checkout" })`; `uses()` also accepts typed action-step objects as its first argument, and when one is used the `with` inputs must come from the typed action object rather than `metadata.with`
@@ -77,11 +77,11 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - injects an emitter function instead of binding the core to a YAML library
   - fails explicitly before emission when unsupported fields are present at runtime
 - The CLI currently:
-  - exposes `ghawb render --input <workflow.ts> [--output <workflow.yml>] ...` with short aliases `-i` and `-o`; when `--output` is omitted, inference is limited to the supported repository-local `workflows/<name>.ts` convention and derives `.github/workflows/<name>.yml`; when multiple explicit `--input` / `--output` pairs are provided, the command renders each pair in order without repository scanning
+  - exposes `ghawb render --input <module.ts> [--output <output.yml>] ...` with short aliases `-i` and `-o`; when `--output` is omitted, inference is limited to the supported repository-local `workflows/<name>.ts` convention and derives `.github/workflows/<name>.yml`; when multiple explicit `--input` / `--output` pairs are provided, the command renders each pair in order without repository scanning
   - exposes `ghawb lint <file.yml> [<file.yml> ...]` for verifying generated workflow YAML files with `actionlint`; when `actionlint` is not found on `PATH`, the CLI exits non-zero with a clear message naming the missing tool and linking to installation instructions
-  - loads a directly specified TypeScript module whose default export is a built workflow definition
+  - loads a directly specified TypeScript module whose default export is a built workflow or composite action definition
   - renders YAML through one concrete adapter backed by the `yaml` Node module
-  - writes deterministic workflow output files and exits non-zero on failure, with multi-target render surfacing partial failures after attempting every declared mapping
+  - writes deterministic workflow or composite-action output files and exits non-zero on failure, with multi-target render surfacing partial failures after attempting every declared mapping
 - The CLI config-manifest contract is intentionally CLI-owned and keeps parsing outside the SDK:
   - `ghawb render` accepts an explicit manifest file through `--config <file>` rather than implicit repository discovery
   - supported manifest formats are JSON, YAML, and TOML

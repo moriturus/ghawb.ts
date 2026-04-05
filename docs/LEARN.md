@@ -26,6 +26,15 @@ Entry dates reflect the UTC date of the git commit that introduced the entry, de
 
 ## Entries
 
+### Guard Deno against parser debug env probes in source-first packages
+
+- Date: 2026-04-05
+- Context: Sprint 23, Item 77 (`@ghawb/yaml-import` Deno compatibility hardening).
+- What happened: The `yaml` package used by `@ghawb/yaml-import` reads `process.env.LOG_TOKENS` and `process.env.LOG_STREAM` inside its parser and composer paths. Under Deno's Node-compat layer, those debug-only checks trigger `--allow-env` permission prompts even for ordinary parse calls.
+- Why it matters: Source-first Deno package entrypoints can inherit surprising permission requirements from transitive Node-oriented dependencies even when the application code itself does not need those permissions.
+- Recommendation: When a source-first package must stay Deno-compatible, inspect transitive dependencies for debug or logging probes against `process.env` and neutralize them in the narrowest possible scope rather than broadening the package's runtime permission requirements.
+- Links: [packages/yaml-import/src/index.ts](../packages/yaml-import/src/index.ts), [tests/deno/public-entrypoints.test.ts](../tests/deno/public-entrypoints.test.ts)
+
 ### Keep workflow source modules inside the repository when the CLI imports TypeScript directly
 
 - Date: 2026-03-29

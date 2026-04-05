@@ -5,6 +5,7 @@ import {
   createWorkflowRenderPayload,
   defineWorkflow,
 } from "@ghawb/sdk";
+import { importReusableWorkflow } from "@ghawb/yaml-import";
 import { defineCompositeAction, renderCompositeAction } from "@ghawb/composite-actions";
 import { actionsCheckout, actionsSetupNode, actionsUploadArtifact } from "@ghawb/typed-actions";
 
@@ -75,4 +76,21 @@ Deno.test("Deno supports composite action rendering through the public package e
     "expected checkout step to be a uses step"
   );
   assert(checkoutStep.uses === "actions/checkout@v4", "expected typed uses payload");
+});
+
+Deno.test({
+  name: "Deno imports reusable workflows through the yaml-import public entrypoint without env permission",
+  permissions: {
+    env: false,
+    read: ["tests/deno/fixtures"],
+  },
+  async fn() {
+    const ref = await importReusableWorkflow(
+      `${Deno.cwd()}/tests/deno/fixtures/yaml-import-shared-build.yml`
+    );
+    assert(
+      ref === "./.github/workflows/yaml-import-shared-build.yml",
+      "expected reusable workflow ref"
+    );
+  },
 });

@@ -1,3 +1,4 @@
+import process from "node:process";
 import { readFile as nodeReadFile } from "node:fs/promises";
 import { basename } from "node:path";
 
@@ -18,6 +19,37 @@ export interface ImportDependencies {
 
 async function defaultReadFile(filePath: string): Promise<string> {
   return nodeReadFile(filePath, "utf8");
+}
+
+function isDenoRuntime(): boolean {
+  return "Deno" in globalThis;
+}
+
+function parseYamlContent(content: string): unknown {
+  if (!isDenoRuntime()) {
+    return parse(content);
+  }
+
+  const envDescriptor = Object.getOwnPropertyDescriptor(process, "env");
+  if (!envDescriptor || !envDescriptor.configurable || !("value" in envDescriptor)) {
+    return parse(content);
+  }
+
+  // yaml probes process.env.LOG_TOKENS / LOG_STREAM for debug logging, which
+  // triggers Deno env permission prompts even for ordinary parse calls.
+  Object.defineProperty(process, "env", {
+    ...envDescriptor,
+    value: {
+      LOG_STREAM: undefined,
+      LOG_TOKENS: undefined,
+    },
+  });
+
+  try {
+    return parse(content);
+  } finally {
+    Object.defineProperty(process, "env", envDescriptor);
+  }
 }
 
 function hasWorkflowCallTrigger(onValue: unknown): boolean {
@@ -72,7 +104,7 @@ export async function importReusableWorkflow(
 
   let parsed: unknown;
   try {
-    parsed = parse(content);
+    parsed = parseYamlContent(content);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new YamlImportError(`Failed to parse YAML in "${filePath}": ${message}`);

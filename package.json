@@ -13,7 +13,7 @@
     "test:vitest": "vitest run",
     "test:vitest:node": "node ./node_modules/vitest/vitest.mjs run",
     "coverage": "vitest run --coverage",
-    "test:deno": "deno test tests/deno",
+    "test:deno": "deno test --allow-read=tests/deno/fixtures tests/deno",
     "lint": "node ./node_modules/oxlint/bin/oxlint -c oxlint.config.ts . --deny-warnings",
     "format": "oxfmt -c oxfmt.config.ts .",
     "format:check": "oxfmt -c oxfmt.config.ts --check .",

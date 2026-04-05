@@ -62,13 +62,13 @@ npm install @ghawb/composite-actions    # or pnpm / yarn / bun
 
 Start with `@ghawb/sdk`, then add opt-in packages only when they solve a real authoring problem for you.
 
-| Package | Use it when | Avoid it when |
-|--------|-------------|---------------|
-| `@ghawb/sdk` | You want typed workflow builders, validation, and deterministic render payloads. | You only need a shell command to render an existing module and do not need to author workflows in code. |
-| `@ghawb/typed-actions` | Repeated action refs like checkout, setup-node, cache, Pages, or artifacts are making raw `with` maps noisy or error-prone. | You mostly use one-off actions whose input surface is too niche to justify a maintained wrapper. |
-| `@ghawb/cli` | You want a command-line path to render workflow or composite-action modules into committed YAML files. | You are embedding rendering inside your own TypeScript process and do not need a CLI entrypoint. |
-| `@ghawb/yaml-import` | You need to call an existing reusable workflow YAML file from `ghawb` without rewriting that reusable workflow into builders immediately. | You are already authoring the reusable workflow in `@ghawb/sdk` and can pass the builder or built definition directly to `usesWorkflow()`. |
-| `@ghawb/composite-actions` | You want to author `action.yml` metadata with the same explicit builder style used for workflows. | You only need workflow authoring; composite actions are a separate opt-in surface. |
+| Package                    | Use it when                                                                                                                               | Avoid it when                                                                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@ghawb/sdk`               | You want typed workflow builders, validation, and deterministic render payloads.                                                          | You only need a shell command to render an existing module and do not need to author workflows in code.                                    |
+| `@ghawb/typed-actions`     | Repeated action refs like checkout, setup-node, cache, Pages, or artifacts are making raw `with` maps noisy or error-prone.               | You mostly use one-off actions whose input surface is too niche to justify a maintained wrapper.                                           |
+| `@ghawb/cli`               | You want a command-line path to render workflow or composite-action modules into committed YAML files.                                    | You are embedding rendering inside your own TypeScript process and do not need a CLI entrypoint.                                           |
+| `@ghawb/yaml-import`       | You need to call an existing reusable workflow YAML file from `ghawb` without rewriting that reusable workflow into builders immediately. | You are already authoring the reusable workflow in `@ghawb/sdk` and can pass the builder or built definition directly to `usesWorkflow()`. |
+| `@ghawb/composite-actions` | You want to author `action.yml` metadata with the same explicit builder style used for workflows.                                         | You only need workflow authoring; composite actions are a separate opt-in surface.                                                         |
 
 Recommended adoption path:
 

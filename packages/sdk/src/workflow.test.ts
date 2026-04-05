@@ -3,10 +3,20 @@ import { expr, needs } from "./expressions.js";
 
 import { createJobId, createWorkflowId, WorkflowValidationError } from "@ghawb/shared";
 
-import { defineWorkflow, createWorkflowRenderPayload, actionRef, workflowRef } from "./index.js";
+import {
+  defineWorkflow,
+  createWorkflowRenderPayload,
+  actionRef,
+  workflowRef,
+  getRenderConfig,
+} from "./index.js";
 import type { ActionRef, ReusableWorkflowJob, StepsJob, WorkflowRef } from "./index.js";
 
 describe("workflow builder", () => {
+  it("returns undefined from getRenderConfig when no render-time config is injected", () => {
+    expect(getRenderConfig()).toBeUndefined();
+  });
+
   it("builds a representative Sprint 1 workflow model", () => {
     const workflow = defineWorkflow({
       id: createWorkflowId("ci"),

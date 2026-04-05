@@ -9,6 +9,7 @@ export {
 } from "@ghawb/shared";
 export {
   defineWorkflow,
+  getRenderConfig,
   JobBuilder,
   WorkflowBuilder,
   type ReusableWorkflowSource,

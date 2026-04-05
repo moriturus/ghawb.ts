@@ -36,7 +36,7 @@ export default defineWorkflow({
   .onPush({ branches: ["main"] })
   .onPullRequest({ branches: ["main"] })
   .addJob(createJobId("test"), (job) => {
-    job.runsOn("ubuntu-latest").apply(nodeCi({ nodeVersion: "22" }));
+    job.runsOn("ubuntu-latest").apply(nodeCi({ nodeVersion: "24" }));
   })
   .build();
 ```
@@ -98,7 +98,7 @@ export default defineWorkflow({
       .uses(actionsCheckout(), "Checkout")
       .uses(
         actionsSetupNode({
-          nodeVersion: "22",
+          nodeVersion: "24",
           cache: "npm",
           cacheDependencyPath: "package-lock.json",
         }),
@@ -202,7 +202,7 @@ export default defineWorkflow({
         description: "Node version to use",
         required: false,
         type: "string",
-        default: "22",
+        default: "24",
       },
     },
     secrets: {
@@ -241,7 +241,7 @@ export default defineWorkflow({
   .onPush({ branches: ["main"] })
   .addJob(createJobId("build"), (job) => {
     job.usesWorkflow(workflowRef("org/shared/.github/workflows/build.yml@main"), {
-      with: { node_version: "22" },
+      with: { node_version: "24" },
       secrets: "inherit",
     });
   })
@@ -297,7 +297,7 @@ const sharedBuild = defineWorkflow({
         description: "Node version",
         required: false,
         type: "string",
-        default: "22",
+        default: "24",
       },
     },
   })
@@ -398,7 +398,7 @@ export default defineWorkflow({
     job
       .runsOn("ubuntu-latest")
       .container({
-        image: "node:22",
+        image: "node:24",
         env: { CI: "true" },
       })
       .services({

@@ -33,45 +33,11 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-### Item 84: Add JSON/YAML/TOML config-file injection support to the CLI render flow
-
-- Why: The CLI currently requires direct command-line declaration of render targets, which is workable for ad hoc usage but repetitive for stable repository workflows. A reviewed config-manifest path would make repeated rendering flows easier to maintain and easier to combine with self-hosted workflow generation.
-- Prerequisites: Item 83.
-- Implementation Plan: Implement the approved config-loading path for JSON, YAML, and TOML manifests, add validation and diagnostics for invalid configs, wire the result into the canonical `render` flow, and cover the supported happy/error paths with CLI tests. Preserve explicit errors and keep SDK/core packages free of config parsing concerns.
-- Definition of Done: The CLI can load supported render configuration files from JSON, YAML, and TOML according to the reviewed contract, tests cover the supported precedence and error behavior, docs are updated, and the change completes with code review.
-- Acceptance Criteria: Equivalent JSON/YAML/TOML manifests drive equivalent render behavior; invalid config structure fails with explicit diagnostics; flag overrides behave exactly as documented; the implementation works with the canonical `render` command shape; and docs/SPEC describe the new supported path clearly.
-- Story Points: 5
-- Status: proposed
-- Completed At: N/A
-- Notes/Links: Intake created from Product Owner follow-up after Sprint 23 discovery and direct user request for config-file injection. See [Specification](./SPEC.md) and [`packages/cli/src/cli.test.ts`](../packages/cli/src/cli.test.ts).
-
-### Item 85: Resync README, Cookbook, and API-facing docs with the current product contract
-
-- Why: Public docs are part of the product surface, and recent discovery confirmed concrete drift across Node defaults, self-hosting examples, and CLI expectations. The repository has already treated docs alignment as a deliverable in sprint review, so the remaining product-discovery output should explicitly track documentation sync work.
-- Prerequisites: Items 79, 81, and any earlier accepted CLI contract changes that materially alter the recommended authoring path.
-- Implementation Plan: Audit README, Cookbook, API reference, and adjacent user-facing docs for contract drift against the shipped implementation and the newly accepted backlog decisions. Update examples, command guidance, package-boundary guidance, and cross-links so the published docs present one consistent product story.
-- Definition of Done: Maintained public docs reflect the current implementation and accepted product decisions, the examples are internally consistent, and the change completes with code review.
-- Acceptance Criteria: README, Cookbook, and API-facing docs align on Node 24 defaults, the canonical render command surface, current package boundaries, and current helper usage patterns; affected cross-links remain correct; and no known public-doc contradiction remains across those maintained surfaces.
-- Story Points: 2
-- Status: proposed
-- Completed At: N/A
-- Notes/Links: Intake created from Product Owner product discovery. Evidence: [Sprint 23 Review](./sprint_reviews/sp23.md), [README](../README.md), [Cookbook](./COOKBOOK.md), and [API Reference](./API_REFERENCE.md).
-
-### Item 86: Add automated drift checks for maintained docs and examples
-
-- Why: Updating docs once is not enough if the repository lacks an automated way to detect when maintained examples drift from the product contract again. Discovery identified repeated value in using repository-owned examples as product proof, so those examples should gain stronger automated protection.
-- Prerequisites: Item 85. The repository should first align the maintained docs with the intended product contract before codifying drift detection against that contract.
-- Implementation Plan: Add a narrow automated verification path for maintained docs and examples, such as snippet-oriented checks, invariant assertions, or other documentation guardrails that fit the repository's tooling. Focus on the highest-value contract surfaces rather than trying to compile or execute every documentation fragment.
-- Definition of Done: The repository has a reviewed automated mechanism that detects drift in the highest-value maintained docs/examples, the new checks are documented, and the change completes with code review.
-- Acceptance Criteria: At least the maintained Node default, canonical render command guidance, and key helper/example conventions are checked automatically in README/Cookbook/API-facing docs; failures are actionable; and the new guardrail integrates cleanly with the repository's existing verification flow without broad speculative tooling.
-- Story Points: 3
-- Status: proposed
-- Completed At: N/A
-- Notes/Links: Intake created from Product Owner product discovery. Evidence: [Sprint 23 Review](./sprint_reviews/sp23.md), [Sprint 23 Retrospective](./sprint_retrospectives/sp23.md), and [Contributing](./CONTRIBUTING.md).
+No active product backlog items remain after Sprint 24 planning. The next active work has been committed into [Sprint 25 Backlog](./sprint_backlogs/sp25.md).
 
 ## Notes
 
-- Sprint 24 selection note: Items 79, 80, 81, 82, and 83 were committed to Sprint 24 for a total of 17 SP. The Product Owner prioritized user-facing CLI simplicity and explicit support for both workflow and composite-action flows, while deferring Item 84 to preserve capacity after the refined scope expanded.
+- Sprint 24 selection note: Sprint 24 kept the standing 20 SP capacity and committed 17 SP, leaving 3 SP residual. The Product Owner prioritized user-facing CLI simplicity and explicit support for both workflow and composite-action flows, while deferring Item 84 to preserve capacity after the refined scope expanded.
 - Sprint 23 product-discovery decision: New intake after Sprint 23 created Items 79–86. The Product Owner prioritized repository-owned Node 24 and workflow-convention hardening first, then CLI surface simplification, then config-manifest design and implementation, and finally public-doc sync plus drift protection.
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.
 - Sprint 16 selection note: Items 51–55 (19 SP total) were committed to Sprint 16 after estimate validation and acceptance-criteria refinement. See [Sprint 16 Backlog](./sprint_backlogs/sp16.md) for committed scope and planning notes.

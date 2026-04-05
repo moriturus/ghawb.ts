@@ -1,4 +1,5 @@
-import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { RunnerLabel, createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { actionsCheckout, actionsSetupNode, actionsUploadArtifact } from "@ghawb/typed-actions";
 
 export default defineWorkflow({
   id: createWorkflowId("ci"),
@@ -17,19 +18,12 @@ export default defineWorkflow({
   .addJob(createJobId("check"), (job) => {
     job
       .permissions({ contents: "read" })
-      .runsOn("ubuntu-latest")
-      .uses("actions/checkout@v4", {
-        name: "Checkout",
-      })
+      .runsOn(RunnerLabel.UbuntuLatest)
+      .uses(actionsCheckout(), "Checkout")
       .uses("oven-sh/setup-bun@v2", {
         name: "Setup Bun",
       })
-      .uses("actions/setup-node@v4", {
-        name: "Setup Node",
-        with: {
-          "node-version": "24",
-        },
-      })
+      .uses(actionsSetupNode({ nodeVersion: "24" }), "Setup Node")
       .uses("denoland/setup-deno@v2", {
         name: "Setup Deno",
         with: {
@@ -51,13 +45,13 @@ export default defineWorkflow({
       .run("bun run coverage", {
         name: "Run SDK Coverage",
       })
-      .uses("actions/upload-artifact@v4", {
-        name: "Upload Coverage Report",
-        with: {
+      .uses(
+        actionsUploadArtifact({
           name: "coverage-lcov",
           path: "coverage/lcov.info",
-        },
-      })
+        }),
+        "Upload Coverage Report"
+      )
       .run("bun run test:vitest:node", {
         name: "Run Node Compatibility Tests",
       })

@@ -1,4 +1,5 @@
-import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { RunnerLabel, createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { actionsCheckout, actionsSetupNode } from "@ghawb/typed-actions";
 
 export default defineWorkflow({
   id: createWorkflowId("release"),
@@ -10,21 +11,19 @@ export default defineWorkflow({
   .permissions("read-all")
   .addJob(createJobId("release"), (job) => {
     job
-      .runsOn("ubuntu-latest")
+      .runsOn(RunnerLabel.UbuntuLatest)
       .permissions({
         contents: "write",
         "pull-requests": "write",
       })
-      .uses("actions/checkout@v4", {
-        name: "Checkout",
-      })
-      .uses("actions/setup-node@v4", {
-        name: "Setup Node",
-        with: {
-          "node-version": "24",
-          "registry-url": "https://registry.npmjs.org",
-        },
-      })
+      .uses(actionsCheckout(), "Checkout")
+      .uses(
+        actionsSetupNode({
+          nodeVersion: "24",
+          registryUrl: "https://registry.npmjs.org",
+        }),
+        "Setup Node"
+      )
       .run("npm install -g @changesets/cli", {
         name: "Install Changesets CLI",
       })

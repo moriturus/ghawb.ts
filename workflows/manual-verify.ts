@@ -1,4 +1,5 @@
-import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { RunnerLabel, createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { actionsCheckout, actionsSetupNode } from "@ghawb/typed-actions";
 
 export default defineWorkflow({
   id: createWorkflowId("manual_verify"),
@@ -7,19 +8,12 @@ export default defineWorkflow({
   .onWorkflowDispatch()
   .addJob(createJobId("verify"), (job) => {
     job
-      .runsOn("ubuntu-latest")
-      .uses("actions/checkout@v4", {
-        name: "Checkout",
-      })
+      .runsOn(RunnerLabel.UbuntuLatest)
+      .uses(actionsCheckout(), "Checkout")
       .uses("oven-sh/setup-bun@v2", {
         name: "Setup Bun",
       })
-      .uses("actions/setup-node@v4", {
-        name: "Setup Node",
-        with: {
-          "node-version": "22",
-        },
-      })
+      .uses(actionsSetupNode({ nodeVersion: "22" }), "Setup Node")
       .uses("denoland/setup-deno@v2", {
         name: "Setup Deno",
         with: {

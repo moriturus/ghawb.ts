@@ -33,53 +33,29 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-### Item 74: Rewrite committed `workflows/` sources to use the latest authoring features
+### Item 75a: Discover package boundary and migration plan for high-level job helpers
 
-- Why: The repository's committed `workflows/*.ts` files are the project's most visible self-hosting examples, but they still reflect older authoring patterns in places. Rewriting them to use the latest stable authoring features would both reduce maintenance friction and turn the repository itself into a stronger proof point for `@ghawb/sdk`, `@ghawb/typed-actions`, and adjacent ergonomics work.
-- Prerequisites: None, but the work should stay aligned with the current supported feature set and should not force new APIs just to make the rewrite possible.
-- Implementation Plan: Audit the committed `workflows/*.ts` modules and refactor them to use the current preferred surfaces where that materially improves clarity or maintenance. Candidate upgrades include `job.nodeCi()`, typed action wrappers from `@ghawb/typed-actions`, current runner-label constants, clearer reusable patterns already supported by the SDK, and removal of stale hand-written step sequences where the newer abstractions are now stable. Regenerate `.github/workflows/*.yml`, update any affected docs, and verify that self-hosting guardrails and hosted-CI-facing workflow contracts remain green.
-- Definition of Done: The committed workflow source modules under `workflows/` consistently reflect the repository's current recommended authoring style where applicable, generated workflow YAML stays in sync, review is complete, and the rewrite does not introduce behavior drift or reduce explicitness.
-- Acceptance Criteria: At least the primary committed CI/publish workflow sources are rewritten to use the latest stable authoring features already shipped by the repository. The generated `.github/workflows/*.yml` files are updated from those sources. `bun run verify:workflows`, `bun run check`, and the relevant Node compatibility verification continue to pass after the rewrite.
+- Why: `nodeCi()` is currently an accepted narrow helper inside `@ghawb/sdk`, but the backlog still contains pressure to move high-level job helpers behind an opt-in package boundary. That change now touches shipped docs, self-hosted workflow guidance, and the repository's recent hardening work, so a fresh discovery slice is needed before implementation reopens the package-boundary decision.
+- Prerequisites: None. Discovery should treat the current `nodeCi()` placement as shipped behavior and should explicitly incorporate the Sprint 19 discovery outcome plus Sprint 21 planning constraints.
+- Implementation Plan: Compare at least three options for the future of high-level job helpers: keep `nodeCi()` in `@ghawb/sdk`, move it to a new opt-in package, or move it into an existing ergonomics-oriented package if that boundary remains coherent. Evaluate migration cost, self-hosted workflow impact, public API stability, documentation churn, and whether the move improves package coherence enough to justify the change. Produce a decision-ready recommendation plus the smallest safe implementation slice if migration is approved.
+- Definition of Done: A documented recommendation exists for the preferred package boundary and migration direction, rejected alternatives are summarized briefly, and any follow-up implementation slice is backlog-ready with no major open design questions.
+- Acceptance Criteria: Discovery explicitly compares the current `@ghawb/sdk` placement against at least two opt-in-boundary alternatives, states whether migration should proceed, explains the impact on self-hosted workflow sources and public docs, and leaves the follow-up implementation item with a concrete migration path or an explicit decision to retain the current boundary.
+- Story Points: 2
+- Status: new
+- Completed At: N/A
+- Notes/Links: Split from original Item 75 during Sprint 21 planning because the repository now applies discovery-first splitting to architecture-adjacent package-boundary work. See [ADR 0002](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md), [Sprint 19 Retrospective](./sprint_retrospectives/sp19.md), and [Sprint 21 Backlog](./sprint_backlogs/sp21.md).
+
+### Item 75b: Implement the approved high-level helper package migration slice
+
+- Why: If discovery concludes that high-level job helpers should move out of `@ghawb/sdk`, the repository still needs a carefully scoped implementation slice that performs the migration without breaking the supported authoring contract.
+- Prerequisites: Item 75a.
+- Implementation Plan: Implement the Item 75a decision using the smallest safe migration slice. Move `nodeCi()` or its approved equivalent behind the selected package boundary only if discovery approves the change, provide the agreed migration path for existing users, update self-hosted workflow examples and docs, and verify that the resulting surface preserves the repository's explicit-authoring model without drifting into a broader preset framework.
+- Definition of Done: The package-boundary change chosen by Item 75a is implemented with documentation, migration guidance, self-hosted example updates, verification, and code review completed, and the delivered slice does not leave major open design questions unresolved.
+- Acceptance Criteria: The implemented migration matches the package-boundary decision from Item 75a, ships with explicit migration guidance for current users, updates `docs/SPEC.md`, API docs, and any affected self-hosted workflow sources, and proves through verification that the supported authoring contract remains intact.
 - Story Points: 3
 - Status: new
 - Completed At: N/A
-- Notes/Links: User-requested backlog intake to modernize self-hosted workflow definitions so repository examples track the current public authoring surface rather than older transitional patterns.
-
-### Item 76: Strengthen Deno compatibility coverage with higher-value test slices
-
-- Why: The repository claims Deno 2.x compatibility and already runs a small Deno test suite, but the documented testing split still treats Deno primarily as smoke-level coverage. That leaves room for runtime-specific regressions in module resolution, package entry points, and representative public API contracts to slip through until late verification.
-- Prerequisites: None. The work should preserve Bun-run Vitest as the primary unit/integration authority unless a separate specification or planning decision explicitly changes the repository-wide testing strategy.
-- Implementation Plan: Audit the current `tests/deno` coverage and add the highest-value Deno-only or Deno-sensitive verification slices beyond the current smoke baseline. Favor explicit compatibility checks for exported package entry points, representative public API authoring flows, and failure modes that have historically differed under Deno's stricter runtime or type-checking behavior. Update quality commands and documentation only where the strengthened Deno contract materially changes contributor expectations.
-- Definition of Done: The repository has materially stronger automated Deno compatibility evidence than the current smoke-oriented baseline, the added tests target concrete cross-runtime risk areas, related documentation is updated where necessary, and the completed change has code review finished by a non-implementing persona.
-- Acceptance Criteria: `tests/deno` covers more than a minimal smoke path and includes at least one additional high-value contract slice beyond the existing render-conformance fixtures; the added Deno tests are reproducible through the repository's documented commands; any changed expectations about Deno's verification role are documented consistently across backlog and contributor-facing docs; and the expanded suite does not weaken existing Bun/Node verification.
-- Story Points: 3
-- Status: new
-- Completed At: N/A
-- Notes/Links: User-requested backlog intake focused on improving Deno-side automated confidence while preserving the repository's current Bun-primary verification model unless explicitly re-decided later.
-
-### Item 73: Enrich README and COOKBOOK for stronger onboarding and recipe coverage
-
-- Why: The current README and COOKBOOK cover the baseline surfaces, but they are still relatively thin as onboarding material. Stronger examples, decision guidance, and recipe coverage would reduce time-to-first-success and make the project easier to evaluate without reading the full specification.
-- Prerequisites: None. May absorb the output of Item 72 if the Product Owner later chooses to sequence documentation work incrementally.
-- Implementation Plan: Expand `README.md` and `docs/COOKBOOK.md` with better onboarding structure, more representative workflow examples, clearer package-boundary guidance, and stronger cross-links into API/SPEC material. Favor practical scenarios over exhaustive repetition, and keep examples aligned with the current public API and supported feature set.
-- Definition of Done: README and COOKBOOK are materially more useful as user-facing onboarding docs, with improved examples, clearer guidance, updated links, and code review completed.
-- Acceptance Criteria: README better explains when to use `@ghawb/sdk`, `@ghawb/typed-actions`, `@ghawb/cli`, and `@ghawb/yaml-import`; COOKBOOK gains additional high-value recipes beyond the current baseline set; examples are internally consistent with the current implementation and documentation set.
-- Story Points: 3
-- Status: new
-- Completed At: N/A
-- Notes/Links: User-requested documentation backlog intake focused on stronger onboarding and recipe depth rather than a single API slice.
-
-### Item 75: Move high-level job helpers such as `nodeCi()` into an opt-in package
-
-- Why: `@ghawb/sdk` is primarily the core workflow AST, builder, validation, and rendering surface. High-specificity job helpers such as `nodeCi()` introduce a more opinionated layer that feels closer to `@ghawb/typed-actions` than to the core SDK boundary. Moving that class of helper into an opt-in package would make the package boundaries more coherent and keep the core SDK focused on workflow primitives plus low-level authoring helpers.
-- Prerequisites: None, but the work should treat the current `nodeCi()` surface as shipped behavior and therefore plan an explicit migration path rather than silently breaking existing users.
-- Implementation Plan: Define the target package boundary for high-level job helpers, likely as a new opt-in package or as part of an existing ergonomics-oriented package if the boundary remains coherent. Move `nodeCi()` behind that package boundary, provide a migration path for current users, update self-hosted workflow examples and docs, and verify that the resulting surface still supports the repository's preferred explicit-authoring model without drifting into a broad preset framework.
-- Definition of Done: High-level job helpers are no longer part of the core `@ghawb/sdk` package surface, an opt-in package boundary and migration story are documented, self-hosted examples and docs use the new import path where appropriate, and review plus verification are complete.
-- Acceptance Criteria: `nodeCi()` or its equivalent is provided through an opt-in package rather than the core SDK. Existing users have a documented migration path. `docs/SPEC.md`, API docs, and any affected self-hosted workflow sources are updated to reflect the new boundary. Verification proves the refactor does not break the supported authoring contract.
-- Story Points: 3
-- Status: new
-- Completed At: N/A
-- Notes/Links: User-requested backlog intake to align high-level job helpers with the same opt-in packaging principle already used for typed action wrappers and composite action authoring.
+- Notes/Links: Follow-up implementation item created by splitting the original Item 75 into discovery and delivery phases during Sprint 21 planning. Execution does not begin unless Item 75a explicitly approves migration away from the current `@ghawb/sdk` placement.
 
 ## Notes
 
@@ -96,6 +72,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Sprint 20 selection note: `Ad hoc A1`, Items 67, 68, 69, 70a, 70b, 71, and 72 were committed to Sprint 20 for a total of 18 SP. The PO inserted the `npm ci` lockfile/workspace repair as an ad hoc readiness item, split Item 70 into a discovery spike plus a first implementation slice, and deferred Item 73 so Sprint 20 keeps a small planning buffer while preserving strict backlog order. See [Sprint 20 Backlog](./sprint_backlogs/sp20.md) for committed scope and planning notes.
 - Sprint 20 review decision: Sprint 20 delivered all committed scope (8/8 items, 18/18 SP) without feature carry-over, and the immediate repository defect from the failing hosted CI closeout was repaired in merged PR #87. The Product Owner has since re-ranked the remaining backlog so hardening-oriented Items 74 and 76 come before Item 73, while the closeout rule still stands that future sprint PRs must wait for hosted GitHub Actions success, not just local verification. See [Sprint 20 Review](./sprint_reviews/sp20.md).
 - Sprint 20 retrospective decision: The Product Owner re-ranked the active backlog after Sprint 20 so hardening work now preempts broader documentation or package-boundary expansion: Item 74 first for self-hosted workflow-definition modernization, Item 76 next for stronger Deno compatibility evidence, then Item 73 documentation expansion, and finally Item 75 package-boundary refactoring. This follows the retrospective guidance to prioritize hardening whenever repository-contract drift is discovered. See [Sprint 20 Retrospective](./sprint_retrospectives/sp20.md).
+- Sprint 21 selection note: Items 74, 76, and 73 were committed to Sprint 21 for a total of 9 SP. The Product Owner intentionally accepts 11 SP of residual capacity rather than mixing unresolved package-boundary work into a hardening-first sprint. Original Item 75 was split into `Item 75a` (discovery) and `Item 75b` (implementation) and both remain in the product backlog behind the committed Sprint 21 scope. See [Sprint 21 Backlog](./sprint_backlogs/sp21.md) for committed scope and planning notes.
 
 ## Sprint Backlog Records
 
@@ -119,3 +96,4 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - [Sprint 18 Backlog](./sprint_backlogs/sp18.md)
 - [Sprint 19 Backlog](./sprint_backlogs/sp19.md)
 - [Sprint 20 Backlog](./sprint_backlogs/sp20.md)
+- [Sprint 21 Backlog](./sprint_backlogs/sp21.md)

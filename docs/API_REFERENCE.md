@@ -72,7 +72,6 @@ const workflow = defineWorkflow({
 | Method | Description |
 |--------|-------------|
 | `.addJob(id, configureFn)` | Add a step-based job. The callback receives a `JobBuilder`. |
-| `.usesWorkflow(id, source, options?)` | Add a reusable workflow job. `options.outputs` declares caller-side reusable workflow output names when they cannot be inferred from an injected workflow object. |
 
 #### Build
 
@@ -104,14 +103,15 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 | `.outputs(map)` | Declare job outputs. Values reference step outputs. |
 | `.container(config)` | Run steps in a container. |
 | `.services(map)` | Define service containers. |
+| `.usesWorkflow(source, options?)` | Convert this job into a reusable-workflow job. `options.outputs` declares caller-side reusable workflow output names when they cannot be inferred from an injected workflow object. |
 
 ### Strategy
 
 | Method | Description |
 |--------|-------------|
-| `.matrix(axes)` | Define matrix axes. Each key maps to a non-empty string array. |
-| `.matrixInclude(entries)` | Add matrix include entries. |
-| `.matrixExclude(entries)` | Add matrix exclude entries. |
+| `.strategyMatrix(axes)` | Define matrix axes. Each key maps to a non-empty string array. |
+| `.strategyInclude(entries)` | Add matrix include entries. |
+| `.strategyExclude(entries)` | Add matrix exclude entries. |
 | `.failFast(value)` | Control whether to cancel remaining jobs on failure. |
 | `.maxParallel(count)` | Limit concurrent matrix jobs. |
 
@@ -122,7 +122,7 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 | `.run(script, metadata?)` | Add a run step. |
 | `.nodeCi(options)` | Append a standard Node CI step sequence: checkout, setup-node, install, and test. |
 | `.uses(action, metadata?)` | Add a uses step. Accepts either an `ActionRef` string or a typed action step object. |
-| `.scriptReference(options, metadata?)` | Add a script file reference step. |
+| `.runScript(options, metadata?)` | Add a script file reference step. |
 
 **Step metadata fields:** `name`, `id`, `if`, `env`, `shell`, `with`, `workingDirectory`, `continueOnError`, `timeoutMinutes`.
 
@@ -134,7 +134,7 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 
 ### `createWorkflowId(value)`
 
-Creates a branded `WorkflowId`. Validates the identifier format: lowercase alphanumeric with hyphens, 1–100 characters, matching `^[a-z][a-z0-9-]*[a-z0-9]$`.
+Creates a branded `WorkflowId`. Validates the shared identifier format `^[a-zA-Z_][a-zA-Z0-9_-]*$`: the value must start with a letter or underscore and may then contain letters, digits, underscores, or hyphens.
 
 ```ts
 import { createWorkflowId } from "@ghawb/sdk";
@@ -286,15 +286,17 @@ expr("github.ref == 'refs/heads/main'");
 
 ### Context Reference Helpers
 
+These helpers return expression fragments such as `github.ref` or `success()`. Wrap them with `expr(...)` when you need a full `${{ ... }}` string.
+
 | Helper | Example Output |
 |--------|---------------|
-| `github(path)` | `${{ github.ref }}` |
-| `env(name)` | `${{ env.CI }}` |
-| `secrets(name)` | `${{ secrets.GITHUB_TOKEN }}` |
-| `matrix(key)` | `${{ matrix.os }}` |
-| `inputs(name)` | `${{ inputs.target }}` |
-| `steps(id).outputs(name)` | `${{ steps.build.outputs.artifact }}` |
-| `needs(jobId).outputs(name)` | `${{ needs.deploy.outputs.artifact_url }}` |
+| `github(path)` | `github.ref` |
+| `env(name)` | `env.CI` |
+| `secrets(name)` | `secrets.GITHUB_TOKEN` |
+| `matrix(key)` | `matrix.os` |
+| `inputs(name)` | `inputs.target` |
+| `steps(id).outputs(name)` | `steps.build.outputs.artifact` |
+| `needs(jobId).outputs(name)` | `needs.deploy.outputs.artifact_url` |
 
 ### Literal And Operator Helpers
 
@@ -317,10 +319,10 @@ expr("github.ref == 'refs/heads/main'");
 
 | Helper | Output |
 |--------|--------|
-| `success()` | `${{ success() }}` |
-| `always()` | `${{ always() }}` |
-| `cancelled()` | `${{ cancelled() }}` |
-| `failure()` | `${{ failure() }}` |
+| `success()` | `success()` |
+| `always()` | `always()` |
+| `cancelled()` | `cancelled()` |
+| `failure()` | `failure()` |
 
 ---
 

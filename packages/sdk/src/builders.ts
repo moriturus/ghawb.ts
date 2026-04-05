@@ -1845,6 +1845,10 @@ export class JobBuilder {
     return this;
   }
 
+  apply(helper: (job: this) => this): this {
+    return helper(this);
+  }
+
   usesWorkflow(
     workflow: ReusableWorkflowSource,
     options: Readonly<{

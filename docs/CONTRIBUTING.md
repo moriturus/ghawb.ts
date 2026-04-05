@@ -20,7 +20,7 @@ Run verification from the repository root on a branch whose worktree is clean an
 `bun run verify:pre-push` wraps that guardrail command and follows the rest of the repository's local pre-push path:
 
 1. `bun run verify:workflows`
-2. `bun run check`
+2. `bun run check` (including `bun run verify:docs`)
 3. `bun run coverage`
 4. `bun run test:vitest:node`
 
@@ -38,8 +38,9 @@ This command fails if the worktree is not clean, including untracked files. It i
 ## Related Commands
 
 - `bun run generate:workflows`: render every committed workflow module under [`workflows/`](../workflows)
+- `bun run verify:docs`: validate the maintained README / Cookbook / API Reference / SPEC contract for Node 24 defaults, canonical render guidance, package boundaries, and helper usage
 - `bun run verify:workflows`: validate workflow-source placement and generated-workflow drift
 - `bun run verify:pre-push`: run the local pre-push verification path that matches the current hosted CI sequence
-- `bun run check`: run format, lint, type-check, Bun Vitest, and Deno compatibility checks
+- `bun run check`: run format, lint, type-check, build checks, docs guardrails, Bun Vitest, and Deno compatibility checks
 - `bun run coverage`: measure `packages/sdk/src/` coverage with Vitest v8 and emit `coverage/lcov.info`
 - `ghawb render --input <workflow.ts> --output <workflow.yml> ...`: render workflows or composite-action modules without repository scanning

@@ -318,7 +318,7 @@ export default defineWorkflow({
       ],
       [
         "render.toml",
-        ['lint = false', "", "[[targets]]", 'input = "workflow.ts"', 'output = "ci.yml"'].join(
+        ["lint = false", "", "[[targets]]", 'input = "workflow.ts"', 'output = "ci.yml"'].join(
           "\n"
         ),
       ],

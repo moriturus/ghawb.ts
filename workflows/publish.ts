@@ -1,4 +1,5 @@
-import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { RunnerLabel, createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { actionsCheckout, actionsSetupNode } from "@ghawb/typed-actions";
 
 export default defineWorkflow({
   id: createWorkflowId("publish"),
@@ -11,18 +12,16 @@ export default defineWorkflow({
   .addJob(createJobId("publish-npm"), (job) => {
     job
       .displayName("Publish to npm")
-      .runsOn("ubuntu-latest")
+      .runsOn(RunnerLabel.UbuntuLatest)
       .permissions({ contents: "read" })
-      .uses("actions/checkout@v4", {
-        name: "Checkout",
-      })
-      .uses("actions/setup-node@v4", {
-        name: "Setup Node",
-        with: {
-          "node-version": "24",
-          "registry-url": "https://registry.npmjs.org",
-        },
-      })
+      .uses(actionsCheckout(), "Checkout")
+      .uses(
+        actionsSetupNode({
+          nodeVersion: "24",
+          registryUrl: "https://registry.npmjs.org",
+        }),
+        "Setup Node"
+      )
       .run("npm ci", {
         name: "Install Dependencies",
       })
@@ -49,14 +48,12 @@ export default defineWorkflow({
   .addJob(createJobId("publish-jsr"), (job) => {
     job
       .displayName("Publish to JSR")
-      .runsOn("ubuntu-latest")
+      .runsOn(RunnerLabel.UbuntuLatest)
       .permissions({
         contents: "read",
         "id-token": "write",
       })
-      .uses("actions/checkout@v4", {
-        name: "Checkout",
-      })
+      .uses(actionsCheckout(), "Checkout")
       .run("npx jsr publish", {
         name: "Publish to JSR",
       });
@@ -65,13 +62,11 @@ export default defineWorkflow({
     job
       .displayName("Create GitHub Release")
       .needs(["publish-npm", "publish-jsr"])
-      .runsOn("ubuntu-latest")
+      .runsOn(RunnerLabel.UbuntuLatest)
       .permissions({
         contents: "write",
       })
-      .uses("actions/checkout@v4", {
-        name: "Checkout",
-      })
+      .uses(actionsCheckout(), "Checkout")
       .run(
         'gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --generate-notes',
         {

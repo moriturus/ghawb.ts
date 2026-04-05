@@ -5,6 +5,7 @@ This board tracks Scrum Master owned team-improvement follow-up items.
 ## Priority-Ordered TODO
 
 - (Opened during Sprint 20 retrospective) Add a sprint-closeout check requiring explicit hosted GitHub Actions success confirmation immediately before merging the sprint PR.
+- (Opened during Sprint 24 retrospective) Add a sprint-closeout check requiring the local sprint branch to match `origin` before the final sprint PR is created.
 - (Opened during Sprint 23 retrospective) Add a closeout check requiring item PRs and the sprint PR to use the repository's expected merge strategy unless an explicit exception is recorded before merge.
 - (Opened during Sprint 20 retrospective) Add a post-closeout cleanup check requiring merged item branches and the sprint branch to be deleted locally and on `origin`.
 - (Opened during Sprint 20 retrospective) Add a closeout check that package-surface changes have been reflected in committed workflow sources and generated workflow YAML before merge.

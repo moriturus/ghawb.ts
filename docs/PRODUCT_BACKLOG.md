@@ -33,30 +33,6 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-### Item 75a: Discover package boundary and migration plan for high-level job helpers
-
-- Why: `nodeCi()` is currently an accepted narrow helper inside `@ghawb/sdk`, but the backlog still contains pressure to move high-level job helpers behind an opt-in package boundary. That change now touches shipped docs, self-hosted workflow guidance, and the repository's recent hardening work, so a fresh discovery slice is needed before implementation reopens the package-boundary decision.
-- Prerequisites: None. Discovery should treat the current `nodeCi()` placement as shipped behavior and should explicitly incorporate the Sprint 19 discovery outcome plus Sprint 21 planning constraints.
-- Implementation Plan: Compare at least three options for the future of high-level job helpers: keep `nodeCi()` in `@ghawb/sdk`, move it to a new opt-in package, or move it into an existing ergonomics-oriented package if that boundary remains coherent. Evaluate migration cost, self-hosted workflow impact, public API stability, documentation churn, and whether the move improves package coherence enough to justify the change. Produce a decision-ready recommendation plus the smallest safe implementation slice if migration is approved.
-- Definition of Done: A documented recommendation exists for the preferred package boundary and migration direction, rejected alternatives are summarized briefly, and any follow-up implementation slice is backlog-ready with no major open design questions.
-- Acceptance Criteria: Discovery explicitly compares the current `@ghawb/sdk` placement against at least two opt-in-boundary alternatives, states whether migration should proceed, explains the impact on self-hosted workflow sources and public docs, and leaves the follow-up implementation item with a concrete migration path or an explicit decision to retain the current boundary.
-- Story Points: 2
-- Status: new
-- Completed At: N/A
-- Notes/Links: Split from original Item 75 during Sprint 21 planning because the repository now applies discovery-first splitting to architecture-adjacent package-boundary work. See [ADR 0002](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md), [Sprint 19 Retrospective](./sprint_retrospectives/sp19.md), and [Sprint 21 Backlog](./sprint_backlogs/sp21.md).
-
-### Item 75b: Implement the approved high-level helper package migration slice
-
-- Why: If discovery concludes that high-level job helpers should move out of `@ghawb/sdk`, the repository still needs a carefully scoped implementation slice that performs the migration without breaking the supported authoring contract.
-- Prerequisites: Item 75a.
-- Implementation Plan: Implement the Item 75a decision using the smallest safe migration slice. Move `nodeCi()` or its approved equivalent behind the selected package boundary only if discovery approves the change, provide the agreed migration path for existing users, update self-hosted workflow examples and docs, and verify that the resulting surface preserves the repository's explicit-authoring model without drifting into a broader preset framework.
-- Definition of Done: The package-boundary change chosen by Item 75a is implemented with documentation, migration guidance, self-hosted example updates, verification, and code review completed, and the delivered slice does not leave major open design questions unresolved.
-- Acceptance Criteria: The implemented migration matches the package-boundary decision from Item 75a, ships with explicit migration guidance for current users, updates `docs/SPEC.md`, API docs, and any affected self-hosted workflow sources, and proves through verification that the supported authoring contract remains intact.
-- Story Points: 3
-- Status: new
-- Completed At: N/A
-- Notes/Links: Follow-up implementation item created by splitting the original Item 75 into discovery and delivery phases during Sprint 21 planning. Execution does not begin unless Item 75a explicitly approves migration away from the current `@ghawb/sdk` placement.
-
 ### Item 77: Harden `@ghawb/yaml-import` Deno compatibility for representative import flows
 
 - Why: Sprint 21 strengthened Deno compatibility evidence for most public entrypoints, but an attempted expansion into `@ghawb/yaml-import` exposed permission-sensitive behavior in the YAML parsing path under Deno. That leaves one public package with less proven Deno compatibility than adjacent surfaces and turns a sprint-discovered issue into explicit product debt.
@@ -87,6 +63,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Sprint 21 selection note: Items 74, 76, and 73 were committed to Sprint 21 for a total of 9 SP. The Product Owner intentionally accepts 11 SP of residual capacity rather than mixing unresolved package-boundary work into a hardening-first sprint. Original Item 75 was split into `Item 75a` (discovery) and `Item 75b` (implementation) and both remain in the product backlog behind the committed Sprint 21 scope. See [Sprint 21 Backlog](./sprint_backlogs/sp21.md) for committed scope and planning notes.
 - Sprint 21 review decision: Sprint 21 delivered all committed scope (Items 74, 76, and 73, 9/9 SP) without carry-over. No active-backlog reprioritization is needed; the next backlog order remains Item 75a followed by Item 75b, and the discovery-first gate on package-boundary work remains in force. See [Sprint 21 Review](./sprint_reviews/sp21.md).
 - Sprint 21 retrospective decision: Sprint 21 validated the hardening-first delivery order and did not justify reprioritizing the active backlog ahead of Item 75a. The Product Owner appended Item 77 as a separate follow-up for the bounded `@ghawb/yaml-import` Deno compatibility gap discovered during Sprint 21, behind the standing active order of Item 75a then Item 75b. See [Sprint 21 Retrospective](./sprint_retrospectives/sp21.md).
+- Sprint 22 selection note: Items 75a and 75b were committed to Sprint 22 for a total of 5 SP. `Item 75b` remains gated on the Item 75a discovery outcome, and the Product Owner explicitly chose not to pull Item 77 into Sprint 22 if discovery recommends retaining `nodeCi()` in `@ghawb/sdk`. See [Sprint 22 Backlog](./sprint_backlogs/sp22.md) for committed scope and planning notes.
 
 ## Sprint Backlog Records
 
@@ -111,3 +88,4 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - [Sprint 19 Backlog](./sprint_backlogs/sp19.md)
 - [Sprint 20 Backlog](./sprint_backlogs/sp20.md)
 - [Sprint 21 Backlog](./sprint_backlogs/sp21.md)
+- [Sprint 22 Backlog](./sprint_backlogs/sp22.md)

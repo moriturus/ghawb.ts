@@ -116,6 +116,49 @@ export default defineWorkflow({
 ghawb render --input workflows/ci.ts
 ```
 
+You can inject per-target authoring config into the module at render time:
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow, getRenderConfig } from "@ghawb/sdk";
+
+const config = getRenderConfig<{ onPushBranches?: string[] }>();
+
+export default defineWorkflow({
+  id: createWorkflowId("ci"),
+  name: "CI",
+})
+  .onPush({ branches: config?.onPushBranches ?? ["main"] })
+  .addJob(createJobId("build"), (job) => {
+    job.runsOn("ubuntu-latest").run("bun test");
+  })
+  .build();
+```
+
+```bash
+ghawb render \
+  --input workflows/ci.ts \
+  --config ci.render.json \
+  --output .github/workflows/ci.yml
+```
+
+Supported injected config formats are JSON, YAML, and TOML. `--config` applies to the immediately preceding `--input`, so multi-target renders can pass different config files per module:
+
+```bash
+ghawb render \
+  --input workflows/release.ts \
+  --config release.json \
+  --output .github/workflows/release.yml \
+  --input workflows/hotfix.ts \
+  --config hotfix.toml \
+  --output .github/workflows/hotfix.yml
+```
+
+If you want to declare many render targets in one file, use `--bulk`:
+
+```bash
+ghawb render --bulk ghawb.render.json
+```
+
 ### 3. Commit both files
 
 Treat the `.yml` as generated output from your TypeScript source. For the supported repository-local path, keep workflow source modules under `workflows/` and generated outputs under `.github/workflows/`.

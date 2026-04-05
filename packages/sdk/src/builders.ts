@@ -74,6 +74,20 @@ import {
 
 export type ReusableWorkflowSource = WorkflowRef | WorkflowBuilder | WorkflowDefinition;
 
+const RENDER_CONFIG_SYMBOL = Symbol.for("@ghawb/sdk/render-config");
+
+interface RenderConfigGlobal {
+  [RENDER_CONFIG_SYMBOL]?: unknown;
+}
+
+function renderConfigStore(): RenderConfigGlobal {
+  return globalThis as RenderConfigGlobal;
+}
+
+export function getRenderConfig<T = unknown>(): T | undefined {
+  return renderConfigStore()[RENDER_CONFIG_SYMBOL] as T | undefined;
+}
+
 interface WorkflowStepDraft extends StepMetadata {
   readonly kind: "run" | "uses";
   readonly run?: string;

@@ -29,7 +29,7 @@ const FILE_CONTRACTS: readonly FileContract[] = [
       },
       {
         description: "config manifest guidance",
-        pattern: /ghawb render --config ghawb\.render\.json/u,
+        pattern: /ghawb render --bulk ghawb\.render\.json/u,
       },
       {
         description: "@ghawb\\/job-helpers package guidance",
@@ -88,11 +88,12 @@ const FILE_CONTRACTS: readonly FileContract[] = [
       },
       {
         description: "canonical render contract",
-        pattern: /ghawb render --input <module\.ts> \[--output <output\.yml>\]/u,
+        pattern: /ghawb render.*--bulk.*--input <module\.ts>.*--config <data/u,
       },
       {
         description: "config manifest contract",
-        pattern: /ghawb render` accepts an explicit manifest file through `--config <file>`/u,
+        pattern:
+          /ghawb render` accepts an explicit render-plan manifest file through `--bulk <file>`/u,
       },
     ],
   },

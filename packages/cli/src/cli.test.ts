@@ -328,7 +328,7 @@ export default defineWorkflow({
       const io = createIo();
       const writeCalls: string[] = [];
       const exitCode = await runCliDirect(
-        ["render", "--config", configPath],
+        ["render", "--bulk", configPath],
         io,
         mockDeps({
           readFile: async (path) => configByPath.get(path) ?? "",
@@ -351,7 +351,7 @@ export default defineWorkflow({
     const writeCalls: string[] = [];
 
     const exitCode = await runCliDirect(
-      ["render", "--config", "render.json"],
+      ["render", "--bulk", "render.json"],
       io,
       mockDeps({
         readFile: async () =>
@@ -386,7 +386,7 @@ export default defineWorkflow({
     const exitCode = await runCliDirect(
       [
         "render",
-        "--config",
+        "--bulk",
         "render.json",
         "--input",
         "override.ts",
@@ -425,7 +425,7 @@ export default defineWorkflow({
     const io = createIo();
 
     const exitCode = await runCliDirect(
-      ["render", "--config", "render.yaml"],
+      ["render", "--bulk", "render.yaml"],
       io,
       mockDeps({
         readFile: async () => ["targets:", "  - input: workflow.ts"].join("\n"),
@@ -442,7 +442,7 @@ export default defineWorkflow({
     const io = createIo();
 
     const exitCode = await runCliDirect(
-      ["render", "--config", "missing.json"],
+      ["render", "--bulk", "missing.json"],
       io,
       mockDeps({
         readFile: async () => {
@@ -460,7 +460,7 @@ export default defineWorkflow({
     const io = createIo();
 
     const exitCode = await runCliDirect(
-      ["render", "--config", "render.ini"],
+      ["render", "--bulk", "render.ini"],
       io,
       mockDeps({
         readFile: async () => "ignored=true",
@@ -477,7 +477,7 @@ export default defineWorkflow({
     const writeCalls: string[] = [];
 
     const exitCode = await runCliDirect(
-      ["render", "--config", "render.toml"],
+      ["render", "--bulk", "render.toml"],
       io,
       mockDeps({
         readFile: async () =>
@@ -500,6 +500,278 @@ export default defineWorkflow({
     expect(exitCode).toBe(0);
     expect(io.stderr_lines).toEqual([]);
     expect(writeCalls).toEqual([expect.stringContaining("ci.yml")]);
+  });
+
+  it("injects per-target config from a --bulk manifest", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const inputPath = join(tempDir, "workflow.ts");
+    const firstConfigPath = join(tempDir, "first.json");
+    const secondConfigPath = join(tempDir, "second.json");
+    const manifestPath = join(tempDir, "render.json");
+    const firstOutputPath = join(tempDir, "first.yml");
+    const secondOutputPath = join(tempDir, "second.yml");
+
+    await writeFile(
+      inputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow, getRenderConfig } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+const config = getRenderConfig<{ branch: string }>();
+
+export default defineWorkflow({
+  id: createWorkflowId('ci'),
+  name: config?.branch ?? 'CI',
+})
+  .onPush({
+    branches: [config?.branch ?? 'main'],
+  })
+  .addJob(createJobId('test'), (job) => {
+    job.runsOn('ubuntu-latest').run('echo ok');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    await writeFile(firstConfigPath, JSON.stringify({ branch: "release" }), "utf8");
+    await writeFile(secondConfigPath, JSON.stringify({ branch: "hotfix" }), "utf8");
+    await writeFile(
+      manifestPath,
+      JSON.stringify({
+        targets: [
+          { input: inputPath, config: firstConfigPath, output: firstOutputPath },
+          { input: inputPath, config: secondConfigPath, output: secondOutputPath },
+        ],
+      }),
+      "utf8"
+    );
+
+    const result = await runCli(["render", "--bulk", manifestPath], process.cwd());
+
+    expect(result.exitCode).toBe(0);
+    await expect(readFile(firstOutputPath, "utf8")).resolves.toContain("- release");
+    await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("- hotfix");
+  });
+
+  it("injects config into a workflow module with --config", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const inputPath = join(tempDir, "workflow.ts");
+    const configPath = join(tempDir, "workflow-config.json");
+    const outputPath = join(tempDir, "ci.yml");
+
+    await writeFile(
+      inputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow, getRenderConfig } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+const config = getRenderConfig<{ onPushBranches: string[] }>();
+
+export default defineWorkflow({
+  id: createWorkflowId('ci'),
+  name: 'CI',
+})
+  .onPush({
+    branches: config?.onPushBranches ?? ['main'],
+  })
+  .addJob(createJobId('test'), (job) => {
+    job.runsOn('ubuntu-latest').run('echo ok');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    await writeFile(configPath, JSON.stringify({ onPushBranches: ["release"] }), "utf8");
+
+    const result = await runCli(
+      ["render", "--input", inputPath, "--config", configPath, "--output", outputPath],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(0);
+    await expect(readFile(outputPath, "utf8")).resolves.toContain("- release");
+  });
+
+  it("applies different --config files to each --input target", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const inputPath = join(tempDir, "workflow.ts");
+    const firstConfigPath = join(tempDir, "first.json");
+    const secondConfigPath = join(tempDir, "second.json");
+    const firstOutputPath = join(tempDir, "first.yml");
+    const secondOutputPath = join(tempDir, "second.yml");
+
+    await writeFile(
+      inputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow, getRenderConfig } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+const config = getRenderConfig<{ branch: string }>();
+
+export default defineWorkflow({
+  id: createWorkflowId('ci'),
+  name: config?.branch ?? 'CI',
+})
+  .onPush({
+    branches: [config?.branch ?? 'main'],
+  })
+  .addJob(createJobId('test'), (job) => {
+    job.runsOn('ubuntu-latest').run('echo ok');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    await writeFile(firstConfigPath, JSON.stringify({ branch: "release" }), "utf8");
+    await writeFile(secondConfigPath, JSON.stringify({ branch: "hotfix" }), "utf8");
+
+    const result = await runCli(
+      [
+        "render",
+        "--input",
+        inputPath,
+        "--config",
+        firstConfigPath,
+        "--output",
+        firstOutputPath,
+        "--input",
+        inputPath,
+        "--config",
+        secondConfigPath,
+        "--output",
+        secondOutputPath,
+      ],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(0);
+    await expect(readFile(firstOutputPath, "utf8")).resolves.toContain("- release");
+    await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("- hotfix");
+  });
+
+  it("accepts TOML injected config for workflow modules", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const inputPath = join(tempDir, "workflow.ts");
+    const configPath = join(tempDir, "workflow-config.toml");
+    const outputPath = join(tempDir, "ci.yml");
+
+    await writeFile(
+      inputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow, getRenderConfig } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+const config = getRenderConfig<{ onPushBranches?: string[] }>();
+
+export default defineWorkflow({
+  id: createWorkflowId('ci'),
+  name: 'CI',
+})
+  .onPush({
+    branches: config?.onPushBranches ?? ['main'],
+  })
+  .addJob(createJobId('test'), (job) => {
+    job.runsOn('ubuntu-latest').run('echo ok');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    await writeFile(configPath, 'onPushBranches = ["release", "stable"]\n', "utf8");
+
+    const result = await runCli(
+      ["render", "--input", inputPath, "--config", configPath, "--output", outputPath],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(0);
+    await expect(readFile(outputPath, "utf8")).resolves.toContain("- release");
+    await expect(readFile(outputPath, "utf8")).resolves.toContain("- stable");
+  });
+
+  it("fails clearly when injected config JSON is invalid", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const inputPath = join(tempDir, "workflow.ts");
+    const configPath = join(tempDir, "workflow-config.json");
+    const outputPath = join(tempDir, "ci.yml");
+
+    await writeFile(
+      inputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('ci'),
+  name: 'CI',
+})
+  .onPush()
+  .addJob(createJobId('test'), (job) => {
+    job.runsOn('ubuntu-latest').run('echo ok');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    await writeFile(configPath, "{ invalid", "utf8");
+
+    const result = await runCli(
+      ["render", "--input", inputPath, "--config", configPath, "--output", outputPath],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("failed to parse injected config");
+  });
+
+  it("fails clearly when injected config TOML uses unsupported sections", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
+    tempDirs.push(tempDir);
+
+    const inputPath = join(tempDir, "workflow.ts");
+    const configPath = join(tempDir, "workflow-config.toml");
+    const outputPath = join(tempDir, "ci.yml");
+
+    await writeFile(
+      inputPath,
+      `import { createJobId, createWorkflowId, defineWorkflow } from '${join(process.cwd(), "packages/sdk/src/index.ts")}';
+
+export default defineWorkflow({
+  id: createWorkflowId('ci'),
+  name: 'CI',
+})
+  .onPush()
+  .addJob(createJobId('test'), (job) => {
+    job.runsOn('ubuntu-latest').run('echo ok');
+  })
+  .build();
+`,
+      "utf8"
+    );
+
+    await writeFile(configPath, "[group]\nbranch = \"release\"\n", "utf8");
+
+    const result = await runCli(
+      ["render", "--input", inputPath, "--config", configPath, "--output", outputPath],
+      process.cwd()
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("unsupported TOML section");
+  });
+
+  it("fails clearly when --config is passed before any --input", async () => {
+    const io = createIo();
+
+    const exitCode = await runCliDirect(["render", "--config", "workflow.json"], io, mockDeps());
+
+    expect(exitCode).toBe(1);
+    expect(io.stderr_lines.join("\n")).toContain("--config must follow an --input argument");
   });
 
   it("renders multiple workflow modules in one explicit render command", async () => {

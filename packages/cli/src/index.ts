@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, parse, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { execFile } from "node:child_process";
@@ -34,6 +34,7 @@ export interface CliRunDependencies extends CliIo {
 interface RenderTarget {
   readonly inputPath: string;
   readonly outputPath: string;
+  readonly configPath?: string;
 }
 
 interface RenderCommandOptions {
@@ -106,6 +107,10 @@ function isOutputFlag(arg: string | undefined): boolean {
 
 function isConfigFlag(arg: string | undefined): boolean {
   return arg === "--config";
+}
+
+function isBulkConfigFlag(arg: string | undefined): boolean {
+  return arg === "--bulk";
 }
 
 function inferDefaultRenderOutputPath(inputPath: string): string {
@@ -255,6 +260,131 @@ function parseTomlRenderConfig(contents: string, sourcePath: string): unknown {
   return manifest;
 }
 
+function parseTomlArrayValue(value: string, sourcePath: string, lineNumber: number): unknown[] {
+  if (!value.startsWith("[") || !value.endsWith("]")) {
+    throw new CliUsageError(
+      `invalid TOML array at ${sourcePath}:${lineNumber}. Expected a [value, ...] array`
+    );
+  }
+
+  const inner = value.slice(1, -1).trim();
+  if (inner.length === 0) {
+    return [];
+  }
+
+  const parts: string[] = [];
+  let current = "";
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let escaped = false;
+
+  for (const char of inner) {
+    if (escaped) {
+      current += char;
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\" && inDoubleQuote) {
+      current += char;
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      current += char;
+      continue;
+    }
+
+    if (char === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      current += char;
+      continue;
+    }
+
+    if (char === "," && !inSingleQuote && !inDoubleQuote) {
+      parts.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (inSingleQuote || inDoubleQuote || escaped) {
+    throw new CliUsageError(`invalid TOML array at ${sourcePath}:${lineNumber}`);
+  }
+
+  parts.push(current.trim());
+  return parts.map((part) => parseTomlScalarValue(part, sourcePath, lineNumber));
+}
+
+function parseTomlScalarValue(value: string, sourcePath: string, lineNumber: number): unknown {
+  if (value.startsWith("[") && value.endsWith("]")) {
+    return parseTomlArrayValue(value, sourcePath, lineNumber);
+  }
+
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    return parseQuotedTomlString(value, sourcePath, lineNumber);
+  }
+
+  if (value === "true" || value === "false") {
+    return parseBooleanTomlValue(value, sourcePath, lineNumber);
+  }
+
+  const numericValue = Number(value);
+  if (!Number.isNaN(numericValue)) {
+    return numericValue;
+  }
+
+  throw new CliUsageError(
+    `invalid TOML value at ${sourcePath}:${lineNumber}. Expected a string, boolean, number, or array`
+  );
+}
+
+function parseTomlDataConfig(contents: string, sourcePath: string): Record<string, unknown> {
+  const config: Record<string, unknown> = {};
+
+  for (const [index, rawLine] of contents.split(/\r?\n/u).entries()) {
+    const lineNumber = index + 1;
+    const line = stripTomlInlineComment(rawLine).trim();
+
+    if (line.length === 0 || line.startsWith("#")) {
+      continue;
+    }
+
+    if (line.startsWith("[") && line.endsWith("]")) {
+      throw new CliUsageError(
+        `unsupported TOML section at ${sourcePath}:${lineNumber}. Injected config only supports top-level key/value pairs`
+      );
+    }
+
+    const separatorIndex = line.indexOf("=");
+    if (separatorIndex === -1) {
+      throw new CliUsageError(
+        `invalid TOML syntax at ${sourcePath}:${lineNumber}. Expected key = value`
+      );
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    const rawValue = line.slice(separatorIndex + 1).trim();
+
+    if (key.length === 0 || rawValue.length === 0) {
+      throw new CliUsageError(
+        `invalid TOML syntax at ${sourcePath}:${lineNumber}. Expected key = value`
+      );
+    }
+
+    config[key] = parseTomlScalarValue(rawValue, sourcePath, lineNumber);
+  }
+
+  return config;
+}
+
 function validateRenderTarget(value: unknown, sourceName: string, index: number): RenderTarget {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new CliUsageError(
@@ -265,6 +395,7 @@ function validateRenderTarget(value: unknown, sourceName: string, index: number)
   const candidate = value as Record<string, unknown>;
   const inputPath = candidate["input"];
   const outputPath = candidate["output"];
+  const configPath = candidate["config"];
 
   if (typeof inputPath !== "string" || inputPath.trim().length === 0) {
     throw new CliUsageError(
@@ -278,7 +409,17 @@ function validateRenderTarget(value: unknown, sourceName: string, index: number)
     );
   }
 
-  return { inputPath, outputPath };
+  if (configPath !== undefined && (typeof configPath !== "string" || configPath.trim().length === 0)) {
+    throw new CliUsageError(
+      `invalid render target at ${sourceName} targets[${index}]. "config" must be a non-empty string when provided`
+    );
+  }
+
+  return {
+    inputPath,
+    outputPath,
+    ...(typeof configPath === "string" ? { configPath } : {}),
+  };
 }
 
 function validateRenderConfigManifest(value: unknown, sourceName: string): RenderConfigManifest {
@@ -345,17 +486,18 @@ async function parseRenderArguments(
   let manifestTargets: readonly RenderTarget[] = [];
   let currentInputPath: string | undefined;
   let currentOutputPath: string | undefined;
+  let currentConfigPath: string | undefined;
   let lint = false;
   let explicitTargetsStarted = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
-    if (isConfigFlag(arg)) {
+    if (isBulkConfigFlag(arg)) {
       const configPath = args[index + 1];
 
       if (!configPath) {
-        throw new CliUsageError("missing required --config argument");
+        throw new CliUsageError("missing required --bulk argument");
       }
 
       let configContents: string;
@@ -371,6 +513,7 @@ async function parseRenderArguments(
       lint = config.lint;
       currentInputPath = undefined;
       currentOutputPath = undefined;
+      currentConfigPath = undefined;
       explicitTargetsStarted = false;
       index += 1;
       continue;
@@ -387,8 +530,13 @@ async function parseRenderArguments(
           throw new CliUsageError(`missing required --output argument for "${currentInputPath}"`);
         }
 
-        targets.push({ inputPath: currentInputPath, outputPath: currentOutputPath });
+        targets.push({
+          inputPath: currentInputPath,
+          outputPath: currentOutputPath,
+          ...(currentConfigPath ? { configPath: currentConfigPath } : {}),
+        });
         currentOutputPath = undefined;
+        currentConfigPath = undefined;
       }
 
       currentInputPath = args[index + 1];
@@ -398,6 +546,22 @@ async function parseRenderArguments(
 
     if (isOutputFlag(arg)) {
       currentOutputPath = args[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (isConfigFlag(arg)) {
+      const configPath = args[index + 1];
+
+      if (!configPath) {
+        throw new CliUsageError("missing required --config argument");
+      }
+
+      if (!currentInputPath) {
+        throw new CliUsageError("--config must follow an --input argument");
+      }
+
+      currentConfigPath = configPath;
       index += 1;
       continue;
     }
@@ -415,7 +579,11 @@ async function parseRenderArguments(
       currentOutputPath = inferDefaultRenderOutputPath(currentInputPath);
     }
 
-    targets.push({ inputPath: currentInputPath, outputPath: currentOutputPath });
+    targets.push({
+      inputPath: currentInputPath,
+      outputPath: currentOutputPath,
+      ...(currentConfigPath ? { configPath: currentConfigPath } : {}),
+    });
   }
 
   if (targets.length === 0) {
@@ -430,7 +598,19 @@ async function parseRenderArguments(
 }
 
 async function defaultImportModule(modulePath: string): Promise<unknown> {
-  return import(pathToFileURL(modulePath).href);
+  const parsedPath = parse(modulePath);
+  const aliasPath = join(
+    parsedPath.dir,
+    `${parsedPath.name}.ghawb-import-${Date.now()}-${Math.random().toString(16).slice(2)}${parsedPath.ext}`
+  );
+
+  await copyFile(modulePath, aliasPath);
+
+  try {
+    return await import(pathToFileURL(aliasPath).href);
+  } finally {
+    await rm(aliasPath, { force: true });
+  }
 }
 
 async function defaultReadFile(filePath: string): Promise<string> {
@@ -470,19 +650,76 @@ async function defaultRunCommand(
 
 function usage(): string {
   return [
-    "Usage: ghawb render [--config <render-config.{json,yaml,yml,toml}>] [(--input|-i) <workflow.ts> [(--output|-o) <workflow.yml>] ...] [--lint]",
+    "Usage: ghawb render [--bulk <render-plan.{json,yaml,yml,toml}>] [(--input|-i) <module.ts> [--config <define-config.{json,yaml,yml,toml}>] [(--output|-o) <output.yml>] ...] [--lint]",
     "       ghawb lint <file.yml> [<file.yml> ...]",
   ].join("\n");
 }
 
+function parseDataConfig(contents: string, configPath: string): unknown {
+  const extension = extname(configPath).toLowerCase();
+
+  try {
+    if (extension === ".json") {
+      return JSON.parse(contents) as unknown;
+    }
+
+    if (extension === ".yaml" || extension === ".yml") {
+      return parseYaml(contents);
+    }
+
+    if (extension === ".toml") {
+      return parseTomlDataConfig(contents, configPath);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new CliUsageError(`failed to parse injected config "${configPath}": ${message}`);
+  }
+
+  throw new CliUsageError(
+    `unsupported injected config format for "${configPath}". Expected one of: .json, .yaml, .yml, .toml`
+  );
+}
+
+const SDK_RENDER_CONFIG_SYMBOL = Symbol.for("@ghawb/sdk/render-config");
+
+function setInjectedRenderConfig(value: unknown): void {
+  (globalThis as Record<PropertyKey, unknown>)[SDK_RENDER_CONFIG_SYMBOL] = value;
+}
+
+function clearInjectedRenderConfig(): void {
+  delete (globalThis as Record<PropertyKey, unknown>)[SDK_RENDER_CONFIG_SYMBOL];
+}
+
 async function renderTarget(
   target: RenderTarget,
+  readConfigFile: CliRunDependencies["readFile"],
   importModule: CliRunDependencies["importModule"],
   writeOutputFile: CliRunDependencies["writeOutputFile"]
 ): Promise<string> {
   const resolvedInputPath = resolve(target.inputPath);
   const resolvedOutputPath = resolve(target.outputPath);
-  const loadedModule = await importModule(resolvedInputPath);
+  let injectedConfig: unknown = undefined;
+
+  if (target.configPath) {
+    const resolvedConfigPath = resolve(target.configPath);
+    let configContents: string;
+    try {
+      configContents = await readConfigFile(resolvedConfigPath);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new CliUsageError(`failed to read injected config "${target.configPath}": ${message}`);
+    }
+
+    injectedConfig = parseDataConfig(configContents, target.configPath);
+  }
+
+  let loadedModule: unknown;
+  setInjectedRenderConfig(injectedConfig);
+  try {
+    loadedModule = await importModule(resolvedInputPath);
+  } finally {
+    clearInjectedRenderConfig();
+  }
   const entryPoint = (loadedModule as { default?: unknown }).default;
 
   if (isWorkflowDefinition(entryPoint)) {
@@ -556,7 +793,7 @@ export async function runCli(
 
       for (const target of targets) {
         try {
-          const outputPath = await renderTarget(target, importModule, writeOutputFile);
+          const outputPath = await renderTarget(target, readConfigFile, importModule, writeOutputFile);
           renderedOutputs.push(outputPath);
           io.stdout(`Rendered ${outputPath}`);
         } catch (error) {
@@ -579,6 +816,7 @@ export async function runCli(
 
     throw new CliUsageError(command ? `unknown command "${command}"` : "missing command");
   } catch (error) {
+    clearInjectedRenderConfig();
     if (error instanceof CliUsageError) {
       io.stderr(`${error.message}\n${usage()}`);
       return 1;

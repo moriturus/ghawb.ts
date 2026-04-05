@@ -11,6 +11,8 @@ Practical workflow patterns using `@ghawb/sdk`. Each recipe is a self-contained 
 - [Manual Dispatch with Inputs](#manual-dispatch-with-inputs)
 - [Reusable Workflow](#reusable-workflow)
 - [Calling a Reusable Workflow](#calling-a-reusable-workflow)
+- [Import Reusable Workflow YAML](#import-reusable-workflow-yaml)
+- [Inject a Local Reusable Workflow Definition](#inject-a-local-reusable-workflow-definition)
 - [Self-Hosted Runners with Groups](#self-hosted-runners-with-groups)
 - [Conditional Steps with Expressions](#conditional-steps-with-expressions)
 - [Container Job with Services](#container-job-with-services)
@@ -54,7 +56,7 @@ export default defineWorkflow({
   .onPush({ branches: ["main"] })
   .addJob(createJobId("test"), (job) => {
     job
-      .matrix({ os: ["ubuntu-latest", "macos-latest"], node: ["20", "22"] })
+      .strategyMatrix({ os: ["ubuntu-latest", "macos-latest"], node: ["20", "22"] })
       .failFast(false)
       .runsOn(matrix("os"))
       .uses("actions/checkout@v4")
@@ -236,15 +238,87 @@ export default defineWorkflow({
   name: "Caller",
 })
   .onPush({ branches: ["main"] })
-  .usesWorkflow(
-    createJobId("build"),
-    workflowRef("org/shared/.github/workflows/build.yml@main"),
-    { with: { node_version: "22" }, secrets: "inherit" }
-  )
+  .addJob(createJobId("build"), (job) => {
+    job.usesWorkflow(workflowRef("org/shared/.github/workflows/build.yml@main"), {
+      with: { node_version: "22" },
+      secrets: "inherit",
+    });
+  })
   .build();
 ```
 
 You can also pass a `WorkflowBuilder` or `WorkflowDefinition` directly to `usesWorkflow()`. The SDK derives the local ref and validates the target's `workflow_call` trigger at build time.
+
+---
+
+## Import Reusable Workflow YAML
+
+Use `@ghawb/yaml-import` when the reusable workflow already exists as committed YAML and you want to keep it in place while adopting `ghawb` for the caller workflow.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { importReusableWorkflow } from "@ghawb/yaml-import";
+
+const sharedRelease = await importReusableWorkflow(".github/workflows/shared-release.yml");
+
+export default defineWorkflow({
+  id: createWorkflowId("release"),
+  name: "Release",
+})
+  .onWorkflowDispatch()
+  .addJob(createJobId("publish"), (job) => {
+    job.usesWorkflow(sharedRelease, {
+      with: { node_version: "24" },
+      secrets: "inherit",
+    });
+  })
+  .build();
+```
+
+Use this path when the reusable workflow already exists in YAML or is maintained separately. If you already author the reusable workflow in `@ghawb/sdk`, prefer object injection instead of round-tripping through YAML.
+
+---
+
+## Inject a Local Reusable Workflow Definition
+
+Use object injection when both the reusable workflow and the caller live in the same TypeScript authoring surface and you want the SDK to infer the local ref and validate the `workflow_call` trigger for you.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+
+const sharedBuild = defineWorkflow({
+  id: createWorkflowId("shared-build"),
+  name: "Shared Build",
+})
+  .onWorkflowCall({
+    inputs: {
+      node_version: {
+        description: "Node version",
+        required: false,
+        type: "string",
+        default: "22",
+      },
+    },
+  })
+  .addJob(createJobId("build"), (job) => {
+    job.runsOn("ubuntu-latest").run("npm ci").run("npm test");
+  });
+
+export default defineWorkflow({
+  id: createWorkflowId("release"),
+  name: "Release",
+})
+  .onWorkflowDispatch()
+  .addJob(createJobId("publish"), (job) => {
+    job.usesWorkflow(sharedBuild, {
+      with: { node_version: "24" },
+      secrets: "inherit",
+    });
+  })
+  .build();
+```
+
+This is the smallest-friction path when you own both workflows in one repository and want build-time validation instead of stringly typed local refs.
 
 ---
 

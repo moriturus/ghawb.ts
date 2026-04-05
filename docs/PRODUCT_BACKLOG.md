@@ -45,6 +45,18 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: Added from the Sprint 21 retrospective after Deno test-slice expansion work exposed a bounded but confirmed compatibility gap while attempting to cover representative reusable-workflow import flows.
 
+### Item 78: Add a generic `JobBuilder` helper-application hook for opt-in job helpers
+
+- Why: Sprint 22 correctly moved `nodeCi()` out of `@ghawb/sdk` into `@ghawb/job-helpers`, but the resulting `nodeCi(job, options)` call shape is less ergonomic than the prior builder-style method call. The product still wants an explicit, package-safe way to apply opt-in job helpers without falling back to prototype mutation or reintroducing helper-specific methods on the core SDK surface.
+- Prerequisites: Item 75b. The work should treat `@ghawb/job-helpers` as the approved package boundary and preserve the decision not to use TypeScript prototype extension as the integration mechanism.
+- Implementation Plan: Add the smallest safe generic hook on `JobBuilder` for applying externally defined helper functions, then adapt `@ghawb/job-helpers` so `nodeCi()` can be consumed through that hook in builder style (`j.apply(nodeCi({ nodeVersion: "22" }))`). Keep the API additive and explicit, document the chosen naming and usage pattern, and avoid reintroducing helper-specific behavior into `@ghawb/sdk`.
+- Definition of Done: `JobBuilder` exposes a reviewed generic helper-application hook, `nodeCi()` uses that hook from `@ghawb/job-helpers`, the resulting authoring pattern is documented with migration guidance, verification covers the new builder-style usage, and the change completes with code review.
+- Acceptance Criteria: The delivered API lets callers apply opt-in job helpers through a generic `JobBuilder` hook instead of passing the builder as a positional argument, does not rely on prototype mutation or helper-specific SDK methods, keeps `nodeCi()` in `@ghawb/job-helpers`, updates `docs/SPEC.md` and affected public docs, and proves through tests that the supported authoring contract remains intact.
+- Story Points: 3
+- Status: new
+- Completed At: N/A
+- Notes/Links: Added after Sprint 22 closeout as an ergonomics follow-up to the `nodeCi()` package-boundary migration. `apply` is the preferred hook name because it reads as builder transformation and avoids confusion with GitHub Actions `uses`.
+
 ## Notes
 
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.

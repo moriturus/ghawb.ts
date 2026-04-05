@@ -223,6 +223,39 @@ describe("workflow builder", () => {
     ]);
   });
 
+  it("applies generic job helpers and preserves chaining", () => {
+    const workflow = defineWorkflow({
+      id: createWorkflowId("apply_helper"),
+      name: "Apply Helper",
+    })
+      .onPush()
+      .addJob(createJobId("test"), (job) => {
+        job
+          .runsOn("ubuntu-latest")
+          .apply((builder) => builder.run("npm ci", "Install"))
+          .run("npm test", "Test");
+      })
+      .build();
+
+    expect(workflow.jobs[0]).toEqual({
+      kind: "steps",
+      id: "test",
+      runsOn: "ubuntu-latest",
+      steps: [
+        {
+          kind: "run",
+          name: "Install",
+          run: "npm ci",
+        },
+        {
+          kind: "run",
+          name: "Test",
+          run: "npm test",
+        },
+      ],
+    });
+  });
+
   it("builds workflows with workflow_call triggers", () => {
     const workflow = defineWorkflow({
       id: createWorkflowId("reusable"),

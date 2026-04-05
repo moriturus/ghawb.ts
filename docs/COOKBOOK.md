@@ -36,7 +36,7 @@ export default defineWorkflow({
   .onPush({ branches: ["main"] })
   .onPullRequest({ branches: ["main"] })
   .addJob(createJobId("test"), (job) => {
-    nodeCi(job.runsOn("ubuntu-latest"), { nodeVersion: "22" });
+    job.runsOn("ubuntu-latest").apply(nodeCi({ nodeVersion: "22" }));
   })
   .build();
 ```
@@ -113,7 +113,7 @@ export default defineWorkflow({
   .build();
 ```
 
-Prefer wrappers when the upstream action is common and its `with` surface is large or error-prone. Prefer raw action refs for rare actions or for inputs that are still too niche to warrant a maintained wrapper. Prefer `nodeCi()` from `@ghawb/job-helpers` when you want the standard checkout/setup/install/test sequence instead of action-by-action control.
+Prefer wrappers when the upstream action is common and its `with` surface is large or error-prone. Prefer raw action refs for rare actions or for inputs that are still too niche to warrant a maintained wrapper. Prefer `job.apply(nodeCi(...))` from `@ghawb/job-helpers` when you want the standard checkout/setup/install/test sequence instead of action-by-action control. Legacy `nodeCi(job, options)` calls remain supported for migration.
 
 ---
 

@@ -282,6 +282,8 @@ ghawb render \
 
 The CLI dynamically imports your TypeScript module and renders it to YAML using the bundled YAML adapter. `render` auto-detects workflow or composite-action modules, validates the default export shape for the selected artifact type, and for the supported repository-local workflow path `workflows/<name>.ts` infers `.github/workflows/<name>.yml` when `--output` is omitted. When multiple explicit `--input` / `--output` pairs are provided, `render` processes each pair in order.
 
+Planned config-manifest support is documented in [docs/SPEC.md](docs/SPEC.md) and remains CLI-owned: explicit `render` flags are the supported path today, and future config files will layer on top of that surface rather than replacing it.
+
 ## Supported Features
 
 The SDK covers the majority of the [GitHub Actions workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions):

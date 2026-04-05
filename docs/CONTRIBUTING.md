@@ -40,6 +40,6 @@ This command fails if the worktree is not clean, including untracked files. It i
 - `bun run generate:workflows`: render every committed workflow module under [`workflows/`](../workflows)
 - `bun run verify:workflows`: validate workflow-source placement and generated-workflow drift
 - `bun run verify:pre-push`: run the local pre-push verification path that matches the current hosted CI sequence
-- `bun run check`: run format, lint, type-check, Bun Vitest, and Deno smoke checks
+- `bun run check`: run format, lint, type-check, Bun Vitest, and Deno compatibility checks
 - `bun run coverage`: measure `packages/sdk/src/` coverage with Vitest v8 and emit `coverage/lcov.info`
 - `ghawb render-batch --input <workflow.ts> --output <workflow.yml> ...`: render multiple declared workflow modules without repository scanning

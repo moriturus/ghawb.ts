@@ -71,7 +71,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - step-based jobs support optional `container` and `services` fields. A `container` config requires a non-blank `image` string and supports optional `credentials` (non-blank `username` and `password`), `env` (follows standard env validation), `ports` (numeric ports must be positive integers, string ports must be non-blank), `volumes` (non-blank strings), and `options` (non-blank string). `services` is a map of identifier-format keys to container configs following the same validation. Reusable-workflow jobs reject `container` and `services` at build time.
 - Built workflow objects are deeply frozen, including nested trigger filters, job arrays, step arrays, and step maps such as `env` and `with`.
 - Bun-run Vitest remains the primary repository test authority, Node-run Vitest remains the compatibility confirmation path, and a shared cross-runtime render conformance suite exercises representative supported workflow fixtures across Bun, Node, and Deno.
-- Deno remains intentionally scoped to compatibility-oriented coverage outside the shared render conformance fixtures rather than the full repository test surface.
+- Deno remains intentionally scoped to compatibility-oriented coverage rather than the full repository test surface; the Deno suite combines the shared render conformance fixtures with representative public-entrypoint and authoring-flow checks for supported packages.
 - The SDK exposes a deterministic renderer that:
   - converts supported workflow definitions into a JSON-like intermediate payload
   - injects an emitter function instead of binding the core to a YAML library

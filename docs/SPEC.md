@@ -82,11 +82,12 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - loads a directly specified TypeScript module whose default export is a built workflow definition
   - renders YAML through one concrete adapter backed by the `yaml` Node module
   - writes deterministic workflow output files and exits non-zero on failure, with multi-target render surfacing partial failures after attempting every declared mapping
-- The planned CLI config-manifest contract is intentionally CLI-owned and keeps parsing outside the SDK:
-  - `ghawb render` may accept an explicit manifest file through a future `--config <file>` flag rather than implicit repository discovery
+- The CLI config-manifest contract is intentionally CLI-owned and keeps parsing outside the SDK:
+  - `ghawb render` accepts an explicit manifest file through `--config <file>` rather than implicit repository discovery
   - supported manifest formats are JSON, YAML, and TOML
-  - a manifest may declare one or more render targets using the same input/output shape as the explicit CLI path
+  - a manifest declares one or more render targets using the same `input` / `output` shape as the explicit CLI path
   - configuration values from the manifest are overridden by later CLI flags on the same invocation
+  - the supported manifest shape is a top-level object with a non-empty `targets` array of `{ input, output }` objects and an optional boolean `lint`
   - artifact classification remains the responsibility of `render`'s safe export auto-detection; the manifest describes targets and defaults, not a separate workflow-vs-composite-action command split
   - unsupported shapes, ambiguous target declarations, and missing required target fields fail explicitly at the CLI boundary
 - The repository self-hosts committed workflow definitions from explicit `workflows/*.ts` modules into matching `.github/workflows/*.yml` outputs through the root `generate:workflows` script.

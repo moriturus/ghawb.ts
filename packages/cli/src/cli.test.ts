@@ -43,6 +43,7 @@ function mockDeps(
 ): Partial<Omit<CliRunDependencies, keyof CliIo>> {
   return {
     importModule: async () => ({}),
+    readFile: async () => "",
     writeOutputFile: async () => {},
     findExecutable: async () => undefined,
     runCommand: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
@@ -299,6 +300,206 @@ export default defineWorkflow({
     expect(runCommandCalls).toHaveLength(1);
     expect(runCommandCalls[0]!.command).toBe("/usr/local/bin/actionlint");
     expect(runCommandCalls[0]!.args).toEqual([expect.stringContaining("ci.yml")]);
+  });
+
+  it("renders targets from equivalent JSON, YAML, and TOML config manifests", async () => {
+    const manifestPaths = ["render.json", "render.yaml", "render.toml"];
+    const configByPath = new Map<string, string>([
+      [
+        "render.json",
+        JSON.stringify({
+          lint: false,
+          targets: [{ input: "workflow.ts", output: "ci.yml" }],
+        }),
+      ],
+      [
+        "render.yaml",
+        ["lint: false", "targets:", "  - input: workflow.ts", "    output: ci.yml"].join("\n"),
+      ],
+      [
+        "render.toml",
+        ['lint = false', "", "[[targets]]", 'input = "workflow.ts"', 'output = "ci.yml"'].join(
+          "\n"
+        ),
+      ],
+    ]);
+
+    for (const configPath of manifestPaths) {
+      const io = createIo();
+      const writeCalls: string[] = [];
+      const exitCode = await runCliDirect(
+        ["render", "--config", configPath],
+        io,
+        mockDeps({
+          readFile: async (path) => configByPath.get(path) ?? "",
+          importModule: async () => ({ default: defineMinimalWorkflow() }),
+          writeOutputFile: async (outputPath) => {
+            writeCalls.push(outputPath);
+          },
+        })
+      );
+
+      expect(exitCode).toBe(0);
+      expect(io.stderr_lines).toEqual([]);
+      expect(writeCalls).toEqual([expect.stringContaining("ci.yml")]);
+      expect(io.stdout_lines.join("\n")).toContain("Rendered");
+    }
+  });
+
+  it("renders a composite action module from a config manifest", async () => {
+    const io = createIo();
+    const writeCalls: string[] = [];
+
+    const exitCode = await runCliDirect(
+      ["render", "--config", "render.json"],
+      io,
+      mockDeps({
+        readFile: async () =>
+          JSON.stringify({
+            targets: [{ input: "action.ts", output: "action.yml" }],
+          }),
+        importModule: async () => ({
+          default: defineCompositeAction({
+            name: "Composite Example",
+            description: "Example",
+          })
+            .run("echo ok")
+            .build(),
+        }),
+        writeOutputFile: async (outputPath) => {
+          writeCalls.push(outputPath);
+        },
+      })
+    );
+
+    expect(exitCode).toBe(0);
+    expect(io.stderr_lines).toEqual([]);
+    expect(writeCalls).toEqual([expect.stringContaining("action.yml")]);
+    expect(io.stdout_lines.join("\n")).toContain("Rendered");
+  });
+
+  it("lets explicit render flags override config manifest targets and lint defaults", async () => {
+    const io = createIo();
+    const runCommandCalls: Array<{ command: string; args: readonly string[] }> = [];
+    const writeCalls: string[] = [];
+
+    const exitCode = await runCliDirect(
+      [
+        "render",
+        "--config",
+        "render.json",
+        "--input",
+        "override.ts",
+        "--output",
+        "override.yml",
+        "--lint",
+      ],
+      io,
+      mockDeps({
+        readFile: async () =>
+          JSON.stringify({
+            lint: false,
+            targets: [{ input: "config.ts", output: "config.yml" }],
+          }),
+        importModule: async () => ({ default: defineMinimalWorkflow() }),
+        writeOutputFile: async (outputPath) => {
+          writeCalls.push(outputPath);
+        },
+        findExecutable: async () => "/usr/local/bin/actionlint",
+        runCommand: async (command, args) => {
+          runCommandCalls.push({ command, args });
+          return { exitCode: 0, stdout: "", stderr: "" };
+        },
+      })
+    );
+
+    expect(exitCode).toBe(0);
+    expect(io.stderr_lines).toEqual([]);
+    expect(writeCalls).toEqual([expect.stringContaining("override.yml")]);
+    expect(runCommandCalls).toHaveLength(1);
+    expect(runCommandCalls[0]!.command).toBe("/usr/local/bin/actionlint");
+    expect(runCommandCalls[0]!.args).toEqual([expect.stringContaining("override.yml")]);
+  });
+
+  it("fails with explicit diagnostics when a config manifest has an invalid shape", async () => {
+    const io = createIo();
+
+    const exitCode = await runCliDirect(
+      ["render", "--config", "render.yaml"],
+      io,
+      mockDeps({
+        readFile: async () => ["targets:", "  - input: workflow.ts"].join("\n"),
+      })
+    );
+
+    expect(exitCode).toBe(1);
+    expect(io.stdout_lines).toEqual([]);
+    expect(io.stderr_lines.join("\n")).toContain("invalid render target");
+    expect(io.stderr_lines.join("\n")).toContain('"output" must be a non-empty string');
+  });
+
+  it("fails clearly when a config manifest cannot be read", async () => {
+    const io = createIo();
+
+    const exitCode = await runCliDirect(
+      ["render", "--config", "missing.json"],
+      io,
+      mockDeps({
+        readFile: async () => {
+          throw new Error("ENOENT: no such file or directory");
+        },
+      })
+    );
+
+    expect(exitCode).toBe(1);
+    expect(io.stdout_lines).toEqual([]);
+    expect(io.stderr_lines.join("\n")).toContain('failed to read render config "missing.json"');
+  });
+
+  it("fails clearly when a config manifest format is unsupported", async () => {
+    const io = createIo();
+
+    const exitCode = await runCliDirect(
+      ["render", "--config", "render.ini"],
+      io,
+      mockDeps({
+        readFile: async () => "ignored=true",
+      })
+    );
+
+    expect(exitCode).toBe(1);
+    expect(io.stdout_lines).toEqual([]);
+    expect(io.stderr_lines.join("\n")).toContain("unsupported config format");
+  });
+
+  it("accepts TOML inline comments in render config manifests", async () => {
+    const io = createIo();
+    const writeCalls: string[] = [];
+
+    const exitCode = await runCliDirect(
+      ["render", "--config", "render.toml"],
+      io,
+      mockDeps({
+        readFile: async () =>
+          [
+            "lint = true # enable actionlint",
+            "",
+            "[[targets]]",
+            'input = "workflow.ts" # source module',
+            'output = "ci.yml" # rendered file',
+          ].join("\n"),
+        importModule: async () => ({ default: defineMinimalWorkflow() }),
+        writeOutputFile: async (outputPath) => {
+          writeCalls.push(outputPath);
+        },
+        findExecutable: async () => "/usr/local/bin/actionlint",
+        runCommand: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+      })
+    );
+
+    expect(exitCode).toBe(0);
+    expect(io.stderr_lines).toEqual([]);
+    expect(writeCalls).toEqual([expect.stringContaining("ci.yml")]);
   });
 
   it("renders multiple workflow modules in one explicit render command", async () => {

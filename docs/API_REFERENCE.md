@@ -1,6 +1,6 @@
 # API Reference
 
-This document covers the public API of `@ghawb/sdk`. For a quick-start guide, see the [README](../README.md). For the specification source of truth, see [SPEC.md](SPEC.md). For the opt-in typed wrapper package, see `@ghawb/typed-actions`.
+This document covers the public API of `@ghawb/sdk`. For a quick-start guide and the canonical `ghawb render` CLI path, see the [README](../README.md). For the specification source of truth, see [SPEC.md](SPEC.md). Related opt-in packages are `@ghawb/job-helpers`, `@ghawb/typed-actions`, `@ghawb/composite-actions`, and `@ghawb/yaml-import`.
 
 ## Table of Contents
 
@@ -260,7 +260,7 @@ job
   .uses(actionsCache({ path: "~/.pnpm-store", key: "pnpm-${{ runner.os }}" }), "Cache")
   .uses(
     actionsSetupNode({
-      nodeVersion: "22",
+      nodeVersion: "24",
       cache: "pnpm",
       packageManagerCache: true,
     }),

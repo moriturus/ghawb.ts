@@ -299,7 +299,7 @@ export default defineWorkflow({
     expect(runCommandCalls[0]!.args).toEqual([expect.stringContaining("ci.yml")]);
   });
 
-  it("renders multiple workflow modules in one explicit batch command", async () => {
+  it("renders multiple workflow modules in one explicit render command", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
     tempDirs.push(tempDir);
 
@@ -343,7 +343,7 @@ export default defineWorkflow({
 
     const result = await runCli(
       [
-        "render-batch",
+        "render",
         "--input",
         firstInputPath,
         "--output",
@@ -364,7 +364,7 @@ export default defineWorkflow({
     await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("workflow_dispatch: null");
   });
 
-  it("accepts short input and output flags for render-batch", async () => {
+  it("accepts short input and output flags for multi-target render", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
     tempDirs.push(tempDir);
 
@@ -408,7 +408,7 @@ export default defineWorkflow({
 
     const result = await runCli(
       [
-        "render-batch",
+        "render",
         "-i",
         firstInputPath,
         "-o",
@@ -427,15 +427,18 @@ export default defineWorkflow({
     await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("name: Second");
   });
 
-  it("still requires explicit output paths for render-batch", async () => {
-    const result = await runCli(["render-batch", "-i", "workflows/ci.ts"], process.cwd());
+  it("still requires explicit output paths for additional render targets", async () => {
+    const result = await runCli(
+      ["render", "-i", "workflows/ci.ts", "-i", "workflows/deploy.ts"],
+      process.cwd()
+    );
 
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toBe("");
     expect(result.stderr).toContain('missing required --output argument for "workflows/ci.ts"');
   });
 
-  it("accepts mixed long and short flags across render-batch targets", async () => {
+  it("accepts mixed long and short flags across multi-target render targets", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
     tempDirs.push(tempDir);
 
@@ -479,7 +482,7 @@ export default defineWorkflow({
 
     const result = await runCli(
       [
-        "render-batch",
+        "render",
         "--input",
         firstInputPath,
         "-o",
@@ -498,7 +501,7 @@ export default defineWorkflow({
     await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("name: Second");
   });
 
-  it("accepts mixed long and short input and output flags for render-batch", async () => {
+  it("accepts mixed long and short input and output flags for multi-target render", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
     tempDirs.push(tempDir);
 
@@ -542,7 +545,7 @@ export default defineWorkflow({
 
     const result = await runCli(
       [
-        "render-batch",
+        "render",
         "--input",
         firstInputPath,
         "-o",
@@ -561,7 +564,7 @@ export default defineWorkflow({
     await expect(readFile(secondOutputPath, "utf8")).resolves.toContain("name: Second");
   });
 
-  it("reports partial batch failures with a non-zero exit code while keeping successful outputs", async () => {
+  it("reports partial render failures with a non-zero exit code while keeping successful outputs", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "ghawb-cli-"));
     tempDirs.push(tempDir);
 
@@ -590,7 +593,7 @@ export default defineWorkflow({
 
     const result = await runCli(
       [
-        "render-batch",
+        "render",
         "--input",
         validInputPath,
         "--output",
@@ -605,19 +608,19 @@ export default defineWorkflow({
 
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toContain(validOutputPath);
-    expect(result.stderr).toContain("Batch render failed:");
+    expect(result.stderr).toContain("Render failed:");
     expect(result.stderr).toContain(`${invalidInputPath} -> ${invalidOutputPath}`);
     expect(result.stderr).toContain("default export must be a built workflow definition");
     await expect(readFile(validOutputPath, "utf8")).resolves.toContain("name: Valid");
   });
 
-  it("runs actionlint after render-batch when --lint is set", async () => {
+  it("runs actionlint after multi-target render when --lint is set", async () => {
     const io = createIo();
     const runCommandCalls: Array<{ command: string; args: readonly string[] }> = [];
 
     const exitCode = await runCliDirect(
       [
-        "render-batch",
+        "render",
         "--input",
         "first.ts",
         "--output",

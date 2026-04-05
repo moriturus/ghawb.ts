@@ -77,8 +77,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - injects an emitter function instead of binding the core to a YAML library
   - fails explicitly before emission when unsupported fields are present at runtime
 - The CLI currently:
-  - exposes `ghawb render --input <workflow.ts> [--output <workflow.yml>]` with short aliases `-i` and `-o`; when `--output` is omitted, inference is limited to the supported repository-local `workflows/<name>.ts` convention and derives `.github/workflows/<name>.yml`
-  - exposes `ghawb render-batch --input <workflow.ts> --output <workflow.yml> ...` with short aliases `-i` and `-o` for explicit multi-workflow rendering without repository scanning
+  - exposes `ghawb render --input <workflow.ts> [--output <workflow.yml>] ...` with short aliases `-i` and `-o`; when `--output` is omitted, inference is limited to the supported repository-local `workflows/<name>.ts` convention and derives `.github/workflows/<name>.yml`; when multiple explicit `--input` / `--output` pairs are provided, the command renders each pair in order without repository scanning
   - exposes `ghawb lint <file.yml> [<file.yml> ...]` for verifying generated workflow YAML files with `actionlint`; when `actionlint` is not found on `PATH`, the CLI exits non-zero with a clear message naming the missing tool and linking to installation instructions
   - loads a directly specified TypeScript module whose default export is a built workflow definition
   - renders YAML through one concrete adapter backed by the `yaml` Node module
@@ -141,7 +140,7 @@ Composite action support currently covers only the Sprint 20 initial slice throu
 - Load explicitly targeted TypeScript modules rather than scanning project state implicitly
 - Fail clearly when definitions are invalid, incomplete, or not exported as the module default
 - Verify generated workflow files with `actionlint` through a dedicated `lint` command; exit non-zero with actionable install instructions when `actionlint` is not available on `PATH`
-- `ghawb render` and `ghawb render-batch` support an opt-in `--lint` flag that runs the same `actionlint` verification after successful rendering and exits non-zero on missing tooling or lint failures
+- `ghawb render` supports an opt-in `--lint` flag that runs the same `actionlint` verification after successful rendering and exits non-zero on missing tooling or lint failures
 
 ### Renderer / Internal Model
 

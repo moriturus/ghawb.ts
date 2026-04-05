@@ -36,11 +36,6 @@ interface RenderTarget {
 }
 
 interface RenderCommandOptions {
-  readonly target: RenderTarget;
-  readonly lint: boolean;
-}
-
-interface RenderBatchCommandOptions {
   readonly targets: readonly RenderTarget[];
   readonly lint: boolean;
 }
@@ -128,45 +123,6 @@ function inferDefaultRenderOutputPath(inputPath: string): string {
 }
 
 function parseRenderArguments(args: readonly string[]): RenderCommandOptions {
-  let inputPath: string | undefined;
-  let outputPath: string | undefined;
-  let lint = false;
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-
-    if (isInputFlag(arg)) {
-      inputPath = args[index + 1];
-      index += 1;
-      continue;
-    }
-
-    if (isOutputFlag(arg)) {
-      outputPath = args[index + 1];
-      index += 1;
-      continue;
-    }
-
-    if (arg === "--lint") {
-      lint = true;
-      continue;
-    }
-
-    throw new CliUsageError(`unknown argument "${arg}"`);
-  }
-
-  if (!inputPath) {
-    throw new CliUsageError("missing required --input argument");
-  }
-
-  if (!outputPath) {
-    outputPath = inferDefaultRenderOutputPath(inputPath);
-  }
-
-  return { target: { inputPath, outputPath }, lint };
-}
-
-function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandOptions {
   const targets: RenderTarget[] = [];
   let pendingInputPath: string | undefined;
   let lint = false;
@@ -194,7 +150,7 @@ function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandO
       index += 1;
 
       if (!pendingInputPath) {
-        throw new CliUsageError("batch render requires --input before --output");
+        throw new CliUsageError("render requires --input before --output");
       }
 
       if (!outputPath) {
@@ -218,11 +174,18 @@ function parseRenderBatchArguments(args: readonly string[]): RenderBatchCommandO
   }
 
   if (pendingInputPath) {
-    throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
+    if (targets.length === 0) {
+      targets.push({
+        inputPath: pendingInputPath,
+        outputPath: inferDefaultRenderOutputPath(pendingInputPath),
+      });
+    } else {
+      throw new CliUsageError(`missing required --output argument for "${pendingInputPath}"`);
+    }
   }
 
   if (targets.length === 0) {
-    throw new CliUsageError("missing required batch render targets");
+    throw new CliUsageError("missing required --input argument");
   }
 
   return { targets, lint };
@@ -298,8 +261,7 @@ async function defaultRunCommand(
 
 function usage(): string {
   return [
-    "Usage: ghawb render (--input|-i) <workflow.ts> [(--output|-o) <workflow.yml>] [--lint]",
-    "       ghawb render-batch (--input|-i) <workflow.ts> (--output|-o) <workflow.yml> [(--input|-i) <workflow.ts> (--output|-o) <workflow.yml> ...] [--lint]",
+    "Usage: ghawb render (--input|-i) <workflow.ts> [(--output|-o) <workflow.yml>] [(--input|-i) <workflow.ts> (--output|-o) <workflow.yml> ...] [--lint]",
     "       ghawb render-action (--input|-i) <action.ts> (--output|-o) <action.yml>",
     "       ghawb lint <file.yml> [<file.yml> ...]",
   ].join("\n");
@@ -392,14 +354,7 @@ export async function runCli(
     const [command, ...rest] = args;
 
     if (command === "render") {
-      const { target, lint } = parseRenderArguments(rest);
-      const outputPath = await renderTarget(target, importModule, writeOutputFile);
-      io.stdout(`Rendered ${outputPath}`);
-      return lint ? await runActionlint([outputPath], io, findExecutable, runCommand) : 0;
-    }
-
-    if (command === "render-batch") {
-      const { targets, lint } = parseRenderBatchArguments(rest);
+      const { targets, lint } = parseRenderArguments(rest);
       const failures: string[] = [];
       const outputPaths: string[] = [];
 
@@ -415,7 +370,7 @@ export async function runCli(
       }
 
       if (failures.length > 0) {
-        io.stderr(`Batch render failed:\n- ${failures.join("\n- ")}`);
+        io.stderr(`Render failed:\n- ${failures.join("\n- ")}`);
         return 1;
       }
 

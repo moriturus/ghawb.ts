@@ -275,12 +275,12 @@ ghawb render -i workflows/ci.ts
 ghawb render-action -i actions/setup-bun.ts -o actions/setup-bun/action.yml
 
 # Render multiple workflows in one pass
-ghawb render-batch \
+ghawb render \
   -i workflows/ci.ts      -o .github/workflows/ci.yml \
   -i workflows/deploy.ts  -o .github/workflows/deploy.yml
 ```
 
-The CLI dynamically imports your TypeScript module and renders it to YAML using the bundled YAML adapter. `render` validates the default export is a `WorkflowDefinition` and, for the supported repository-local path `workflows/<name>.ts`, infers `.github/workflows/<name>.yml` when `--output` is omitted. `render-action` validates the default export is a built composite action definition and always requires an explicit `--output` path for the first slice.
+The CLI dynamically imports your TypeScript module and renders it to YAML using the bundled YAML adapter. `render` validates the default export is a `WorkflowDefinition` and, for the supported repository-local path `workflows/<name>.ts`, infers `.github/workflows/<name>.yml` when `--output` is omitted. When multiple explicit `--input` / `--output` pairs are provided, `render` processes each pair in order. `render-action` validates the default export is a built composite action definition and always requires an explicit `--output` path for the first slice.
 
 ## Supported Features
 

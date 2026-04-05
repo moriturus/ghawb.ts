@@ -57,6 +57,18 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Completed At: N/A
 - Notes/Links: Follow-up implementation item created by splitting the original Item 75 into discovery and delivery phases during Sprint 21 planning. Execution does not begin unless Item 75a explicitly approves migration away from the current `@ghawb/sdk` placement.
 
+### Item 77: Harden `@ghawb/yaml-import` Deno compatibility for representative import flows
+
+- Why: Sprint 21 strengthened Deno compatibility evidence for most public entrypoints, but an attempted expansion into `@ghawb/yaml-import` exposed permission-sensitive behavior in the YAML parsing path under Deno. That leaves one public package with less proven Deno compatibility than adjacent surfaces and turns a sprint-discovered issue into explicit product debt.
+- Prerequisites: None. The work should treat the current `@ghawb/yaml-import` behavior as shipped, reproduce the Deno-specific failure mode directly, and decide whether the right fix is implementation hardening, dependency isolation, or an explicit compatibility boundary.
+- Implementation Plan: Reproduce the Deno permission-sensitive parser behavior triggered during representative reusable-workflow import tests, isolate whether the environment access comes from the package integration or the underlying YAML stack, and implement the smallest safe hardening slice. Add targeted Deno coverage for representative `@ghawb/yaml-import` entrypoint usage and document any compatibility boundary that remains intentional after the fix.
+- Definition of Done: The Deno failure mode is reproduced and either fixed or explicitly documented as an intentional boundary, `@ghawb/yaml-import` has representative Deno compatibility coverage aligned with the chosen boundary, affected docs are updated, and the change completes with code review.
+- Acceptance Criteria: The work identifies the concrete cause of the Deno permission-sensitive parser behavior, states whether `@ghawb/yaml-import` remains part of the repository's supported Deno compatibility story, adds at least one targeted Deno verification slice for the package's public entrypoint, and updates contributor or product docs if the supported boundary changes.
+- Story Points: 2
+- Status: new
+- Completed At: N/A
+- Notes/Links: Added from the Sprint 21 retrospective after Deno test-slice expansion work exposed a bounded but confirmed compatibility gap while attempting to cover representative reusable-workflow import flows.
+
 ## Notes
 
 - Historical note: Prior intake rationale, older priority adjustments, and prior sprint-selection decisions were moved to [PRODUCT_BACKLOG_HISTORY.md](./PRODUCT_BACKLOG_HISTORY.md) so this file stays focused on the active backlog.
@@ -74,6 +86,7 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 - Sprint 20 retrospective decision: The Product Owner re-ranked the active backlog after Sprint 20 so hardening work now preempts broader documentation or package-boundary expansion: Item 74 first for self-hosted workflow-definition modernization, Item 76 next for stronger Deno compatibility evidence, then Item 73 documentation expansion, and finally Item 75 package-boundary refactoring. This follows the retrospective guidance to prioritize hardening whenever repository-contract drift is discovered. See [Sprint 20 Retrospective](./sprint_retrospectives/sp20.md).
 - Sprint 21 selection note: Items 74, 76, and 73 were committed to Sprint 21 for a total of 9 SP. The Product Owner intentionally accepts 11 SP of residual capacity rather than mixing unresolved package-boundary work into a hardening-first sprint. Original Item 75 was split into `Item 75a` (discovery) and `Item 75b` (implementation) and both remain in the product backlog behind the committed Sprint 21 scope. See [Sprint 21 Backlog](./sprint_backlogs/sp21.md) for committed scope and planning notes.
 - Sprint 21 review decision: Sprint 21 delivered all committed scope (Items 74, 76, and 73, 9/9 SP) without carry-over. No active-backlog reprioritization is needed; the next backlog order remains Item 75a followed by Item 75b, and the discovery-first gate on package-boundary work remains in force. See [Sprint 21 Review](./sprint_reviews/sp21.md).
+- Sprint 21 retrospective decision: Sprint 21 validated the hardening-first delivery order and did not justify reprioritizing the active backlog ahead of Item 75a. The Product Owner appended Item 77 as a separate follow-up for the bounded `@ghawb/yaml-import` Deno compatibility gap discovered during Sprint 21, behind the standing active order of Item 75a then Item 75b. See [Sprint 21 Retrospective](./sprint_retrospectives/sp21.md).
 
 ## Sprint Backlog Records
 

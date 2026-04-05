@@ -4,6 +4,8 @@ This board tracks Scrum Master owned team-improvement follow-up items.
 
 ## Priority-Ordered TODO
 
+- (Opened during Sprint 25 retrospective) Expand docs guardrails so renamed CLI flags and config-contract wording are checked across every maintained CLI usage section, not only a narrow canonical snippet.
+- (Opened during Sprint 25 retrospective) Add a sprint-review consistency check that compares the merged CLI contract against sprint-backlog wording before the review is finalized.
 - (Opened during Sprint 20 retrospective) Add a sprint-closeout check requiring explicit hosted GitHub Actions success confirmation immediately before merging the sprint PR.
 - (Opened during Sprint 24 retrospective) Add a sprint-closeout check requiring the local sprint branch to match `origin` before the final sprint PR is created.
 - (Opened during Sprint 23 retrospective) Add a closeout check requiring item PRs and the sprint PR to use the repository's expected merge strategy unless an explicit exception is recorded before merge.

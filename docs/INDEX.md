@@ -63,7 +63,9 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp21.md](./sprint_reviews/sp21.md): Sprint 21 review summary, workflow-source modernization, Deno compatibility hardening, onboarding documentation expansion, and Product Owner decision.
 - [sprint_reviews/sp23.md](./sprint_reviews/sp23.md): Sprint 23 review summary, yaml-import Deno hardening, generic job-helper application, empty-backlog closeout, and Product Owner decision.
 - [sprint_reviews/sp24.md](./sprint_reviews/sp24.md): Sprint 24 review summary, render auto-detection cleanup, CLI config-manifest contract, sprint branch synchronization, and Product Owner decision.
+- [sprint_reviews/sp25.md](./sprint_reviews/sp25.md): Sprint 25 review summary, CLI config delivery, render-time config injection, docs drift findings, and Product Owner decision.
 - [sprint_retrospectives/sp24.md](./sprint_retrospectives/sp24.md): Sprint 24 retrospective summary, role reflections, sprint-branch synchronization follow-up, and Item 84 implementation guidance.
+- [sprint_retrospectives/sp25.md](./sprint_retrospectives/sp25.md): Sprint 25 retrospective summary, role reflections, docs-guardrail gaps, config-contract consolidation, and follow-up routing.
 - [sprint_retrospectives/sp1.md](./sprint_retrospectives/sp1.md): Sprint 1 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp2.md](./sprint_retrospectives/sp2.md): Sprint 2 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp3.md](./sprint_retrospectives/sp3.md): Sprint 3 retrospective summary, role reflections, and routed improvement actions.

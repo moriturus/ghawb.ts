@@ -77,12 +77,11 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - injects an emitter function instead of binding the core to a YAML library
   - fails explicitly before emission when unsupported fields are present at runtime
 - The CLI currently:
-  - exposes `ghawb render --input <workflow.ts> [--output <workflow.yml>]` with short aliases `-i` and `-o`; when `--output` is omitted, inference is limited to the supported repository-local `workflows/<name>.ts` convention and derives `.github/workflows/<name>.yml`
-  - exposes `ghawb render-batch --input <workflow.ts> --output <workflow.yml> ...` with short aliases `-i` and `-o` for explicit multi-workflow rendering without repository scanning
+  - exposes `ghawb render --input <workflow.ts> [--output <workflow.yml>] ...` with short aliases `-i` and `-o`; when `--output` is omitted, inference is limited to the supported repository-local `workflows/<name>.ts` convention and derives `.github/workflows/<name>.yml`; when multiple explicit `--input` / `--output` pairs are provided, the command renders each pair in order without repository scanning
   - exposes `ghawb lint <file.yml> [<file.yml> ...]` for verifying generated workflow YAML files with `actionlint`; when `actionlint` is not found on `PATH`, the CLI exits non-zero with a clear message naming the missing tool and linking to installation instructions
   - loads a directly specified TypeScript module whose default export is a built workflow definition
   - renders YAML through one concrete adapter backed by the `yaml` Node module
-  - writes deterministic workflow output files and exits non-zero on failure, with batch mode surfacing partial failures after attempting every declared mapping
+  - writes deterministic workflow output files and exits non-zero on failure, with multi-target render surfacing partial failures after attempting every declared mapping
 - The repository self-hosts committed workflow definitions from explicit `workflows/*.ts` modules into matching `.github/workflows/*.yml` outputs through the root `generate:workflows` script.
 - The supported committed-workflow authoring path is explicit and repository-local: workflow source modules live directly under `workflows/`, generated outputs live under `.github/workflows/` with matching basenames, and the project does not treat out-of-repository workflow source files or undocumented workflow discovery outside that path as the supported contract.
 - The dedicated workflow guardrail command is `bun run verify:workflows`, which validates the supported repository-local workflow-source convention and detects generated-workflow drift for every committed workflow output.
@@ -122,7 +121,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
 - Documenting every GitHub Actions syntax detail up front
 - Defining packaging, versioning, or release automation in detail before the core model exists (now implemented — see [Distribution](#distribution))
 
-Composite action support currently covers only the Sprint 20 initial slice through the separate `@ghawb/composite-actions` package and the dedicated `ghawb render-action` command. Advanced action metadata such as branding and pre/post hooks remains intentionally unsupported.
+Composite action support currently covers only the Sprint 20 initial slice through the separate `@ghawb/composite-actions` package. The CLI now auto-detects workflow versus composite-action modules behind the canonical `ghawb render` command, while `ghawb render-action` remains a compatibility alias for explicit composite-action rendering. Advanced action metadata such as branding and pre/post hooks remains intentionally unsupported.
 
 ## Planned Core Responsibilities
 
@@ -136,12 +135,11 @@ Composite action support currently covers only the Sprint 20 initial slice throu
 ### CLI
 
 - Provide a thin execution layer on top of the SDK and renderer
-- Render workflow definitions authored with the SDK into `.github/workflows/*.yml` outputs
-- Render composite action definitions authored with `@ghawb/composite-actions` into explicit `action.yml` outputs
+- Render workflow and composite action definitions authored with the SDK and `@ghawb/composite-actions` into `.github/workflows/*.yml` and explicit `action.yml` outputs through a single `render` command with safe export auto-detection
 - Load explicitly targeted TypeScript modules rather than scanning project state implicitly
 - Fail clearly when definitions are invalid, incomplete, or not exported as the module default
 - Verify generated workflow files with `actionlint` through a dedicated `lint` command; exit non-zero with actionable install instructions when `actionlint` is not available on `PATH`
-- `ghawb render` and `ghawb render-batch` support an opt-in `--lint` flag that runs the same `actionlint` verification after successful rendering and exits non-zero on missing tooling or lint failures
+- `ghawb render` supports an opt-in `--lint` flag that runs the same `actionlint` verification after successful rendering and exits non-zero on missing tooling or lint failures
 
 ### Renderer / Internal Model
 

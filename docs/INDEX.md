@@ -61,6 +61,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp20.md](./sprint_reviews/sp20.md): Sprint 20 review summary, CLI ergonomics, composite action authoring, typed action wrapper expansion, CI closeout finding, and Product Owner decision.
 - [sprint_reviews/sp21.md](./sprint_reviews/sp21.md): Sprint 21 review summary, workflow-source modernization, Deno compatibility hardening, onboarding documentation expansion, and Product Owner decision.
 - [sprint_reviews/sp23.md](./sprint_reviews/sp23.md): Sprint 23 review summary, yaml-import Deno hardening, generic job-helper application, empty-backlog closeout, and Product Owner decision.
+- [sprint_reviews/sp24.md](./sprint_reviews/sp24.md): Sprint 24 review summary, render auto-detection cleanup, CLI config-manifest contract, sprint branch synchronization, and Product Owner decision.
 - [sprint_retrospectives/sp1.md](./sprint_retrospectives/sp1.md): Sprint 1 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp2.md](./sprint_retrospectives/sp2.md): Sprint 2 retrospective summary, grouped improvements, and follow-up routing.
 - [sprint_retrospectives/sp3.md](./sprint_retrospectives/sp3.md): Sprint 3 retrospective summary, role reflections, and routed improvement actions.

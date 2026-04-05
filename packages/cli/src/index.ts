@@ -139,7 +139,10 @@ function parseBooleanTomlValue(value: string, sourcePath: string, lineNumber: nu
 function parseQuotedTomlString(value: string, sourcePath: string, lineNumber: number): string {
   if (
     value.length < 2 ||
-    !((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))
+    !(
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    )
   ) {
     throw new CliUsageError(
       `invalid TOML string at ${sourcePath}:${lineNumber}. Expected a quoted string`

@@ -353,6 +353,12 @@ actionlint .github/workflows/ci.yml
 
 Using `ghawb` and `actionlint` together gives you type-safe construction _and_ YAML-level validation.
 
+For maintained docs and examples, run the repository-owned drift guardrail:
+
+```bash
+bun run verify:docs
+```
+
 ## Architecture
 
 ```

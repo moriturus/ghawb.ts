@@ -26,7 +26,7 @@ describe("README examples", () => {
       .onPush({ branches: ["main"] })
       .onPullRequest({ branches: ["main"] })
       .addJob(createJobId("test"), (job) => {
-        nodeCi(job.runsOn("ubuntu-latest"), { nodeVersion: "22" });
+        job.runsOn("ubuntu-latest").apply(nodeCi({ nodeVersion: "24" }));
       })
       .build();
 
@@ -48,9 +48,10 @@ describe("README examples", () => {
         cancelInProgress: true,
       })
       .addJob(createJobId("check"), (job) => {
-        nodeCi(job.runsOn("ubuntu-latest").permissions({ contents: "read" }), {
-          nodeVersion: "22",
-        });
+        job
+          .runsOn("ubuntu-latest")
+          .permissions({ contents: "read" })
+          .apply(nodeCi({ nodeVersion: "24" }));
       })
       .build();
 
@@ -147,7 +148,7 @@ describe("README examples", () => {
           .uses(actionsCheckout({ fetchDepth: 0 }), "Checkout")
           .uses(
             actionsSetupNode({
-              nodeVersion: "22",
+              nodeVersion: "24",
               cache: "pnpm",
               cacheDependencyPath: ["pnpm-lock.yaml", "packages/*/pnpm-lock.yaml"],
             }),

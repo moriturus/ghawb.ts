@@ -23,7 +23,7 @@ The boundary is:
 - `@ghawb/sdk` owns `TypedActionStep`, `TypedActionWithMap`, and `typedActionStep()`
 - `@ghawb/sdk` continues to accept typed action-step objects in `job.uses(...)`
 - `@ghawb/typed-actions` owns concrete wrappers such as `actionsCheckout()` and `actionsSetupNode()`
-- `JobBuilder.nodeCi()` remains in `@ghawb/sdk` and keeps TypeScript-style naming
+- `nodeCi()` has been migrated to `@ghawb/job-helpers` as a standalone function per [ADR 0006](./0006-migrate-node-ci-helper-to-opt-in-package.md); it keeps TypeScript-style naming
 - acronym-containing identifiers follow normal TypeScript style, for example `nodeCi`, `exampleUrl`, `githubServerUrl`, and `runId`
 
 ## Consequences

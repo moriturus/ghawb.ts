@@ -5,6 +5,7 @@
     "@ghawb/sdk": "./packages/sdk/src/index.ts",
     "@ghawb/composite-actions": "./packages/composite-actions/src/index.ts",
     "@ghawb/typed-actions": "./packages/typed-actions/src/index.ts",
+    "@ghawb/job-helpers": "./packages/job-helpers/src/index.ts",
     "@ghawb/cli": "./packages/cli/src/index.ts",
     "@ghawb/yaml-import": "./packages/yaml-import/src/index.ts"
   }

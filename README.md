@@ -6,6 +6,7 @@
 
 ```ts
 import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { nodeCi } from "@ghawb/job-helpers";
 
 const workflow = defineWorkflow({
   id: createWorkflowId("ci"),
@@ -14,7 +15,7 @@ const workflow = defineWorkflow({
   .onPush({ branches: ["main"] })
   .onPullRequest({ branches: ["main"] })
   .addJob(createJobId("test"), (job) => {
-    job.runsOn("ubuntu-latest").nodeCi({ nodeVersion: "22" });
+    nodeCi(job.runsOn("ubuntu-latest"), { nodeVersion: "22" });
   })
   .build();
 
@@ -85,6 +86,7 @@ Create a file (e.g. `workflows/ci.ts`):
 
 ```ts
 import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { nodeCi } from "@ghawb/job-helpers";
 
 export default defineWorkflow({
   id: createWorkflowId("ci"),
@@ -92,7 +94,7 @@ export default defineWorkflow({
 })
   .onPush({ branches: ["main"] })
   .addJob(createJobId("build"), (job) => {
-    job.runsOn("ubuntu-latest").nodeCi({ nodeVersion: "22" }).run("npm run build", "Build");
+    nodeCi(job.runsOn("ubuntu-latest"), { nodeVersion: "22" }).run("npm run build", "Build");
   })
   .build();
 ```
@@ -109,7 +111,7 @@ Treat the `.yml` as generated output from your TypeScript source. For the suppor
 
 ### 4. Pick the next authoring path
 
-- Want the shortest path for standard Node CI? Stay with `@ghawb/sdk` and use `job.nodeCi()`.
+- Want the shortest path for standard Node CI? Add `@ghawb/job-helpers` and use `nodeCi(job, options)`.
 - Want typed `with` inputs for common actions? Add `@ghawb/typed-actions`.
 - Want a repository command that renders and checks committed YAML? Add `@ghawb/cli`.
 - Need to keep an existing reusable workflow YAML file in the flow? Add `@ghawb/yaml-import`.
@@ -120,6 +122,7 @@ Treat the `.yml` as generated output from your TypeScript source. For the suppor
 
 ```ts
 import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { nodeCi } from "@ghawb/job-helpers";
 
 export default defineWorkflow({
   id: createWorkflowId("ci"),
@@ -132,7 +135,7 @@ export default defineWorkflow({
     cancelInProgress: true,
   })
   .addJob(createJobId("check"), (job) => {
-    job.runsOn("ubuntu-latest").permissions({ contents: "read" }).nodeCi({ nodeVersion: "22" });
+    nodeCi(job.runsOn("ubuntu-latest").permissions({ contents: "read" }), { nodeVersion: "22" });
   })
   .build();
 ```
@@ -230,7 +233,7 @@ export default defineWorkflow({
   .build();
 ```
 
-Use `@ghawb/typed-actions` when you want autocomplete and typed `with` inputs for stable, common actions. Use raw `.uses("owner/repo@ref", { with: ... })` for one-off actions that do not justify a wrapper, and prefer `job.nodeCi()` when the default Node CI sequence is sufficient without action-level customization.
+Use `@ghawb/typed-actions` when you want autocomplete and typed `with` inputs for stable, common actions. Use raw `.uses("owner/repo@ref", { with: ... })` for one-off actions that do not justify a wrapper, and prefer `nodeCi()` from `@ghawb/job-helpers` when the default Node CI sequence is sufficient without action-level customization.
 
 ### Reusable Workflow
 

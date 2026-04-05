@@ -15,6 +15,7 @@ import {
   actionsSetupNode,
   actionsUploadArtifact,
 } from "@ghawb/typed-actions";
+import { nodeCi } from "@ghawb/job-helpers";
 
 describe("README examples", () => {
   it("hero example: basic CI", () => {
@@ -25,7 +26,7 @@ describe("README examples", () => {
       .onPush({ branches: ["main"] })
       .onPullRequest({ branches: ["main"] })
       .addJob(createJobId("test"), (job) => {
-        job.runsOn("ubuntu-latest").nodeCi({ nodeVersion: "22" });
+        nodeCi(job.runsOn("ubuntu-latest"), { nodeVersion: "22" });
       })
       .build();
 
@@ -47,7 +48,9 @@ describe("README examples", () => {
         cancelInProgress: true,
       })
       .addJob(createJobId("check"), (job) => {
-        job.runsOn("ubuntu-latest").permissions({ contents: "read" }).nodeCi({ nodeVersion: "22" });
+        nodeCi(job.runsOn("ubuntu-latest").permissions({ contents: "read" }), {
+          nodeVersion: "22",
+        });
       })
       .build();
 

@@ -3,6 +3,7 @@
     "./packages/sdk",
     "./packages/shared",
     "./packages/composite-actions",
+    "./packages/job-helpers",
     "./packages/cli",
     "./packages/yaml-import"
   ]

@@ -1,6 +1,6 @@
 # ADR 0005: Retain Node CI Helper In SDK
 
-- Status: Accepted
+- Status: Superseded by [ADR 0006](./0006-migrate-node-ci-helper-to-opt-in-package.md)
 - Date: 2026-04-05
 
 ## Context

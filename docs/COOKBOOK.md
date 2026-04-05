@@ -27,6 +27,7 @@ A basic CI workflow that runs on push and pull request.
 
 ```ts
 import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { nodeCi } from "@ghawb/job-helpers";
 
 export default defineWorkflow({
   id: createWorkflowId("ci"),
@@ -35,7 +36,7 @@ export default defineWorkflow({
   .onPush({ branches: ["main"] })
   .onPullRequest({ branches: ["main"] })
   .addJob(createJobId("test"), (job) => {
-    job.runsOn("ubuntu-latest").nodeCi({ nodeVersion: "22" });
+    nodeCi(job.runsOn("ubuntu-latest"), { nodeVersion: "22" });
   })
   .build();
 ```
@@ -112,7 +113,7 @@ export default defineWorkflow({
   .build();
 ```
 
-Prefer wrappers when the upstream action is common and its `with` surface is large or error-prone. Prefer raw action refs for rare actions or for inputs that are still too niche to warrant a maintained wrapper. Prefer `job.nodeCi()` when you want the standard checkout/setup/install/test sequence instead of action-by-action control.
+Prefer wrappers when the upstream action is common and its `with` surface is large or error-prone. Prefer raw action refs for rare actions or for inputs that are still too niche to warrant a maintained wrapper. Prefer `nodeCi()` from `@ghawb/job-helpers` when you want the standard checkout/setup/install/test sequence instead of action-by-action control.
 
 ---
 

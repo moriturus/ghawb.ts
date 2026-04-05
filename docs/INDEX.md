@@ -83,7 +83,8 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md): Sprint 19 discovery decision selecting a narrow `@ghawb/sdk` Node CI helper over cookbook-only guidance or a broader preset layer.
 - [adrs/0003-separate-typed-action-wrappers-from-sdk-core.md](./adrs/0003-separate-typed-action-wrappers-from-sdk-core.md): Stakeholder decision keeping typed action core support in `@ghawb/sdk` while moving concrete wrappers into opt-in `@ghawb/typed-actions`.
 - [adrs/0004-separate-composite-action-authoring-from-workflow-sdk.md](./adrs/0004-separate-composite-action-authoring-from-workflow-sdk.md): Sprint 20 discovery decision separating composite action authoring from the workflow SDK and choosing a dedicated CLI action-emitter flow.
-- [adrs/0005-retain-node-ci-helper-in-sdk.md](./adrs/0005-retain-node-ci-helper-in-sdk.md): Sprint 22 discovery decision retaining `JobBuilder.nodeCi()` in `@ghawb/sdk` and rejecting package migration for the current narrow helper.
+- [adrs/0005-retain-node-ci-helper-in-sdk.md](./adrs/0005-retain-node-ci-helper-in-sdk.md): Sprint 22 initial discovery decision retaining `JobBuilder.nodeCi()` in `@ghawb/sdk` (superseded by ADR 0006).
+- [adrs/0006-migrate-node-ci-helper-to-opt-in-package.md](./adrs/0006-migrate-node-ci-helper-to-opt-in-package.md): Sprint 22 corrected discovery decision migrating `nodeCi()` from `@ghawb/sdk` to opt-in `@ghawb/job-helpers` package.
 - [CHANGELOG.md](../CHANGELOG.md) — Release history in Keep-a-changelog format.
 - [RELEASING.md](../RELEASING.md) — Release workflow and publishing documentation.
 - [SECURITY.md](../SECURITY.md) — Security vulnerability reporting policy.

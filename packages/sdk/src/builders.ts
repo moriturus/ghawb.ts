@@ -74,14 +74,6 @@ import {
 
 export type ReusableWorkflowSource = WorkflowRef | WorkflowBuilder | WorkflowDefinition;
 
-interface NodeCiOptions {
-  readonly nodeVersion: string;
-  readonly install?: string;
-  readonly test?: string;
-  readonly cache?: "npm" | "pnpm" | "yarn";
-  readonly cacheDependencyPath?: string | readonly string[];
-}
-
 interface WorkflowStepDraft extends StepMetadata {
   readonly kind: "run" | "uses";
   readonly run?: string;
@@ -1698,7 +1690,7 @@ function inferWorkflowCallOutputNames(
   return undefined;
 }
 
-class JobBuilder {
+export class JobBuilder {
   readonly id: JobId;
 
   private jobName?: string;
@@ -1920,54 +1912,6 @@ class JobBuilder {
       run: command,
       ...cloneRunStepMetadata(resolved),
     });
-    return this;
-  }
-
-  nodeCi(options: NodeCiOptions): this {
-    if (typeof options.nodeVersion !== "string" || options.nodeVersion.trim().length === 0) {
-      throw new WorkflowValidationError([
-        'nodeCi() requires "nodeVersion" to be a non-empty string.',
-      ]);
-    }
-
-    if (options.install !== undefined && options.install.trim().length === 0) {
-      throw new WorkflowValidationError([
-        'nodeCi() requires "install" to be omitted or a non-empty string.',
-      ]);
-    }
-
-    if (options.test !== undefined && options.test.trim().length === 0) {
-      throw new WorkflowValidationError([
-        'nodeCi() requires "test" to be omitted or a non-empty string.',
-      ]);
-    }
-
-    const setupNodeWith: Record<string, string> = {
-      "node-version": options.nodeVersion.trim(),
-    };
-
-    if (options.cache !== undefined) {
-      setupNodeWith.cache = options.cache;
-    }
-
-    const cacheDependencyPath = options.cacheDependencyPath;
-
-    if (cacheDependencyPath !== undefined) {
-      const serializedCacheDependencyPath =
-        typeof cacheDependencyPath === "string"
-          ? cacheDependencyPath
-          : cacheDependencyPath.join("\n");
-
-      setupNodeWith["cache-dependency-path"] = serializedCacheDependencyPath;
-    }
-
-    this.uses("actions/checkout@v4", "Checkout");
-    this.uses("actions/setup-node@v4", {
-      name: "Setup Node",
-      with: setupNodeWith,
-    });
-    this.run(options.install ?? "npm ci", "Install");
-    this.run(options.test ?? "npm test", "Test");
     return this;
   }
 

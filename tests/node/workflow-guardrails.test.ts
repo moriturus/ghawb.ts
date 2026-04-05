@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 
 import {
   validateWorkflowLayout,
+  validateWorkflowConventions,
   verifyWorkflowGuardrails,
 } from "../../scripts/verify-workflows.js";
 
@@ -101,6 +102,39 @@ describe("workflow guardrails", () => {
         outputPath: join(tempDir, ".github", "workflows", "manual-verify.yml"),
       },
     ]);
+  });
+
+  it("rejects workflow convention drift with source-specific diagnostics", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-workflow-conventions-"));
+    tempDirs.push(tempDir);
+
+    await mkdir(join(tempDir, "workflows"), { recursive: true });
+    await mkdir(join(tempDir, ".github", "workflows"), { recursive: true });
+    await writeFile(
+      join(tempDir, "workflows", "ci.ts"),
+      [
+        'import { defineWorkflow } from "@ghawb/sdk";',
+        "",
+        'export default defineWorkflow({ id: { value: "ci" } as never, name: "CI" })',
+        "  .onPush()",
+        '  .addJob({ value: "check" } as never, (job) => {',
+        '    job.uses("actions/setup-node@v4", { with: { "node-version": "22" } });',
+        "  })",
+        "  .build();",
+        "",
+      ].join("\n"),
+      "utf8"
+    );
+    await writeFile(join(tempDir, ".github", "workflows", "ci.yml"), "name: CI\n", "utf8");
+
+    const layout = await validateWorkflowLayout(tempDir, {
+      requireGeneratedOutputs: false,
+    });
+    const conventionIssues = await validateWorkflowConventions(tempDir, layout.mappings);
+
+    expect(conventionIssues).toContain(
+      "repository workflow convention drift detected in workflows/ci.ts: expected Node 24 setup-node default"
+    );
   });
 
   it("wires the dedicated workflow guardrail command through contributor flow and CI", async () => {

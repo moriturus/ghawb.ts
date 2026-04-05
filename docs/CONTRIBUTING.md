@@ -16,6 +16,10 @@ Run verification from the repository root on a branch whose worktree is clean an
 1. validates the supported repository-local workflow-source placement under `workflows/`
 2. rejects unsupported source placement under `.github/workflows/`
 3. renders every committed workflow source module and fails on generated-workflow drift
+4. checks the current repository-owned workflow conventions:
+   - workflow source modules that use `actions/setup-node` must pin `nodeVersion: "24"`
+   - `workflows/ci.ts` must keep the `bun run verify:workflows` step
+   - `workflows/manual-verify.ts` must keep the `bun run verify:pre-push` step
 
 `bun run verify:pre-push` wraps that guardrail command and follows the rest of the repository's local pre-push path:
 

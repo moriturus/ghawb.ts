@@ -85,7 +85,7 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - writes deterministic workflow output files and exits non-zero on failure, with batch mode surfacing partial failures after attempting every declared mapping
 - The repository self-hosts committed workflow definitions from explicit `workflows/*.ts` modules into matching `.github/workflows/*.yml` outputs through the root `generate:workflows` script.
 - The supported committed-workflow authoring path is explicit and repository-local: workflow source modules live directly under `workflows/`, generated outputs live under `.github/workflows/` with matching basenames, and the project does not treat out-of-repository workflow source files or undocumented workflow discovery outside that path as the supported contract.
-- The dedicated workflow guardrail command is `bun run verify:workflows`, which validates the supported repository-local workflow-source convention and detects generated-workflow drift for every committed workflow output.
+- The dedicated workflow guardrail command is `bun run verify:workflows`, which validates the supported repository-local workflow-source convention, checks the current repository-owned workflow conventions, and detects generated-workflow drift for every committed workflow output.
 - The contributor-facing local verification path is `bun run verify:pre-push`, which checks for a clean worktree, runs `bun run verify:workflows`, runs the root Bun checks, runs `bun run coverage`, and confirms the Node compatibility suite before push.
 
 ## Design Constraints

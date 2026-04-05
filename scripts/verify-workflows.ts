@@ -13,12 +13,56 @@ export interface WorkflowLayoutResult {
   readonly issues: readonly string[];
 }
 
+interface WorkflowConventionRule {
+  readonly sourceBasename: string;
+  readonly requiredPattern: RegExp;
+  readonly failureMessage: (sourcePath: string) => string;
+}
+
 export interface ValidateWorkflowLayoutOptions {
   readonly requireGeneratedOutputs?: boolean;
 }
 
 const SUPPORTED_SOURCE_EXTENSION = ".ts";
 const SUPPORTED_OUTPUT_EXTENSION = ".yml";
+const WORKFLOW_CONVENTION_RULES: readonly WorkflowConventionRule[] = [
+  {
+    sourceBasename: "manual-verify",
+    requiredPattern: /nodeVersion:\s*"24"/,
+    failureMessage: (sourcePath) =>
+      `repository workflow convention drift detected in ${sourcePath}: expected Node 24 setup-node default`,
+  },
+  {
+    sourceBasename: "ci",
+    requiredPattern: /nodeVersion:\s*"24"/,
+    failureMessage: (sourcePath) =>
+      `repository workflow convention drift detected in ${sourcePath}: expected Node 24 setup-node default`,
+  },
+  {
+    sourceBasename: "publish",
+    requiredPattern: /nodeVersion:\s*"24"/,
+    failureMessage: (sourcePath) =>
+      `repository workflow convention drift detected in ${sourcePath}: expected Node 24 setup-node default`,
+  },
+  {
+    sourceBasename: "release",
+    requiredPattern: /nodeVersion:\s*"24"/,
+    failureMessage: (sourcePath) =>
+      `repository workflow convention drift detected in ${sourcePath}: expected Node 24 setup-node default`,
+  },
+  {
+    sourceBasename: "ci",
+    requiredPattern: /bun run verify:workflows/,
+    failureMessage: (sourcePath) =>
+      `repository workflow convention drift detected in ${sourcePath}: expected bun run verify:workflows step`,
+  },
+  {
+    sourceBasename: "manual-verify",
+    requiredPattern: /bun run verify:pre-push/,
+    failureMessage: (sourcePath) =>
+      `repository workflow convention drift detected in ${sourcePath}: expected bun run verify:pre-push step`,
+  },
+];
 
 function relativeFromCwd(cwd: string, target: string): string {
   return relative(cwd, target) || ".";
@@ -55,6 +99,30 @@ async function runCommand(
       });
     });
   });
+}
+
+export async function validateWorkflowConventions(
+  cwd: string,
+  mappings: readonly WorkflowMapping[]
+): Promise<readonly string[]> {
+  const issues: string[] = [];
+
+  for (const mapping of mappings) {
+    const sourceContents = await readFile(mapping.sourcePath, "utf8");
+    const sourceBasename = parse(mapping.sourcePath).name;
+
+    for (const rule of WORKFLOW_CONVENTION_RULES) {
+      if (rule.sourceBasename !== sourceBasename) {
+        continue;
+      }
+
+      if (!rule.requiredPattern.test(sourceContents)) {
+        issues.push(rule.failureMessage(relativeFromCwd(cwd, mapping.sourcePath)));
+      }
+    }
+  }
+
+  return issues;
 }
 
 export async function validateWorkflowLayout(
@@ -156,6 +224,12 @@ export async function verifyWorkflowGuardrails(cwd: string): Promise<readonly Wo
 
   if (issues.length > 0) {
     throw new Error(`Workflow guardrails failed:\n- ${issues.join("\n- ")}`);
+  }
+
+  const conventionIssues = await validateWorkflowConventions(cwd, mappings);
+
+  if (conventionIssues.length > 0) {
+    throw new Error(`Workflow guardrails failed:\n- ${conventionIssues.join("\n- ")}`);
   }
 
   const tempDir = await mkdtemp(join(tmpdir(), "ghawb-workflow-guardrails-"));

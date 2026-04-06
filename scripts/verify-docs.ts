@@ -8,6 +8,7 @@ export interface DocsGuardrailResult {
 interface FileInvariant {
   readonly description: string;
   readonly pattern: RegExp;
+  readonly mode?: "required" | "forbidden";
 }
 
 interface FileContract {
@@ -30,6 +31,21 @@ const FILE_CONTRACTS: readonly FileContract[] = [
       {
         description: "config manifest guidance",
         pattern: /ghawb render --bulk ghawb\.render\.json/u,
+      },
+      {
+        description: "retired config-manifest heading",
+        mode: "forbidden",
+        pattern: /Render from a config manifest/u,
+      },
+      {
+        description: "retired config-manifest CLI example",
+        mode: "forbidden",
+        pattern: /ghawb render --config ghawb\.render\.json/u,
+      },
+      {
+        description: "retired CLI-owned config manifest wording",
+        mode: "forbidden",
+        pattern: /CLI-owned config manifest through --config <file>/u,
       },
       {
         description: "@ghawb\\/job-helpers package guidance",
@@ -91,9 +107,13 @@ const FILE_CONTRACTS: readonly FileContract[] = [
         pattern: /ghawb render.*--bulk.*--input <module\.ts>.*--config <data/u,
       },
       {
-        description: "config manifest contract",
-        pattern:
-          /ghawb render` accepts an explicit render-plan manifest file through `--bulk <file>`/u,
+        description: "render-plan manifest contract",
+        pattern: /ghawb render` accepts an explicit render-plan manifest file through `--bulk <file>`/u,
+      },
+      {
+        description: "retired config-manifest contract wording",
+        mode: "forbidden",
+        pattern: /config-manifest contract is intentionally CLI-owned/u,
       },
     ],
   },
@@ -115,9 +135,12 @@ export async function validateDocsContract(cwd: string): Promise<DocsGuardrailRe
     }
 
     for (const invariant of fileContract.invariants) {
-      if (!invariant.pattern.test(contents)) {
+      const matches = invariant.pattern.test(contents);
+      const isForbidden = invariant.mode === "forbidden";
+
+      if ((isForbidden && matches) || (!isForbidden && !matches)) {
         issues.push(
-          `docs contract drift in ${fileContract.path}: missing ${invariant.description}`
+          `docs contract drift in ${fileContract.path}: ${isForbidden ? "found" : "missing"} ${invariant.description}`
         );
       }
     }

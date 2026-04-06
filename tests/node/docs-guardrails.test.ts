@@ -48,6 +48,51 @@ describe("docs guardrails", () => {
     await expect(verifyDocsContract(tempDir)).rejects.toThrowError("Docs guardrails failed");
   });
 
+  it("flags retired config-manifest wording even when required invariants still hold", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-docs-guardrails-"));
+    tempDirs.push(tempDir);
+
+    await mkdir(join(tempDir, "docs"), { recursive: true });
+
+    const [readme, cookbook, apiReference, spec] = await Promise.all([
+      readFile(join(process.cwd(), "README.md"), "utf8"),
+      readFile(join(process.cwd(), "docs", "COOKBOOK.md"), "utf8"),
+      readFile(join(process.cwd(), "docs", "API_REFERENCE.md"), "utf8"),
+      readFile(join(process.cwd(), "docs", "SPEC.md"), "utf8"),
+    ]);
+
+    await Promise.all([
+      writeFile(
+        join(tempDir, "README.md"),
+        `${readme}\n\nRender from a config manifest\n\nghawb render --config ghawb.render.json\n\nrender also accepts a CLI-owned config manifest through --config <file>\n`,
+        "utf8"
+      ),
+      writeFile(join(tempDir, "docs", "COOKBOOK.md"), cookbook, "utf8"),
+      writeFile(join(tempDir, "docs", "API_REFERENCE.md"), apiReference, "utf8"),
+      writeFile(
+        join(tempDir, "docs", "SPEC.md"),
+        `${spec}\nThe CLI config-manifest contract is intentionally CLI-owned and keeps parsing outside the SDK:\n`,
+        "utf8"
+      ),
+    ]);
+
+    const result = await validateDocsContract(tempDir);
+
+    expect(result.issues).toContain(
+      "docs contract drift in README.md: found retired config-manifest heading"
+    );
+    expect(result.issues).toContain(
+      "docs contract drift in README.md: found retired config-manifest CLI example"
+    );
+    expect(result.issues).toContain(
+      "docs contract drift in README.md: found retired CLI-owned config manifest wording"
+    );
+    expect(result.issues).toContain(
+      "docs contract drift in docs/SPEC.md: found retired config-manifest contract wording"
+    );
+    await expect(verifyDocsContract(tempDir)).rejects.toThrowError("Docs guardrails failed");
+  });
+
   it("wires the dedicated docs guardrail command through contributor verification flow", async () => {
     const packageJson = JSON.parse(await readFile(join(process.cwd(), "package.json"), "utf8")) as {
       scripts: Record<string, string>;

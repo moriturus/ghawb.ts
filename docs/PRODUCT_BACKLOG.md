@@ -33,7 +33,65 @@ Use `Completed At: N/A` for items that are not done yet. Once implementation and
 
 ## Current Product Backlog
 
-No active product backlog items remain after Sprint 24 planning. The next active work has been committed into [Sprint 25 Backlog](./sprint_backlogs/sp25.md).
+### Item 87: Reconcile CLI config contract across maintained docs
+
+- Why: The shipped `render` contract now uses `--bulk` for render-plan manifests, per-target `--config` for injected render-time config, and `getRenderConfig<T>()` inside workflow modules. The maintained docs and sprint records should tell the same story so users do not have to reconcile stale wording themselves.
+- Prerequisites: None.
+- Implementation Plan: Update README, SPEC, and any affected sprint record wording so the canonical CLI contract is described once and consistently.
+- Definition of Done: The maintained docs no longer contain the retired manifest-centric `--config` wording, and the shipped CLI contract is described consistently across repository-facing documentation.
+- Acceptance Criteria:
+  - README examples use `--bulk` and per-target `--config` only.
+  - `getRenderConfig<T>()` is documented as the workflow-module access point for injected config.
+  - Sprint records that mention the CLI config contract match the shipped behavior.
+- Story Points: 2
+- Status: proposed
+- Completed At: N/A
+- Notes/Links: [Sprint 25 Review](./sprint_reviews/sp25.md), [Sprint 25 Retrospective](./sprint_retrospectives/sp25.md), [README](../README.md), [SPEC](./SPEC.md)
+
+### Item 88: Strengthen docs guardrails against stale CLI flag wording
+
+- Why: `bun run verify:docs` passed even though one maintained README section still referenced the retired manifest spelling. The docs guardrail should catch this class of drift before it reaches `main` again.
+- Prerequisites: Item 87 or the same docs cleanup effort.
+- Implementation Plan: Expand the docs verification checks so they cover cross-section consistency and retired flag detection, not just a small canonical snippet set.
+- Definition of Done: Renamed CLI flags and contract wording are checked by a guardrail that fails when stale or duplicated guidance reappears.
+- Acceptance Criteria:
+  - A stale `--config` manifest reference causes `verify:docs` to fail.
+  - The guardrail covers the maintained CLI usage sections that users actually read.
+  - The check remains deterministic and easy to run locally.
+- Story Points: 3
+- Status: proposed
+- Completed At: N/A
+- Notes/Links: [Sprint 25 Retrospective](./sprint_retrospectives/sp25.md), [LEARN](./LEARN.md)
+
+### Item 89: Add a narrow opt-in helper for a common workflow authoring pattern
+
+- Why: The existing `job-helpers` package has already proven that a narrow helper can reduce repeated authoring noise without widening `@ghawb/sdk`. A second small helper slice can improve day-to-day workflow ergonomics for a common repetitive pattern.
+- Prerequisites: Preserve the current package boundary and builder-style helper contract.
+- Implementation Plan: Identify one high-frequency job sequence that can be expressed as a small opt-in helper, implement it in `@ghawb/job-helpers`, and keep the helper additive.
+- Definition of Done: The helper shortens a repetitive workflow authoring path without introducing helper-specific methods into the core SDK.
+- Acceptance Criteria:
+  - The helper is opt-in and lives outside `@ghawb/sdk`.
+  - Existing validation and render behavior remain unchanged.
+  - A representative workflow becomes materially shorter or clearer when using the helper.
+- Story Points: 3
+- Status: proposed
+- Completed At: N/A
+- Notes/Links: [Sprint 23 Review](./sprint_reviews/sp23.md), [SPEC](./SPEC.md)
+
+### Item 90: Clarify the quickest package adoption path for new users
+
+- Why: As the repository adds more opt-in packages, the adoption path becomes harder to infer from a quick README skim. A clearer “start here, then add this” path reduces initial friction.
+- Prerequisites: None.
+- Implementation Plan: Tighten the README package-selection guidance so the first installation and next-step recommendations are easier to follow.
+- Definition of Done: The README clearly explains the shortest path for a user who starts from zero and wants to author workflows with the least confusion.
+- Acceptance Criteria:
+  - The README presents a clear order for adopting `@ghawb/sdk`, `@ghawb/job-helpers`, `@ghawb/typed-actions`, and `@ghawb/cli`.
+  - The guidance explains when to add each optional package.
+  - The wording is short enough to scan quickly.
+- Story Points: 2
+- Status: proposed
+- Completed At: N/A
+- Notes/Links: [README](../README.md), [SPEC](./SPEC.md)
 
 ## Notes
 

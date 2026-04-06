@@ -754,7 +754,7 @@ export default defineWorkflow({
       "utf8"
     );
 
-    await writeFile(configPath, "[group]\nbranch = \"release\"\n", "utf8");
+    await writeFile(configPath, '[group]\nbranch = "release"\n', "utf8");
 
     const result = await runCli(
       ["render", "--input", inputPath, "--config", configPath, "--output", outputPath],

@@ -67,7 +67,7 @@ npm install @ghawb/composite-actions    # or pnpm / yarn / bun
 
 ## Choose The Right Package
 
-Start with `@ghawb/sdk`, then add opt-in packages only when they solve a real authoring problem for you.
+Start with `@ghawb/sdk`. Add each opt-in package only when the previous one stops being enough.
 
 | Package                    | Use it when                                                                                                                                            | Avoid it when                                                                                                                              |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -80,11 +80,11 @@ Start with `@ghawb/sdk`, then add opt-in packages only when they solve a real au
 
 Recommended adoption path:
 
-1. Start with `@ghawb/sdk`.
-2. Add `@ghawb/job-helpers` when you want the default Node 24 CI sequence or a reusable bootstrap prefix with minimal boilerplate.
-3. Add `@ghawb/typed-actions` when common first-party actions dominate your workflows.
-4. Add `@ghawb/cli` when you want a repository-local render step that writes committed YAML.
-5. Add `@ghawb/yaml-import` when you are integrating existing reusable workflow YAML instead of rewriting it right away.
+1. Start with `@ghawb/sdk` for workflow builders and validation.
+2. Add `@ghawb/job-helpers` for Node CI or bootstrap prefixes without repeated boilerplate.
+3. Add `@ghawb/typed-actions` for typed `with` inputs on common actions.
+4. Add `@ghawb/cli` to render committed YAML from repository-local sources.
+5. Add `@ghawb/yaml-import` when you need to call existing reusable workflow YAML.
 
 ## Quick Start
 

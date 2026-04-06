@@ -409,7 +409,10 @@ function validateRenderTarget(value: unknown, sourceName: string, index: number)
     );
   }
 
-  if (configPath !== undefined && (typeof configPath !== "string" || configPath.trim().length === 0)) {
+  if (
+    configPath !== undefined &&
+    (typeof configPath !== "string" || configPath.trim().length === 0)
+  ) {
     throw new CliUsageError(
       `invalid render target at ${sourceName} targets[${index}]. "config" must be a non-empty string when provided`
     );
@@ -793,7 +796,12 @@ export async function runCli(
 
       for (const target of targets) {
         try {
-          const outputPath = await renderTarget(target, readConfigFile, importModule, writeOutputFile);
+          const outputPath = await renderTarget(
+            target,
+            readConfigFile,
+            importModule,
+            writeOutputFile
+          );
           renderedOutputs.push(outputPath);
           io.stdout(`Rendered ${outputPath}`);
         } catch (error) {

@@ -108,7 +108,8 @@ const FILE_CONTRACTS: readonly FileContract[] = [
       },
       {
         description: "render-plan manifest contract",
-        pattern: /ghawb render` accepts an explicit render-plan manifest file through `--bulk <file>`/u,
+        pattern:
+          /ghawb render` accepts an explicit render-plan manifest file through `--bulk <file>`/u,
       },
       {
         description: "retired config-manifest contract wording",

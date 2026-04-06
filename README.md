@@ -330,13 +330,16 @@ ghawb render \
   --input workflows/ci.ts      --output .github/workflows/ci.yml \
   --input workflows/deploy.ts  --output .github/workflows/deploy.yml
 
-# Render from a config manifest
-ghawb render --config ghawb.render.json
+# Render with per-target config injection
+ghawb render \
+  --input workflows/ci.ts \
+  --config ci.render.json \
+  --output .github/workflows/ci.yml
 ```
 
 The CLI dynamically imports your TypeScript module and renders it to YAML using the bundled YAML adapter. `render` auto-detects workflow or composite-action modules, validates the default export shape for the selected artifact type, and for the supported repository-local workflow path `workflows/<name>.ts` infers `.github/workflows/<name>.yml` when `--output` is omitted. When multiple explicit `--input` / `--output` pairs are provided, `render` processes each pair in order.
 
-`render` also accepts a CLI-owned config manifest through `--config <file>` in JSON, YAML, or TOML. The supported manifest shape is a top-level object with a non-empty `targets` array of `{ input, output }` objects plus an optional boolean `lint`; later explicit CLI flags still override manifest values on the same invocation.
+Use `--bulk` for render-plan manifests in JSON, YAML, or TOML. Use `--config` immediately after the corresponding `--input` when you want per-target render-time config injection; the injected value is exposed inside the workflow module through `getRenderConfig<T>()`.
 
 ## Supported Features
 

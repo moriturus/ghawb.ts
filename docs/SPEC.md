@@ -84,8 +84,9 @@ The project is intended to make workflow construction type-safe, robust, and ide
   - supports per-target render-time config injection through `--config`, which is bound to the immediately preceding `--input`; the CLI parses JSON, YAML, or a flat top-level TOML object/array subset and exposes the resulting value through `@ghawb/sdk`'s `getRenderConfig()`
   - renders YAML through one concrete adapter backed by the `yaml` Node module
   - writes deterministic workflow or composite-action output files and exits non-zero on failure, with multi-target render surfacing partial failures after attempting every declared mapping
-- The CLI config-manifest contract is intentionally CLI-owned and keeps parsing outside the SDK:
+- The CLI render-plan manifest contract is intentionally CLI-owned and keeps parsing outside the SDK:
   - `ghawb render` accepts an explicit render-plan manifest file through `--bulk <file>` rather than implicit repository discovery
+  - `--config` is bound to the immediately preceding `--input` for per-target render-time config injection, while `--bulk` remains the manifest entrypoint
   - supported manifest formats are JSON, YAML, and TOML
   - a manifest declares one or more render targets using the same `input` / `output` shape as the explicit CLI path, plus optional per-target `config`
   - configuration values from the manifest are overridden by later CLI flags on the same invocation

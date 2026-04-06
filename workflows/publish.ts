@@ -1,5 +1,6 @@
 import { RunnerLabel, createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
-import { actionsCheckout, actionsSetupNode } from "@ghawb/typed-actions";
+import { actionsCheckout } from "@ghawb/typed-actions";
+import { nodeBootstrap } from "@ghawb/job-helpers";
 
 export default defineWorkflow({
   id: createWorkflowId("publish"),
@@ -14,17 +15,12 @@ export default defineWorkflow({
       .displayName("Publish to npm")
       .runsOn(RunnerLabel.UbuntuLatest)
       .permissions({ contents: "read" })
-      .uses(actionsCheckout(), "Checkout")
-      .uses(
-        actionsSetupNode({
+      .apply(
+        nodeBootstrap({
           nodeVersion: "24",
           registryUrl: "https://registry.npmjs.org",
-        }),
-        "Setup Node"
+        })
       )
-      .run("npm ci", {
-        name: "Install Dependencies",
-      })
       .run("bun run build:check", {
         name: "Build Packages",
       })

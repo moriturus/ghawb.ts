@@ -18,10 +18,10 @@ jobs:
           node-version: "24"
           registry-url: https://registry.npmjs.org
         uses: actions/setup-node@v4
+      - name: Install
+        run: npm ci
       - name: Install Changesets CLI
         run: npm install -g @changesets/cli
-      - name: Install Dependencies
-        run: npm ci
       - name: Create Release Pull Request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

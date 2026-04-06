@@ -69,19 +69,19 @@ npm install @ghawb/composite-actions    # or pnpm / yarn / bun
 
 Start with `@ghawb/sdk`, then add opt-in packages only when they solve a real authoring problem for you.
 
-| Package                    | Use it when                                                                                                                               | Avoid it when                                                                                                                              |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@ghawb/sdk`               | You want typed workflow builders, validation, and deterministic render payloads.                                                          | You only need a shell command to render an existing module and do not need to author workflows in code.                                    |
-| `@ghawb/job-helpers`       | You want the standard checkout/setup/install/test Node CI path without repeating common step sequences in every workflow.                 | You need fully custom job steps or action-level control for most workflows.                                                                |
-| `@ghawb/typed-actions`     | Repeated action refs like checkout, setup-node, cache, Pages, or artifacts are making raw `with` maps noisy or error-prone.               | You mostly use one-off actions whose input surface is too niche to justify a maintained wrapper.                                           |
-| `@ghawb/cli`               | You want a command-line path to render workflow or composite-action modules into committed YAML files.                                    | You are embedding rendering inside your own TypeScript process and do not need a CLI entrypoint.                                           |
-| `@ghawb/yaml-import`       | You need to call an existing reusable workflow YAML file from `ghawb` without rewriting that reusable workflow into builders immediately. | You are already authoring the reusable workflow in `@ghawb/sdk` and can pass the builder or built definition directly to `usesWorkflow()`. |
-| `@ghawb/composite-actions` | You want to author `action.yml` metadata with the same explicit builder style used for workflows.                                         | You only need workflow authoring; composite actions are a separate opt-in surface.                                                         |
+| Package                    | Use it when                                                                                                                                            | Avoid it when                                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@ghawb/sdk`               | You want typed workflow builders, validation, and deterministic render payloads.                                                                       | You only need a shell command to render an existing module and do not need to author workflows in code.                                    |
+| `@ghawb/job-helpers`       | You want the standard checkout/setup/install/test Node CI path or the narrower checkout/setup/install bootstrap used before release and publish steps. | You need fully custom job steps or action-level control for most workflows.                                                                |
+| `@ghawb/typed-actions`     | Repeated action refs like checkout, setup-node, cache, Pages, or artifacts are making raw `with` maps noisy or error-prone.                            | You mostly use one-off actions whose input surface is too niche to justify a maintained wrapper.                                           |
+| `@ghawb/cli`               | You want a command-line path to render workflow or composite-action modules into committed YAML files.                                                 | You are embedding rendering inside your own TypeScript process and do not need a CLI entrypoint.                                           |
+| `@ghawb/yaml-import`       | You need to call an existing reusable workflow YAML file from `ghawb` without rewriting that reusable workflow into builders immediately.              | You are already authoring the reusable workflow in `@ghawb/sdk` and can pass the builder or built definition directly to `usesWorkflow()`. |
+| `@ghawb/composite-actions` | You want to author `action.yml` metadata with the same explicit builder style used for workflows.                                                      | You only need workflow authoring; composite actions are a separate opt-in surface.                                                         |
 
 Recommended adoption path:
 
 1. Start with `@ghawb/sdk`.
-2. Add `@ghawb/job-helpers` when you want the default Node 24 CI sequence with minimal boilerplate.
+2. Add `@ghawb/job-helpers` when you want the default Node 24 CI sequence or a reusable bootstrap prefix with minimal boilerplate.
 3. Add `@ghawb/typed-actions` when common first-party actions dominate your workflows.
 4. Add `@ghawb/cli` when you want a repository-local render step that writes committed YAML.
 5. Add `@ghawb/yaml-import` when you are integrating existing reusable workflow YAML instead of rewriting it right away.
@@ -165,7 +165,7 @@ Treat the `.yml` as generated output from your TypeScript source. For the suppor
 
 ### 4. Pick the next authoring path
 
-- Want the shortest path for standard Node CI? Add `@ghawb/job-helpers` and use `job.apply(nodeCi(options))`.
+- Want the shortest path for standard Node CI or release bootstrap? Add `@ghawb/job-helpers` and use `job.apply(nodeCi(options))` for the full CI path or `job.apply(nodeBootstrap(options))` for the checkout/setup/install prefix.
 - Want typed `with` inputs for common actions? Add `@ghawb/typed-actions`.
 - Want a repository command that renders and checks committed YAML? Add `@ghawb/cli`.
 - Need to keep an existing reusable workflow YAML file in the flow? Add `@ghawb/yaml-import`.
@@ -290,7 +290,7 @@ export default defineWorkflow({
   .build();
 ```
 
-Use `@ghawb/typed-actions` when you want autocomplete and typed `with` inputs for stable, common actions. Use raw `.uses("owner/repo@ref", { with: ... })` for one-off actions that do not justify a wrapper, and prefer `job.apply(nodeCi(...))` from `@ghawb/job-helpers` when the default Node CI sequence is sufficient without action-level customization. Existing `nodeCi(job, options)` calls remain supported as a migration path.
+Use `@ghawb/typed-actions` when you want autocomplete and typed `with` inputs for stable, common actions. Use raw `.uses("owner/repo@ref", { with: ... })` for one-off actions that do not justify a wrapper, and prefer `job.apply(nodeCi(...))` from `@ghawb/job-helpers` when the default Node CI sequence is sufficient without action-level customization, or `job.apply(nodeBootstrap(...))` when you only need the checkout/setup/install prefix before custom release or publish steps. Existing `nodeCi(job, options)` calls remain supported as a migration path.
 
 ### Reusable Workflow
 
@@ -411,7 +411,7 @@ bun run verify:docs
 packages/
 ├── shared/   Branded identifiers (WorkflowId, JobId) and shared validation errors
 ├── sdk/      Workflow model, fluent builders, validation, deterministic renderer
-├── job-helpers/       Opt-in high-level helpers such as `nodeCi()`
+├── job-helpers/       Opt-in high-level helpers such as `nodeCi()` and `nodeBootstrap()`
 ├── composite-actions/  Opt-in composite action builder, validation, and renderer
 ├── typed-actions/      Opt-in typed wrappers for common action refs
 ├── yaml-import/        Opt-in reusable-workflow YAML import

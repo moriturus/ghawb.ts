@@ -1,5 +1,5 @@
 import { RunnerLabel, createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
-import { actionsCheckout, actionsSetupNode } from "@ghawb/typed-actions";
+import { nodeBootstrap } from "@ghawb/job-helpers";
 
 export default defineWorkflow({
   id: createWorkflowId("release"),
@@ -16,19 +16,14 @@ export default defineWorkflow({
         contents: "write",
         "pull-requests": "write",
       })
-      .uses(actionsCheckout(), "Checkout")
-      .uses(
-        actionsSetupNode({
+      .apply(
+        nodeBootstrap({
           nodeVersion: "24",
           registryUrl: "https://registry.npmjs.org",
-        }),
-        "Setup Node"
+        })
       )
       .run("npm install -g @changesets/cli", {
         name: "Install Changesets CLI",
-      })
-      .run("npm ci", {
-        name: "Install Dependencies",
       })
       .uses("changesets/action@v1", {
         name: "Create Release Pull Request",

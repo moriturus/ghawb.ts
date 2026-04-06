@@ -126,15 +126,18 @@ The `JobBuilder` is received in the `.addJob()` callback. It configures a single
 
 **Step metadata fields:** `name`, `id`, `if`, `env`, `shell`, `with`, `workingDirectory`, `continueOnError`, `timeoutMinutes`.
 
-### Node CI Helper (`@ghawb/job-helpers`)
+### Node CI and Bootstrap Helpers (`@ghawb/job-helpers`)
 
 ```ts
-import { nodeCi } from "@ghawb/job-helpers";
+import { nodeBootstrap, nodeCi } from "@ghawb/job-helpers";
 
 job.apply(nodeCi(options));
+job.apply(nodeBootstrap(options));
 ```
 
 `nodeCi(options)` returns a helper function for `JobBuilder.apply(...)` that appends a standard Node CI step sequence (checkout, setup-node, install, test) to the given job builder. Requires `nodeVersion` and defaults `install` to `npm ci` plus `test` to `npm test`. Optional `cache` follows the `actions/setup-node` allowlist (`npm`, `pnpm`, `yarn`), and `cacheDependencyPath` accepts either a string or string array. Existing `nodeCi(job, options)` calls remain supported as a migration path.
+
+`nodeBootstrap(options)` returns a helper function for `JobBuilder.apply(...)` that appends the shared bootstrap prefix used by release and publish jobs (checkout, setup-node, install) to the given job builder. It requires `nodeVersion`, defaults `install` to `npm ci`, supports the same `cache` and `cacheDependencyPath` setup-node options as the Node CI helper, and adds a `registryUrl` setup-node option for release/publish bootstrapping. The helper stays outside `@ghawb/sdk` and keeps release-specific or publish-specific steps explicit at the call site.
 
 ---
 

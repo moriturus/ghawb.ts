@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refine Sprint Planning"
+  short_description: "Refine sprint scope and close planning gaps"
+  default_prompt: "Use $refine-sprint-planning to reconcile planning feedback, split or re-estimate items, and persist the refined sprint plan when explicitly requested."

@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+    "strict": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "paths": {
+      "@ghawb/shared": ["./packages/shared/src/index.ts"],
+      "@ghawb/sdk": ["./packages/sdk/src/index.ts"],
+      "@ghawb/composite-actions": ["./packages/composite-actions/src/index.ts"],
+      "@ghawb/typed-actions": ["./packages/typed-actions/src/index.ts"],
+      "@ghawb/job-helpers": ["./packages/job-helpers/src/index.ts"],
+      "@ghawb/cli": ["./packages/cli/src/index.ts"],
+      "@ghawb/yaml-import": ["./packages/yaml-import/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/node/**/*.ts",
+    "tests/shared/**/*.ts",
+    "vitest.config.ts"
+  ]
+}

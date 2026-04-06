@@ -1,0 +1,37 @@
+{
+  "name": "@ghawb/composite-actions",
+  "version": "1.0.0",
+  "description": "Build GitHub Actions workflows and composite actions in TypeScript with full type safety, deterministic output, and zero non-Node dependencies.",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Henrique Sasaki Yuya",
+    "email": "moriturus@alimensir.com",
+    "url": "https://github.com/moriturus"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/moriturus/ghawb.ts.git"
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "deno": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "prepublishOnly": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@ghawb/sdk": "^1.0.0",
+    "@ghawb/shared": "^1.0.0"
+  }
+}

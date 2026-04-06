@@ -1,0 +1,11 @@
+{
+  "name": "@ghawb/composite-actions",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "exports": "./src/index.ts",
+  "imports": {
+    "@ghawb/composite-actions": "./src/index.ts",
+    "@ghawb/sdk": "../sdk/src/index.ts",
+    "@ghawb/shared": "../shared/src/index.ts"
+  }
+}

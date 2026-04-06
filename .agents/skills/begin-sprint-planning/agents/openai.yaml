@@ -1,0 +1,4 @@
+interface:
+  display_name: "Begin Sprint Planning"
+  short_description: "Propose sprint scope and surface open decisions"
+  default_prompt: "Use $begin-sprint-planning to propose sprint scope, select in-order candidates, and surface the planning decisions that still need resolution."

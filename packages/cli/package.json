@@ -1,6 +1,6 @@
 {
   "name": "@ghawb/cli",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "bin": {
     "ghawb": "./dist/bin.js"
   },
@@ -23,8 +23,8 @@
     "prepublishOnly": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@ghawb/composite-actions": "^0.1.0",
-    "@ghawb/sdk": "^0.1.0",
+    "@ghawb/composite-actions": "^1.0.0",
+    "@ghawb/sdk": "^1.0.0",
     "yaml": "^2.8.1"
   }
 }

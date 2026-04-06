@@ -1,6 +1,6 @@
 {
   "name": "@ghawb/typed-actions",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "files": [
     "src",
     "dist"
@@ -20,6 +20,6 @@
     "prepublishOnly": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@ghawb/sdk": "^0.1.0"
+    "@ghawb/sdk": "^1.0.0"
   }
 }

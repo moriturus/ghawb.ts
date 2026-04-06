@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Sprint Retrospective'
+  short_description: 'Run structured sprint retrospectives and capture actions'
+  default_prompt: 'Use $sprint-retrospective to run a structured sprint retrospective and capture action items.'

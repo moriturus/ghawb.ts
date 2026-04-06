@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Discovery"
+  short_description: "Drive evidence-based product discovery work"
+  default_prompt: "Use $product-dicovery to synthesize product signals, identify candidate themes, and propose the next discovery-backed backlog options."

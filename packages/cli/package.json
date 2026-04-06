@@ -1,0 +1,30 @@
+{
+  "name": "@ghawb/cli",
+  "version": "0.1.0",
+  "bin": {
+    "ghawb": "./dist/bin.js"
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "deno": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "prepublishOnly": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@ghawb/composite-actions": "^0.1.0",
+    "@ghawb/sdk": "^0.1.0",
+    "yaml": "^2.8.1"
+  }
+}

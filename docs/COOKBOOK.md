@@ -1,0 +1,487 @@
+# Cookbook
+
+Practical workflow patterns using `@ghawb/sdk`. Each recipe is a self-contained example you can adapt. For the full API surface, see [API_REFERENCE.md](API_REFERENCE.md).
+
+## Table of Contents
+
+- [CI Pipeline](#ci-pipeline)
+- [Matrix Build](#matrix-build)
+- [Typed Action Wrappers](#typed-action-wrappers)
+- [Deploy with Environment](#deploy-with-environment)
+- [Manual Dispatch with Inputs](#manual-dispatch-with-inputs)
+- [Reusable Workflow](#reusable-workflow)
+- [Calling a Reusable Workflow](#calling-a-reusable-workflow)
+- [Import Reusable Workflow YAML](#import-reusable-workflow-yaml)
+- [Inject a Local Reusable Workflow Definition](#inject-a-local-reusable-workflow-definition)
+- [Self-Hosted Runners with Groups](#self-hosted-runners-with-groups)
+- [Conditional Steps with Expressions](#conditional-steps-with-expressions)
+- [Container Job with Services](#container-job-with-services)
+- [Concurrency Control](#concurrency-control)
+- [Multi-Trigger Workflow](#multi-trigger-workflow)
+
+---
+
+## CI Pipeline
+
+A basic CI workflow that runs on push and pull request.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { nodeCi } from "@ghawb/job-helpers";
+
+export default defineWorkflow({
+  id: createWorkflowId("ci"),
+  name: "CI",
+})
+  .onPush({ branches: ["main"] })
+  .onPullRequest({ branches: ["main"] })
+  .addJob(createJobId("test"), (job) => {
+    job.runsOn("ubuntu-latest").apply(nodeCi({ nodeVersion: "24" }));
+  })
+  .build();
+```
+
+---
+
+## Matrix Build
+
+Test across multiple OS and Node versions.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow, matrix } from "@ghawb/sdk";
+
+export default defineWorkflow({
+  id: createWorkflowId("matrix-ci"),
+  name: "Matrix CI",
+})
+  .onPush({ branches: ["main"] })
+  .addJob(createJobId("test"), (job) => {
+    job
+      .strategyMatrix({ os: ["ubuntu-latest", "macos-latest"], node: ["20", "22"] })
+      .failFast(false)
+      .runsOn(matrix("os"))
+      .uses("actions/checkout@v4")
+      .uses("actions/setup-node@v4", {
+        with: { "node-version": matrix("node") },
+      })
+      .run("npm ci")
+      .run("npm test");
+  })
+  .build();
+```
+
+---
+
+## Typed Action Wrappers
+
+Use `@ghawb/typed-actions` when you want explicit, typed inputs for common actions instead of hand-writing `with` maps.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import {
+  actionsCheckout,
+  actionsConfigurePages,
+  actionsDeployPages,
+  actionsSetupNode,
+  actionsUploadPagesArtifact,
+} from "@ghawb/typed-actions";
+
+export default defineWorkflow({
+  id: createWorkflowId("pages"),
+  name: "Pages",
+})
+  .onPush({ branches: ["main"] })
+  .addJob(createJobId("build"), (job) => {
+    job
+      .runsOn("ubuntu-latest")
+      .permissions({ contents: "read", pages: "write", "id-token": "write" })
+      .uses(actionsCheckout(), "Checkout")
+      .uses(
+        actionsSetupNode({
+          nodeVersion: "24",
+          cache: "npm",
+          cacheDependencyPath: "package-lock.json",
+        }),
+        "Setup Node"
+      )
+      .run("npm ci")
+      .run("npm run build")
+      .uses(actionsConfigurePages(), "Configure Pages")
+      .uses(actionsUploadPagesArtifact({ path: "dist" }), "Upload Pages Artifact")
+      .uses(actionsDeployPages({ artifactName: "github-pages" }), "Deploy Pages");
+  })
+  .build();
+```
+
+Prefer wrappers when the upstream action is common and its `with` surface is large or error-prone. Prefer raw action refs for rare actions or for inputs that are still too niche to warrant a maintained wrapper. Prefer `job.apply(nodeCi(...))` from `@ghawb/job-helpers` when you want the standard checkout/setup/install/test sequence instead of action-by-action control. Prefer `job.apply(nodeBootstrap(...))` when you want the same checkout/setup/install prefix without the default test step, such as release or publish jobs that add custom steps afterward. Legacy `nodeCi(job, options)` calls remain supported for migration.
+
+---
+
+## Deploy with Environment
+
+Deploy to a named environment with a URL.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow, github } from "@ghawb/sdk";
+
+export default defineWorkflow({
+  id: createWorkflowId("deploy"),
+  name: "Deploy",
+})
+  .onPush({ branches: ["main"] })
+  .permissions({ contents: "read", deployments: "write" })
+  .addJob(createJobId("deploy"), (job) => {
+    job
+      .runsOn("ubuntu-latest")
+      .environment({ name: "production", url: "https://example.com" })
+      .uses("actions/checkout@v4")
+      .run("npm ci && npm run build")
+      .run("npm run deploy", {
+        env: { DEPLOY_TOKEN: github("token") },
+      });
+  })
+  .build();
+```
+
+---
+
+## Manual Dispatch with Inputs
+
+A workflow triggered manually with typed inputs.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow, inputs } from "@ghawb/sdk";
+
+export default defineWorkflow({
+  id: createWorkflowId("release"),
+  name: "Release",
+})
+  .onWorkflowDispatch({
+    inputs: {
+      version: {
+        description: "Release version",
+        required: true,
+        type: "string",
+      },
+      dry_run: {
+        description: "Skip publish",
+        required: false,
+        type: "boolean",
+        default: "false",
+      },
+    },
+  })
+  .addJob(createJobId("publish"), (job) => {
+    job
+      .runsOn("ubuntu-latest")
+      .uses("actions/checkout@v4")
+      .run(`echo "Publishing version ${inputs("version")}"`)
+      .run("npm publish", {
+        if: inputs("dry_run") + " != 'true'",
+      });
+  })
+  .build();
+```
+
+---
+
+## Reusable Workflow
+
+Define a workflow that can be called by other workflows.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow, secrets } from "@ghawb/sdk";
+
+export default defineWorkflow({
+  id: createWorkflowId("shared-build"),
+  name: "Shared Build",
+})
+  .onWorkflowCall({
+    inputs: {
+      node_version: {
+        description: "Node version to use",
+        required: false,
+        type: "string",
+        default: "24",
+      },
+    },
+    secrets: {
+      npm_token: {
+        description: "NPM publish token",
+        required: true,
+      },
+    },
+  })
+  .addJob(createJobId("build"), (job) => {
+    job
+      .runsOn("ubuntu-latest")
+      .uses("actions/checkout@v4")
+      .run("npm ci")
+      .run("npm run build", {
+        env: { NPM_TOKEN: secrets("npm_token") },
+      });
+  })
+  .build();
+```
+
+---
+
+## Calling a Reusable Workflow
+
+Reference another workflow by ref string or by builder object.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow, workflowRef } from "@ghawb/sdk";
+
+// By ref string
+export default defineWorkflow({
+  id: createWorkflowId("caller"),
+  name: "Caller",
+})
+  .onPush({ branches: ["main"] })
+  .addJob(createJobId("build"), (job) => {
+    job.usesWorkflow(workflowRef("org/shared/.github/workflows/build.yml@main"), {
+      with: { node_version: "24" },
+      secrets: "inherit",
+    });
+  })
+  .build();
+```
+
+You can also pass a `WorkflowBuilder` or `WorkflowDefinition` directly to `usesWorkflow()`. The SDK derives the local ref and validates the target's `workflow_call` trigger at build time.
+
+---
+
+## Import Reusable Workflow YAML
+
+Use `@ghawb/yaml-import` when the reusable workflow already exists as committed YAML and you want to keep it in place while adopting `ghawb` for the caller workflow.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+import { importReusableWorkflow } from "@ghawb/yaml-import";
+
+const sharedRelease = await importReusableWorkflow(".github/workflows/shared-release.yml");
+
+export default defineWorkflow({
+  id: createWorkflowId("release"),
+  name: "Release",
+})
+  .onWorkflowDispatch()
+  .addJob(createJobId("publish"), (job) => {
+    job.usesWorkflow(sharedRelease, {
+      with: { node_version: "24" },
+      secrets: "inherit",
+    });
+  })
+  .build();
+```
+
+Use this path when the reusable workflow already exists in YAML or is maintained separately. If you already author the reusable workflow in `@ghawb/sdk`, prefer object injection instead of round-tripping through YAML.
+
+---
+
+## Inject a Local Reusable Workflow Definition
+
+Use object injection when both the reusable workflow and the caller live in the same TypeScript authoring surface and you want the SDK to infer the local ref and validate the `workflow_call` trigger for you.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+
+const sharedBuild = defineWorkflow({
+  id: createWorkflowId("shared-build"),
+  name: "Shared Build",
+})
+  .onWorkflowCall({
+    inputs: {
+      node_version: {
+        description: "Node version",
+        required: false,
+        type: "string",
+        default: "24",
+      },
+    },
+  })
+  .addJob(createJobId("build"), (job) => {
+    job.runsOn("ubuntu-latest").run("npm ci").run("npm test");
+  });
+
+export default defineWorkflow({
+  id: createWorkflowId("release"),
+  name: "Release",
+})
+  .onWorkflowDispatch()
+  .addJob(createJobId("publish"), (job) => {
+    job.usesWorkflow(sharedBuild, {
+      with: { node_version: "24" },
+      secrets: "inherit",
+    });
+  })
+  .build();
+```
+
+This is the smallest-friction path when you own both workflows in one repository and want build-time validation instead of stringly typed local refs.
+
+---
+
+## Self-Hosted Runners with Groups
+
+Use the `runs-on` object form for runner groups and labels.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+
+export default defineWorkflow({
+  id: createWorkflowId("self-hosted"),
+  name: "Self-Hosted",
+})
+  .onPush()
+  .addJob(createJobId("build"), (job) => {
+    job
+      .runsOn({ group: "production", labels: ["x64", "linux"] })
+      .uses("actions/checkout@v4")
+      .run("make build");
+  })
+  .build();
+```
+
+Three forms are supported: `group`-only, `labels`-only, or both together.
+
+---
+
+## Conditional Steps with Expressions
+
+Use expression helpers for type-safe conditions.
+
+```ts
+import {
+  createJobId, createWorkflowId, defineWorkflow,
+  github, env, success, failure, steps,
+} from "@ghawb/sdk";
+
+export default defineWorkflow({
+  id: createWorkflowId("conditional"),
+  name: "Conditional",
+})
+  .onPush()
+  .addJob(createJobId("check"), (job) => {
+    job
+      .runsOn("ubuntu-latest")
+      .run("npm test", { id: "tests" })
+      .run("echo 'Tests passed!'", {
+        if: success(),
+      })
+      .run("echo 'Tests failed!'", {
+        if: failure(),
+      })
+      .run(`echo "Result: ${steps("tests").outputs("conclusion")}"`, {
+        if: "${{ always() }}",
+      });
+  })
+  .build();
+```
+
+---
+
+## Container Job with Services
+
+Run steps inside a container with a PostgreSQL service.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
+
+export default defineWorkflow({
+  id: createWorkflowId("integration"),
+  name: "Integration Tests",
+})
+  .onPush()
+  .addJob(createJobId("test"), (job) => {
+    job
+      .runsOn("ubuntu-latest")
+      .container({
+        image: "node:24",
+        env: { CI: "true" },
+      })
+      .services({
+        postgres: {
+          image: "postgres:16",
+          credentials: { username: "user", password: "pass" },
+          env: {
+            POSTGRES_DB: "test",
+            POSTGRES_USER: "user",
+            POSTGRES_PASSWORD: "pass",
+          },
+          ports: [5432],
+        },
+      })
+      .run("npm ci")
+      .run("npm test", {
+        env: { DATABASE_URL: "postgresql://user:pass@postgres:5432/test" },
+      });
+  })
+  .build();
+```
+
+---
+
+## Concurrency Control
+
+Prevent concurrent deployments.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow, github } from "@ghawb/sdk";
+
+export default defineWorkflow({
+  id: createWorkflowId("deploy"),
+  name: "Deploy",
+})
+  .onPush({ branches: ["main"] })
+  .concurrency({
+    group: `deploy-${github("ref")}`,
+    cancelInProgress: true,
+  })
+  .addJob(createJobId("deploy"), (job) => {
+    job
+      .runsOn("ubuntu-latest")
+      .uses("actions/checkout@v4")
+      .run("npm run deploy");
+  })
+  .build();
+```
+
+---
+
+## Multi-Trigger Workflow
+
+Combine multiple triggers in one workflow.
+
+```ts
+import { createJobId, createWorkflowId, defineWorkflow, github } from "@ghawb/sdk";
+
+export default defineWorkflow({
+  id: createWorkflowId("full-ci"),
+  name: "Full CI",
+})
+  .onPush({
+    branches: ["main"],
+    paths: ["src/**", "package.json"],
+  })
+  .onPullRequest({
+    branches: ["main"],
+    types: ["opened", "synchronize"],
+  })
+  .onSchedule(["0 6 * * 1"])
+  .addJob(createJobId("lint"), (job) => {
+    job
+      .runsOn("ubuntu-latest")
+      .uses("actions/checkout@v4")
+      .run("npm run lint");
+  })
+  .addJob(createJobId("test"), (job) => {
+    job
+      .needs(createJobId("lint"))
+      .runsOn("ubuntu-latest")
+      .uses("actions/checkout@v4")
+      .run("npm test");
+  })
+  .build();
+```

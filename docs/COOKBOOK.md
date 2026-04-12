@@ -113,7 +113,7 @@ export default defineWorkflow({
   .build();
 ```
 
-Prefer wrappers when the upstream action is common and its `with` surface is large or error-prone. Prefer raw action refs for rare actions or for inputs that are still too niche to warrant a maintained wrapper. Prefer `job.apply(nodeCi(...))` from `@ghawb/job-helpers` when you want the standard checkout/setup/install/test sequence instead of action-by-action control. Prefer `job.apply(nodeBootstrap(...))` when you want the same checkout/setup/install prefix without the default test step, such as release or publish jobs that add custom steps afterward. Legacy `nodeCi(job, options)` calls remain supported for migration.
+Prefer wrappers when the upstream action is common and its `with` surface is large or error-prone. Wrappers default to the current pinned major and accept an optional second argument for a different ref, for example `actionsDeployPages({ artifactName: "github-pages" }, { version: "v4" })`. Prefer raw action refs for rare actions or for inputs that are still too niche to warrant a maintained wrapper. Prefer `job.apply(nodeCi(...))` from `@ghawb/job-helpers` when you want the standard checkout/setup/install/test sequence instead of action-by-action control. Prefer `job.apply(nodeBootstrap(...))` when you want the same checkout/setup/install prefix without the default test step, such as release or publish jobs that add custom steps afterward. Legacy `nodeCi(job, options)` calls remain supported for migration.
 
 ---
 

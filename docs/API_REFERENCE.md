@@ -199,13 +199,15 @@ Runtime validation predicates returning `boolean`.
 
 The SDK keeps the typed action core surface (`typedActionStep()` and `TypedActionStep`) and accepts typed action step objects in `.uses(...)`. Manual-first wrappers for several high-frequency first-party actions live in the opt-in `@ghawb/typed-actions` package.
 
+Each wrapper accepts an optional second argument `{ version?: string }` to override the default action ref for that call.
+
 ### `actionsCheckout(inputs?)`
 
 Returns a typed action wrapper for `actions/checkout@v6`.
 
 ### `actionsCache(inputs)`
 
-Returns a typed action wrapper for `actions/cache@v4`.
+Returns a typed action wrapper for `actions/cache@v5`.
 
 ### `actionsSetupNode(inputs?)`
 
@@ -213,47 +215,47 @@ Returns a typed action wrapper for `actions/setup-node@v6`.
 
 ### `actionsSetupPython(inputs?)`
 
-Returns a typed action wrapper for `actions/setup-python@v5`.
+Returns a typed action wrapper for `actions/setup-python@v6`.
 
 ### `actionsSetupGo(inputs?)`
 
-Returns a typed action wrapper for `actions/setup-go@v5`.
+Returns a typed action wrapper for `actions/setup-go@v6`.
 
 ### `actionsSetupJava(inputs)`
 
-Returns a typed action wrapper for `actions/setup-java@v4`.
+Returns a typed action wrapper for `actions/setup-java@v5`.
 
 ### `actionsSetupDotnet(inputs?)`
 
-Returns a typed action wrapper for `actions/setup-dotnet@v4`.
+Returns a typed action wrapper for `actions/setup-dotnet@v5`.
 
 ### `actionsGithubScript(inputs)`
 
-Returns a typed action wrapper for `actions/github-script@v7`.
+Returns a typed action wrapper for `actions/github-script@v9`.
 
 ### `actionsConfigurePages(inputs?)`
 
-Returns a typed action wrapper for `actions/configure-pages@v5`.
+Returns a typed action wrapper for `actions/configure-pages@v6`.
 
 ### `actionsUploadPagesArtifact(inputs)`
 
-Returns a typed action wrapper for `actions/upload-pages-artifact@v3`.
+Returns a typed action wrapper for `actions/upload-pages-artifact@v5`.
 
 ### `actionsDeployPages(inputs?)`
 
-Returns a typed action wrapper for `actions/deploy-pages@v4`.
+Returns a typed action wrapper for `actions/deploy-pages@v5`.
 
 ### `actionsLabeler(inputs?)`
 
-Returns a typed action wrapper for `actions/labeler@v5`.
+Returns a typed action wrapper for `actions/labeler@v6`.
 
 ### `actionsUploadArtifact(inputs?)`
 
-Returns a typed action wrapper for `actions/upload-artifact@v4`.
+Returns a typed action wrapper for `actions/upload-artifact@v7`.
 
 ### `actionsDownloadArtifact(inputs?)`
 
-Returns a typed action wrapper for `actions/download-artifact@v4`.
+Returns a typed action wrapper for `actions/download-artifact@v8`.
 
 ```ts
 import { actionsCache, actionsCheckout, actionsSetupNode } from "@ghawb/typed-actions";
@@ -269,12 +271,15 @@ job
     }),
     "Setup Node"
   );
+
+job.uses(actionsCheckout({}, { version: "v5" }), "Legacy Checkout");
 ```
 
 Notes:
 
 - Wrapper selection currently favors widely used, stable first-party actions across checkout, caching, language setup, GitHub maintenance, and Pages deployment paths rather than exhaustive wrapper generation.
 - Wrapper versions are pinned explicitly in `@ghawb/typed-actions` rather than generated from upstream `action.yml` metadata.
+- Per-call ref overrides are available through the optional `{ version }` second argument when a workflow needs an older or custom ref.
 - Wrapper inputs serialize booleans and numbers into the string-valued `with` payload required by GitHub Actions.
 - Multivalue wrapper inputs use newline-delimited or comma-delimited serialization when the upstream action expects those shapes.
 - When a typed action step is passed to `.uses(...)`, do not also pass `metadata.with`; the typed action object owns that surface.

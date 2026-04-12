@@ -58,3 +58,5 @@ This file defines repository-specific instructions for contributors and coding a
 - Check links between `README.md`, `docs/INDEX.md`, `docs/SPEC.md`, backlog entries, and ADRs when editing docs.
 - Surface assumptions explicitly instead of presenting unresolved details as settled.
 - When sprint review or sprint retrospective updates repository files, stage and commit those documentation changes before treating the ceremony as complete unless the user explicitly asks not to commit.
+
+@RTK.md

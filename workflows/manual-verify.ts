@@ -10,9 +10,7 @@ export default defineWorkflow({
     job
       .runsOn(RunnerLabel.UbuntuLatest)
       .uses(actionsCheckout(), "Checkout")
-      .uses("oven-sh/setup-bun@v2", {
-        name: "Setup Bun",
-      })
+      .uses("oven-sh/setup-bun@v2", "Setup Bun")
       .uses(actionsSetupNode({ nodeVersion: "22" }), "Setup Node")
       .uses("denoland/setup-deno@v2", {
         name: "Setup Deno",
@@ -20,11 +18,7 @@ export default defineWorkflow({
           "deno-version": "2.x",
         },
       })
-      .run("bun install --frozen-lockfile", {
-        name: "Install Dependencies",
-      })
-      .run("bun run verify:pre-push", {
-        name: "Run Manual Verification",
-      });
+      .run("bun install --frozen-lockfile", "Install Dependencies")
+      .run("bun run verify:pre-push", "Run Manual Verification");
   })
   .build();

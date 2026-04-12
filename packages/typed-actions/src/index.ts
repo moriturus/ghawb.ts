@@ -1,4 +1,8 @@
-import { typedActionStep, type TypedActionStep } from "@ghawb/sdk";
+import { actionRef, typedActionStep, type TypedActionStep } from "@ghawb/sdk";
+
+export interface TypedActionWrapperOptions {
+  readonly version?: string;
+}
 
 export interface ActionsCheckoutInputs {
   readonly repository?: string;
@@ -368,10 +372,21 @@ function toCommaSeparatedString(value: string | number | readonly (string | numb
   return value.map((part) => String(part)).join(",");
 }
 
+function createActionReference(actionName: string, defaultVersion: string, version?: string) {
+  const resolvedVersion = version?.trim() ?? defaultVersion;
+
+  if (resolvedVersion.length === 0) {
+    throw new Error('typed action wrapper option "version" must not be empty');
+  }
+
+  return actionRef(`${actionName}@${resolvedVersion}`);
+}
+
 export function actionsCheckout(
-  inputs: ActionsCheckoutInputs = {}
+  inputs: ActionsCheckoutInputs = {},
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsCheckoutWith> {
-  return typedActionStep("actions/checkout@v6", {
+  return typedActionStep(createActionReference("actions/checkout", "v6", options.version), {
     ...(inputs.repository !== undefined ? { repository: inputs.repository } : {}),
     ...(inputs.ref !== undefined ? { ref: inputs.ref } : {}),
     ...(inputs.token !== undefined ? { token: inputs.token } : {}),
@@ -417,9 +432,10 @@ export function actionsCheckout(
 }
 
 export function actionsSetupNode(
-  inputs: ActionsSetupNodeInputs = {}
+  inputs: ActionsSetupNodeInputs = {},
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsSetupNodeWith> {
-  return typedActionStep("actions/setup-node@v6", {
+  return typedActionStep(createActionReference("actions/setup-node", "v6", options.version), {
     ...(inputs.alwaysAuth !== undefined
       ? { "always-auth": toBooleanString(inputs.alwaysAuth) }
       : {}),
@@ -447,9 +463,10 @@ export function actionsSetupNode(
 }
 
 export function actionsUploadArtifact(
-  inputs: ActionsUploadArtifactInputs = {}
+  inputs: ActionsUploadArtifactInputs = {},
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsUploadArtifactWith> {
-  return typedActionStep("actions/upload-artifact@v4", {
+  return typedActionStep(createActionReference("actions/upload-artifact", "v7", options.version), {
     ...(inputs.name !== undefined ? { name: inputs.name } : {}),
     ...(inputs.path !== undefined ? { path: toMultilineString(inputs.path) } : {}),
     ...(inputs.ifNoFilesFound !== undefined ? { "if-no-files-found": inputs.ifNoFilesFound } : {}),
@@ -467,30 +484,37 @@ export function actionsUploadArtifact(
 }
 
 export function actionsDownloadArtifact(
-  inputs: ActionsDownloadArtifactInputs = {}
+  inputs: ActionsDownloadArtifactInputs = {},
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsDownloadArtifactWith> {
-  return typedActionStep("actions/download-artifact@v4", {
-    ...(inputs.name !== undefined ? { name: inputs.name } : {}),
-    ...(inputs.artifactIds !== undefined
-      ? { "artifact-ids": toCommaSeparatedString(inputs.artifactIds) }
-      : {}),
-    ...(inputs.path !== undefined ? { path: inputs.path } : {}),
-    ...(inputs.pattern !== undefined ? { pattern: inputs.pattern } : {}),
-    ...(inputs.mergeMultiple !== undefined
-      ? { "merge-multiple": toBooleanString(inputs.mergeMultiple) }
-      : {}),
-    ...(inputs.githubToken !== undefined ? { "github-token": inputs.githubToken } : {}),
-    ...(inputs.repository !== undefined ? { repository: inputs.repository } : {}),
-    ...(inputs.runId !== undefined ? { "run-id": String(inputs.runId) } : {}),
-    ...(inputs.skipDecompress !== undefined
-      ? { "skip-decompress": toBooleanString(inputs.skipDecompress) }
-      : {}),
-    ...(inputs.digestMismatch !== undefined ? { "digest-mismatch": inputs.digestMismatch } : {}),
-  });
+  return typedActionStep(
+    createActionReference("actions/download-artifact", "v8", options.version),
+    {
+      ...(inputs.name !== undefined ? { name: inputs.name } : {}),
+      ...(inputs.artifactIds !== undefined
+        ? { "artifact-ids": toCommaSeparatedString(inputs.artifactIds) }
+        : {}),
+      ...(inputs.path !== undefined ? { path: inputs.path } : {}),
+      ...(inputs.pattern !== undefined ? { pattern: inputs.pattern } : {}),
+      ...(inputs.mergeMultiple !== undefined
+        ? { "merge-multiple": toBooleanString(inputs.mergeMultiple) }
+        : {}),
+      ...(inputs.githubToken !== undefined ? { "github-token": inputs.githubToken } : {}),
+      ...(inputs.repository !== undefined ? { repository: inputs.repository } : {}),
+      ...(inputs.runId !== undefined ? { "run-id": String(inputs.runId) } : {}),
+      ...(inputs.skipDecompress !== undefined
+        ? { "skip-decompress": toBooleanString(inputs.skipDecompress) }
+        : {}),
+      ...(inputs.digestMismatch !== undefined ? { "digest-mismatch": inputs.digestMismatch } : {}),
+    }
+  );
 }
 
-export function actionsCache(inputs: ActionsCacheInputs): TypedActionStep<ActionsCacheWith> {
-  return typedActionStep("actions/cache@v4", {
+export function actionsCache(
+  inputs: ActionsCacheInputs,
+  options: TypedActionWrapperOptions = {}
+): TypedActionStep<ActionsCacheWith> {
+  return typedActionStep(createActionReference("actions/cache", "v5", options.version), {
     path: toMultilineString(inputs.path),
     key: inputs.key,
     ...(inputs.restoreKeys !== undefined
@@ -515,9 +539,10 @@ export function actionsCache(inputs: ActionsCacheInputs): TypedActionStep<Action
 }
 
 export function actionsSetupPython(
-  inputs: ActionsSetupPythonInputs = {}
+  inputs: ActionsSetupPythonInputs = {},
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsSetupPythonWith> {
-  return typedActionStep("actions/setup-python@v5", {
+  return typedActionStep(createActionReference("actions/setup-python", "v6", options.version), {
     ...(inputs.pythonVersion !== undefined ? { "python-version": inputs.pythonVersion } : {}),
     ...(inputs.pythonVersionFile !== undefined
       ? { "python-version-file": inputs.pythonVersionFile }
@@ -544,9 +569,10 @@ export function actionsSetupPython(
 }
 
 export function actionsSetupGo(
-  inputs: ActionsSetupGoInputs = {}
+  inputs: ActionsSetupGoInputs = {},
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsSetupGoWith> {
-  return typedActionStep("actions/setup-go@v5", {
+  return typedActionStep(createActionReference("actions/setup-go", "v6", options.version), {
     ...(inputs.goVersion !== undefined ? { "go-version": inputs.goVersion } : {}),
     ...(inputs.goVersionFile !== undefined ? { "go-version-file": inputs.goVersionFile } : {}),
     ...(inputs.checkLatest !== undefined
@@ -562,9 +588,10 @@ export function actionsSetupGo(
 }
 
 export function actionsSetupJava(
-  inputs: ActionsSetupJavaInputs
+  inputs: ActionsSetupJavaInputs,
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsSetupJavaWith> {
-  return typedActionStep("actions/setup-java@v4", {
+  return typedActionStep(createActionReference("actions/setup-java", "v5", options.version), {
     ...(inputs.javaVersion !== undefined ? { "java-version": inputs.javaVersion } : {}),
     ...(inputs.javaVersionFile !== undefined
       ? { "java-version-file": inputs.javaVersionFile }
@@ -598,9 +625,10 @@ export function actionsSetupJava(
 }
 
 export function actionsSetupDotnet(
-  inputs: ActionsSetupDotnetInputs = {}
+  inputs: ActionsSetupDotnetInputs = {},
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsSetupDotnetWith> {
-  return typedActionStep("actions/setup-dotnet@v4", {
+  return typedActionStep(createActionReference("actions/setup-dotnet", "v5", options.version), {
     ...(inputs.dotnetVersion !== undefined
       ? { "dotnet-version": toMultilineString(inputs.dotnetVersion) }
       : {}),
@@ -617,9 +645,10 @@ export function actionsSetupDotnet(
 }
 
 export function actionsGithubScript(
-  inputs: ActionsGithubScriptInputs
+  inputs: ActionsGithubScriptInputs,
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsGithubScriptWith> {
-  return typedActionStep("actions/github-script@v7", {
+  return typedActionStep(createActionReference("actions/github-script", "v9", options.version), {
     script: inputs.script,
     ...(inputs.githubToken !== undefined ? { "github-token": inputs.githubToken } : {}),
     ...(inputs.debug !== undefined ? { debug: toBooleanString(inputs.debug) } : {}),
@@ -637,9 +666,10 @@ export function actionsGithubScript(
 }
 
 export function actionsConfigurePages(
-  inputs: ActionsConfigurePagesInputs = {}
+  inputs: ActionsConfigurePagesInputs = {},
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsConfigurePagesWith> {
-  return typedActionStep("actions/configure-pages@v5", {
+  return typedActionStep(createActionReference("actions/configure-pages", "v6", options.version), {
     ...(inputs.staticSiteGenerator !== undefined
       ? { static_site_generator: inputs.staticSiteGenerator }
       : {}),
@@ -652,21 +682,26 @@ export function actionsConfigurePages(
 }
 
 export function actionsUploadPagesArtifact(
-  inputs: ActionsUploadPagesArtifactInputs
+  inputs: ActionsUploadPagesArtifactInputs,
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsUploadPagesArtifactWith> {
-  return typedActionStep("actions/upload-pages-artifact@v3", {
-    ...(inputs.name !== undefined ? { name: inputs.name } : {}),
-    path: inputs.path,
-    ...(inputs.retentionDays !== undefined
-      ? { "retention-days": toNumberString(inputs.retentionDays) }
-      : {}),
-  });
+  return typedActionStep(
+    createActionReference("actions/upload-pages-artifact", "v5", options.version),
+    {
+      ...(inputs.name !== undefined ? { name: inputs.name } : {}),
+      path: inputs.path,
+      ...(inputs.retentionDays !== undefined
+        ? { "retention-days": toNumberString(inputs.retentionDays) }
+        : {}),
+    }
+  );
 }
 
 export function actionsDeployPages(
-  inputs: ActionsDeployPagesInputs = {}
+  inputs: ActionsDeployPagesInputs = {},
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsDeployPagesWith> {
-  return typedActionStep("actions/deploy-pages@v4", {
+  return typedActionStep(createActionReference("actions/deploy-pages", "v5", options.version), {
     ...(inputs.token !== undefined ? { token: inputs.token } : {}),
     ...(inputs.timeout !== undefined ? { timeout: toNumberString(inputs.timeout) } : {}),
     ...(inputs.errorCount !== undefined ? { error_count: toNumberString(inputs.errorCount) } : {}),
@@ -679,9 +714,10 @@ export function actionsDeployPages(
 }
 
 export function actionsLabeler(
-  inputs: ActionsLabelerInputs = {}
+  inputs: ActionsLabelerInputs = {},
+  options: TypedActionWrapperOptions = {}
 ): TypedActionStep<ActionsLabelerWith> {
-  return typedActionStep("actions/labeler@v5", {
+  return typedActionStep(createActionReference("actions/labeler", "v6", options.version), {
     ...(inputs.repoToken !== undefined ? { "repo-token": inputs.repoToken } : {}),
     ...(inputs.configurationPath !== undefined
       ? { "configuration-path": inputs.configurationPath }

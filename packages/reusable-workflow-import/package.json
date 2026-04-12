@@ -1,5 +1,5 @@
 {
-  "name": "@ghawb/composite-actions",
+  "name": "@ghawb/reusable-workflow-import",
   "version": "2.0.1",
   "description": "Build GitHub Actions workflows and composite actions in TypeScript with full type safety, deterministic output, and source-first JSR distribution.",
   "license": "Apache-2.0",
@@ -16,6 +16,6 @@
   "sideEffects": false,
   "dependencies": {
     "@ghawb/sdk": "^2.0.1",
-    "@ghawb/shared": "^2.0.1"
+    "yaml": "^2.8.1"
   }
 }

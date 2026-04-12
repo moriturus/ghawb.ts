@@ -57,15 +57,15 @@ export default defineWorkflow({
   .onPush({ branches: ["main"] })
   .addJob(createJobId("test"), (job) => {
     job
-      .strategyMatrix({ os: ["ubuntu-latest", "macos-latest"], node: ["20", "22"] })
+      .strategyMatrix({ os: ["ubuntu-latest", "macos-latest"], bun: ["1.2", "1.3"] })
       .failFast(false)
       .runsOn(matrix("os"))
       .uses("actions/checkout@v6")
-      .uses("actions/setup-node@v6", {
-        with: { "node-version": matrix("node") },
+      .uses("oven-sh/setup-bun@v2", {
+        with: { "bun-version": matrix("bun") },
       })
-      .run("npm ci")
-      .run("npm test");
+      .run("bun install --frozen-lockfile")
+      .run("bun test");
   })
   .build();
 ```
@@ -82,7 +82,6 @@ import {
   actionsCheckout,
   actionsConfigurePages,
   actionsDeployPages,
-  actionsSetupNode,
   actionsUploadPagesArtifact,
 } from "@ghawb/typed-actions";
 
@@ -96,16 +95,9 @@ export default defineWorkflow({
       .runsOn("ubuntu-latest")
       .permissions({ contents: "read", pages: "write", "id-token": "write" })
       .uses(actionsCheckout(), "Checkout")
-      .uses(
-        actionsSetupNode({
-          nodeVersion: "24",
-          cache: "npm",
-          cacheDependencyPath: "package-lock.json",
-        }),
-        "Setup Node"
-      )
-      .run("npm ci")
-      .run("npm run build")
+      .uses("oven-sh/setup-bun@v2", "Setup Bun")
+      .run("bun install --frozen-lockfile")
+      .run("bun run build")
       .uses(actionsConfigurePages(), "Configure Pages")
       .uses(actionsUploadPagesArtifact({ path: "dist" }), "Upload Pages Artifact")
       .uses(actionsDeployPages({ artifactName: "github-pages" }), "Deploy Pages");
@@ -135,8 +127,8 @@ export default defineWorkflow({
       .runsOn("ubuntu-latest")
       .environment({ name: "production", url: "https://example.com" })
       .uses("actions/checkout@v6")
-      .run("npm ci && npm run build")
-      .run("npm run deploy", {
+      .run("bun install --frozen-lockfile && bun run build")
+      .run("bun run deploy", {
         env: { DEPLOY_TOKEN: github("token") },
       });
   })
@@ -176,7 +168,7 @@ export default defineWorkflow({
       .runsOn("ubuntu-latest")
       .uses("actions/checkout@v6")
       .run(`echo "Publishing version ${inputs("version")}"`)
-      .run("npm publish", {
+      .run("bun x jsr publish", {
         if: inputs("dry_run") + " != 'true'",
       });
   })
@@ -190,7 +182,7 @@ export default defineWorkflow({
 Define a workflow that can be called by other workflows.
 
 ```ts
-import { createJobId, createWorkflowId, defineWorkflow, secrets } from "@ghawb/sdk";
+import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
 
 export default defineWorkflow({
   id: createWorkflowId("shared-build"),
@@ -205,21 +197,14 @@ export default defineWorkflow({
         default: "24",
       },
     },
-    secrets: {
-      npm_token: {
-        description: "NPM publish token",
-        required: true,
-      },
-    },
   })
   .addJob(createJobId("build"), (job) => {
     job
       .runsOn("ubuntu-latest")
       .uses("actions/checkout@v6")
-      .run("npm ci")
-      .run("npm run build", {
-        env: { NPM_TOKEN: secrets("npm_token") },
-      });
+      .uses("oven-sh/setup-bun@v2", "Setup Bun")
+      .run("bun install --frozen-lockfile")
+      .run("bun run build");
   })
   .build();
 ```
@@ -254,11 +239,11 @@ You can also pass a `WorkflowBuilder` or `WorkflowDefinition` directly to `usesW
 
 ## Import Reusable Workflow YAML
 
-Use `@ghawb/yaml-import` when the reusable workflow already exists as committed YAML and you want to keep it in place while adopting `ghawb` for the caller workflow.
+Use `@ghawb/reusable-workflow-import` when the reusable workflow already exists as committed YAML and you want to keep it in place while adopting `ghawb` for the caller workflow.
 
 ```ts
 import { createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
-import { importReusableWorkflow } from "@ghawb/yaml-import";
+import { importReusableWorkflow } from "@ghawb/reusable-workflow-import";
 
 const sharedRelease = await importReusableWorkflow(".github/workflows/shared-release.yml");
 
@@ -293,16 +278,22 @@ const sharedBuild = defineWorkflow({
 })
   .onWorkflowCall({
     inputs: {
-      node_version: {
-        description: "Node version",
+      bun_version: {
+        description: "Bun version",
         required: false,
         type: "string",
-        default: "24",
+        default: "1.3",
       },
     },
   })
   .addJob(createJobId("build"), (job) => {
-    job.runsOn("ubuntu-latest").run("npm ci").run("npm test");
+    job
+      .runsOn("ubuntu-latest")
+      .uses("oven-sh/setup-bun@v2", {
+        with: { "bun-version": "${{ inputs.bun_version }}" },
+      })
+      .run("bun install --frozen-lockfile")
+      .run("bun test");
   });
 
 export default defineWorkflow({
@@ -312,7 +303,7 @@ export default defineWorkflow({
   .onWorkflowDispatch()
   .addJob(createJobId("publish"), (job) => {
     job.usesWorkflow(sharedBuild, {
-      with: { node_version: "24" },
+      with: { bun_version: "1.3" },
       secrets: "inherit",
     });
   })
@@ -366,7 +357,7 @@ export default defineWorkflow({
   .addJob(createJobId("check"), (job) => {
     job
       .runsOn("ubuntu-latest")
-      .run("npm test", { id: "tests" })
+      .run("bun test", { id: "tests" })
       .run("echo 'Tests passed!'", {
         if: success(),
       })
@@ -398,7 +389,7 @@ export default defineWorkflow({
     job
       .runsOn("ubuntu-latest")
       .container({
-        image: "node:24",
+        image: "oven/bun:1.3",
         env: { CI: "true" },
       })
       .services({
@@ -413,8 +404,8 @@ export default defineWorkflow({
           ports: [5432],
         },
       })
-      .run("npm ci")
-      .run("npm test", {
+      .run("bun install --frozen-lockfile")
+      .run("bun test", {
         env: { DATABASE_URL: "postgresql://user:pass@postgres:5432/test" },
       });
   })
@@ -443,7 +434,7 @@ export default defineWorkflow({
     job
       .runsOn("ubuntu-latest")
       .uses("actions/checkout@v6")
-      .run("npm run deploy");
+      .run("bun run deploy");
   })
   .build();
 ```
@@ -474,14 +465,14 @@ export default defineWorkflow({
     job
       .runsOn("ubuntu-latest")
       .uses("actions/checkout@v6")
-      .run("npm run lint");
+      .run("bun run lint");
   })
   .addJob(createJobId("test"), (job) => {
     job
       .needs(createJobId("lint"))
       .runsOn("ubuntu-latest")
       .uses("actions/checkout@v6")
-      .run("npm test");
+      .run("bun test");
   })
   .build();
 ```

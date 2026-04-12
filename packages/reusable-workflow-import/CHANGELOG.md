@@ -1,4 +1,4 @@
-# @ghawb/yaml-import
+# @ghawb/reusable-workflow-import
 
 ## 1.0.0
 

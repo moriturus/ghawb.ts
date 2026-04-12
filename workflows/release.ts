@@ -1,5 +1,5 @@
 import { RunnerLabel, createJobId, createWorkflowId, defineWorkflow } from "@ghawb/sdk";
-import { nodeBootstrap } from "@ghawb/job-helpers";
+import { actionsCheckout } from "@ghawb/typed-actions";
 
 export default defineWorkflow({
   id: createWorkflowId("release"),
@@ -16,18 +16,13 @@ export default defineWorkflow({
         contents: "write",
         "pull-requests": "write",
       })
-      .apply(
-        nodeBootstrap({
-          nodeVersion: "24",
-          registryUrl: "https://registry.npmjs.org",
-        })
-      )
-      .run("npm install -g @changesets/cli", {
-        name: "Install Changesets CLI",
-      })
+      .uses(actionsCheckout(), "Checkout")
+      .uses("oven-sh/setup-bun@v2", "Setup Bun")
+      .run("bun install --frozen-lockfile", "Install Dependencies")
       .uses("changesets/action@v1", {
         name: "Create Release Pull Request",
         with: {
+          version: "bun x changeset version",
           title: "chore(release): version packages",
           commit: "chore(release): version packages",
         },

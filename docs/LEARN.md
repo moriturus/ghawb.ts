@@ -29,11 +29,11 @@ Entry dates reflect the UTC date of the git commit that introduced the entry, de
 ### Guard Deno against parser debug env probes in source-first packages
 
 - Date: 2026-04-05
-- Context: Sprint 23, Item 77 (`@ghawb/yaml-import` Deno compatibility hardening).
-- What happened: The `yaml` package used by `@ghawb/yaml-import` reads `process.env.LOG_TOKENS` and `process.env.LOG_STREAM` inside its parser and composer paths. Under Deno's Node-compat layer, those debug-only checks trigger `--allow-env` permission prompts even for ordinary parse calls.
+- Context: Sprint 23, Item 77 (`@ghawb/reusable-workflow-import` Deno compatibility hardening).
+- What happened: The `yaml` package used by `@ghawb/reusable-workflow-import` reads `process.env.LOG_TOKENS` and `process.env.LOG_STREAM` inside its parser and composer paths. Under Deno's Node-compat layer, those debug-only checks trigger `--allow-env` permission prompts even for ordinary parse calls.
 - Why it matters: Source-first Deno package entrypoints can inherit surprising permission requirements from transitive Node-oriented dependencies even when the application code itself does not need those permissions.
 - Recommendation: When a source-first package must stay Deno-compatible, inspect transitive dependencies for debug or logging probes against `process.env` and neutralize them in the narrowest possible scope rather than broadening the package's runtime permission requirements.
-- Links: [packages/yaml-import/src/index.ts](../packages/yaml-import/src/index.ts), [tests/deno/public-entrypoints.test.ts](../tests/deno/public-entrypoints.test.ts)
+- Links: [packages/reusable-workflow-import/src/index.ts](../packages/reusable-workflow-import/src/index.ts), [tests/deno/public-entrypoints.test.ts](../tests/deno/public-entrypoints.test.ts)
 
 ### Keep workflow source modules inside the repository when the CLI imports TypeScript directly
 
@@ -125,14 +125,14 @@ Entry dates reflect the UTC date of the git commit that introduced the entry, de
 - Recommendation: Document the `displayName()` naming decision explicitly in SPEC.md and in API-facing documentation. When future builder methods could collide with standard JavaScript property or method names, use a disambiguating prefix and document the rationale in the same commit.
 - Links: [packages/sdk/src/builders.ts](../packages/sdk/src/builders.ts), [docs/SPEC.md](./SPEC.md)
 
-### Keep npm build output separate from source-first exports
+### Keep JSR source-first distribution separate from historical npm packaging
 
 - Date: 2026-04-03
-- Context: Sprint 13, Item 41 (release packaging for npm consumers).
-- What happened: The packaging slice used `.js`-extension imports, per-package `tsconfig.build.json` files, `dist/` output, and dual exports so npm consumers get built JavaScript while Bun, Deno, and JSR keep resolving source files directly.
-- Why it matters: This split lets the repository support mainstream npm publishing without giving up source-first development ergonomics or JSR publishing.
-- Recommendation: When adding or changing release packaging, keep three surfaces aligned in the same change: source imports, build output (`dist/`), and source-first manifests (`jsr.json` / `package.json` source conditions). Make the CLI entry’s Node shebang explicit at the same time.
-- Links: [packages/sdk/package.json](../packages/sdk/package.json), [packages/cli/package.json](../packages/cli/package.json), [packages/shared/package.json](../packages/shared/package.json), [packages/*/tsconfig.build.json](../packages)
+- Context: Sprint 13, Item 41 originally added npm packaging; this was superseded by the JSR-only distribution decision.
+- What happened: The repository removed npm package publishing, per-package `tsconfig.build.json` files, `dist/` package exports, and npm publish guardrails. JSR package manifests now define the source-first distribution contract.
+- Why it matters: Future package changes should not reintroduce npm-specific build artifacts or registry assumptions when the supported distribution channel is JSR.
+- Recommendation: When adding or changing package distribution, keep `jsr.json`, `deno.json`, root `jsr.json`, and Bun-based workflow verification aligned. Do not add npm `exports`, `prepublishOnly`, `dist/` output, or npm publish steps unless the product distribution policy changes again.
+- Links: [docs/SPEC.md](./SPEC.md), [RELEASING.md](../RELEASING.md), [jsr.json](../jsr.json)
 
 ### Bun runtime accepts mismatched constructor argument types that strict tsc rejects
 
@@ -140,41 +140,41 @@ Entry dates reflect the UTC date of the git commit that introduced the entry, de
 - Context: Sprint 14, Item 47 (run script reference support).
 - What happened: `runScript()` passed a plain `string` to `new WorkflowValidationError(...)` which expects `readonly string[]`. Bun's runtime TypeScript execution accepted this silently, so all local tests passed. CI's `tsc` step (TypeScript 5.9.3 strict mode) caught the type mismatch and failed.
 - Why it matters: Bun transpiles TypeScript to JavaScript without full type checking, so constructor argument mismatches and other type-level errors are invisible at runtime. The CI pipeline runs `tsc` with strict settings, creating a gap between local development and CI.
-- Recommendation: Run `npx tsc -p tsconfig.build.json` locally before pushing changes that create new error-throwing call sites or modify constructor signatures. Consider adding a pre-push hook for `tsc` to catch these mismatches before they reach CI.
+- Recommendation: Run `bun run typecheck` locally before pushing changes that create new error-throwing call sites or modify constructor signatures. Consider adding a pre-push hook for `tsc` to catch these mismatches before they reach CI.
 - Links: [packages/sdk/src/builders.ts](../packages/sdk/src/builders.ts), [packages/shared/src/errors.ts](../packages/shared/src/errors.ts)
 
-### npm arborist crashes on bun's node_modules layout
+### Avoid mixing package-manager state in Bun-primary worktrees
 
 - Date: 2026-04-03
 - Context: Sprint 15, Item 49 (fix npm install/ci failure caused by workspace: protocol).
 - What happened: Running `npm install` in a repository where `node_modules` was previously populated by `bun install` caused npm's arborist to crash with `Cannot read properties of null (reading 'matches')`. The root cause is bun's `.bun/` directory layout inside `node_modules`, which npm's dependency tree walker does not expect.
-- Why it matters: The project's primary development environment uses Bun, but npm compatibility is a stated goal. Switching between package managers without a clean slate creates silent failures that are difficult to diagnose.
-- Recommendation: Always run `rm -rf node_modules packages/*/node_modules` before switching from `bun install` to `npm install` or vice versa. Do not assume that one package manager can operate on another's `node_modules` tree.
-- Links: [package.json](../package.json), [package-lock.json](../package-lock.json)
+- Why it matters: The project's supported development environment is Bun. Reintroducing npm install checks or npm lockfiles creates maintenance burden without matching the current distribution policy.
+- Recommendation: Use `bun install` for repository dependency state. Do not reintroduce `package-lock.json` or npm install verification unless npm support is deliberately restored.
+- Links: [package.json](../package.json), [bun.lock](../bun.lock)
 
 ### New-package root config checklist
 
 - Date: 2026-04-04
-- Context: Sprint 16, Item 55 (opt-in YAML import package) added the fourth package to the monorepo.
-- What happened: Adding `@ghawb/yaml-import` required coordinated updates across five root configuration files. Missing any single update causes silent test discovery failures or module resolution errors that are difficult to diagnose.
-- Why it matters: The five-file update ceremony is easy to forget, and each missing update produces a different class of failure (tests not found, imports not resolved, build:check not covering the package, Deno imports missing, JSR workspace incomplete).
-- Recommendation: When adding a new package to the monorepo, update all five root files in the same commit: (1) `vitest.config.ts` — add test include glob and resolve alias, (2) `tsconfig.json` — add paths alias, (3) `deno.json` — add import mapping, (4) `jsr.json` — add to workspace members, (5) `package.json` — add to `build:check` script.
+- Context: Sprint 16, Item 55 (opt-in reusable-workflow import package) added the fourth package to the monorepo.
+- What happened: Adding `@ghawb/reusable-workflow-import` required coordinated updates across five root configuration files. Missing any single update causes silent test discovery failures or module resolution errors that are difficult to diagnose.
+- Why it matters: The root-config update ceremony is easy to forget, and each missing update produces a different class of failure (tests not found, imports not resolved, Deno imports missing, JSR workspace incomplete).
+- Recommendation: When adding a new package to the monorepo, update all relevant root files in the same commit: (1) `vitest.config.ts` — add test include glob and resolve alias, (2) `tsconfig.json` — add paths alias, (3) `deno.json` — add import mapping, (4) `jsr.json` — add to workspace members, (5) package and release docs where distribution changes.
 - Links: [vitest.config.ts](../vitest.config.ts), [tsconfig.json](../tsconfig.json), [deno.json](../deno.json), [jsr.json](../jsr.json), [package.json](../package.json)
 
 ### Parameterize test helpers to avoid latent basename collisions
 
 - Date: 2026-04-04
-- Context: Sprint 16, Item 55 (opt-in YAML import package) test suite.
+- Context: Sprint 16, Item 55 (opt-in reusable-workflow import package) test suite.
 - What happened: A `createTempYaml()` test helper always wrote to a fixed filename (`shared-build.yml`). Three tests expected different basenames in the returned `WorkflowRef` and failed because the helper's embedded filename did not match the test's intent.
 - Why it matters: Test helpers with hardcoded embedded values create latent bugs when tests are written independently. The failure message ("expected list-triggers.yml, got shared-build.yml") is confusing because it does not point at the helper as the root cause.
 - Recommendation: Design test helpers to accept explicit parameters for any value they embed in their output (filenames, paths, identifiers). When a helper creates files, require the caller to specify the filename rather than defaulting to a constant.
-- Links: [packages/yaml-import/src/index.test.ts](../packages/yaml-import/src/index.test.ts)
+- Links: [packages/reusable-workflow-import/src/index.test.ts](../packages/reusable-workflow-import/src/index.test.ts)
 
 ### New workspace packages require manual updates to multiple root configs
 
 - Date: 2025-07-25
 - Context: Sprint 22, Item 75b (migrate nodeCi to @ghawb/job-helpers).
-- What happened: Adding a new workspace package required touching six root-level config files beyond the package itself: `tsconfig.json` (paths), `deno.json` (imports), `vitest.config.ts` (alias + test include), `jsr.json` (workspace array), `package.json` (build:check script), and `bun.lock`/`deno.lock`. The root `package.json` workspace glob (`"packages/*"`) auto-discovers for npm/bun, but all other configs need explicit entries.
+- What happened: Adding a new workspace package required touching multiple root-level config files beyond the package itself: `tsconfig.json` (paths), `deno.json` (imports), `vitest.config.ts` (alias + test include), `jsr.json` (workspace array), and `bun.lock`/`deno.lock`. The root `package.json` workspace glob (`"packages/*"`) auto-discovers Bun workspaces, but all other configs need explicit entries.
 - Why it matters: Forgetting any one of these configs causes subtle failures: missing path aliases break imports, missing vitest includes silently skip tests, missing jsr workspace entries break JSR publishing. A checklist or automation would prevent gaps.
-- Recommendation: When adding a new workspace package, follow a checklist: (1) package scaffolding (package.json, jsr.json, deno.json, tsconfig.build.json, src/index.ts), (2) root tsconfig.json paths, (3) root deno.json imports, (4) vitest.config.ts alias + test include, (5) jsr.json workspace, (6) package.json build:check, (7) bun install + deno cache.
+- Recommendation: When adding a new workspace package, follow a checklist: (1) package scaffolding (package.json, jsr.json, deno.json, src/index.ts), (2) root tsconfig.json paths, (3) root deno.json imports, (4) vitest.config.ts alias + test include, (5) jsr.json workspace, (6) bun install + Deno cache updates.
 - Links: [ADR 0006](adrs/0006-migrate-node-ci-helper-to-opt-in-package.md), [packages/job-helpers](../packages/job-helpers/)

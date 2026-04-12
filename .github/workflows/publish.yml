@@ -5,54 +5,6 @@ on:
       - v*
 permissions: read-all
 jobs:
-  publish-npm:
-    name: Publish to npm
-    permissions:
-      contents: read
-      id-token: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Setup NPM
-        with:
-          node-version: "24"
-          registry-url: https://registry.npmjs.org
-        uses: actions/setup-node@v6
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
-      - name: Build Packages
-        run: bun run build:check
-      - name: "Publish to npmjs.org: sdk"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --workspace packages/sdk --access public
-      - name: "Publish to npmjs.org: shared"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --workspace packages/shared --access public
-      - name: "Publish to npmjs.org: job-helpers"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --workspace packages/job-helpers --access public
-      - name: "Publish to npmjs.org: typed-actions"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --workspace packages/typed-actions --access public
-      - name: "Publish to npmjs.org: yaml-import"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --workspace packages/yaml-import --access public
-      - name: "Publish to npmjs.org: composite-actions"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --workspace packages/composite-actions --access public
-      - name: "Publish to npmjs.org: cli"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --workspace packages/cli --access public
   publish-jsr:
     name: Publish to JSR
     permissions:
@@ -71,7 +23,6 @@ jobs:
   github-release:
     name: Create GitHub Release
     needs:
-      - publish-npm
       - publish-jsr
     permissions:
       contents: write

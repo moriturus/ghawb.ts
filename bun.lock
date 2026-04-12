@@ -20,7 +20,7 @@
       "name": "@ghawb/cli",
       "version": "1.1.0",
       "bin": {
-        "ghawb": "./dist/bin.js",
+        "ghawb": "./src/bin.ts",
       },
       "dependencies": {
         "@ghawb/composite-actions": "^1.0.0",
@@ -62,8 +62,8 @@
         "@ghawb/sdk": "^1.0.0",
       },
     },
-    "packages/yaml-import": {
-      "name": "@ghawb/yaml-import",
+    "packages/reusable-workflow-import": {
+      "name": "@ghawb/reusable-workflow-import",
       "version": "1.1.0",
       "dependencies": {
         "@ghawb/sdk": "^1.0.0",
@@ -592,7 +592,7 @@
       "@ghawb/typed-actions@workspace:packages/typed-actions",
     ],
 
-    "@ghawb/yaml-import": ["@ghawb/yaml-import@workspace:packages/yaml-import"],
+    "@ghawb/reusable-workflow-import": ["@ghawb/reusable-workflow-import@workspace:packages/reusable-workflow-import"],
 
     "@inquirer/external-editor": [
       "@inquirer/external-editor@1.0.3",

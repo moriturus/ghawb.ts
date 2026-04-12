@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Raised the minimum supported Node runtime from 22+ to 24+.
+- Removed npm registry/package-manager support from project distribution.
+- Made Bun the default project runtime while retaining Deno compatibility.
+- Limited package publishing to JSR.
+- Renamed `@ghawb/yaml-import` to `@ghawb/reusable-workflow-import` and `YamlImportError` to `ReusableWorkflowImportError`.
 
 ## [0.1.0] - 2026-04-03
 
@@ -26,6 +29,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Identifier format validation for workflow names, job IDs, step IDs, input names, output names, secret names, environment names, and concurrency group expressions.
 - Cross-runtime conformance test suite (Bun, Node, Deno).
 - Self-hosted CI workflow built with ghawb itself.
-- npm release packaging with ESM JavaScript and `.d.ts` type declarations emitted to `dist/`.
-- Dual publishing support: npm via `package.json` (`dist/`), JSR via `jsr.json` (`src/`).
+- JSR package metadata for source-first publishing.
 - `CHANGELOG.md`, `SECURITY.md`, and `SUPPORT.md` governance documents.

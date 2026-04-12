@@ -56,13 +56,13 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_reviews/sp13.md](./sprint_reviews/sp13.md): Sprint 13 review summary, typed `uses` helpers, npm packaging, governance documents, and Product Owner decision.
 - [sprint_reviews/sp14.md](./sprint_reviews/sp14.md): Sprint 14 review summary, run script references, README rewrite, release automation, CI fix findings, and Product Owner decision.
 - [sprint_reviews/sp15.md](./sprint_reviews/sp15.md): Sprint 15 review summary, npm workspace fix, tsc build-config gap closure, reusable workflow object injection, backlog exhaustion, and Product Owner decision.
-- [sprint_reviews/sp16.md](./sprint_reviews/sp16.md): Sprint 16 review summary, expression helpers, advanced runs-on, actionlint bridge, API reference and cookbook, YAML import package, and Product Owner decision.
+- [sprint_reviews/sp16.md](./sprint_reviews/sp16.md): Sprint 16 review summary, expression helpers, advanced runs-on, actionlint bridge, API reference and cookbook, reusable-workflow import package, and Product Owner decision.
 - [sprint_reviews/sp17.md](./sprint_reviews/sp17.md): Sprint 17 review summary, quality-gate restoration, coverage threshold expansion, documentation accuracy audit, LEARN.md date integrity, string shorthand for step name, and Product Owner decision.
 - [sprint_reviews/sp18.md](./sprint_reviews/sp18.md): Sprint 18 review summary, typed action wrappers, render lint integration, reusable workflow caller-side outputs, expression helper expansion, and Product Owner decision.
 - [sprint_reviews/sp19.md](./sprint_reviews/sp19.md): Sprint 19 review summary, job preset discovery decision, narrow `nodeCi()` helper delivery, and Product Owner decision.
 - [sprint_reviews/sp20.md](./sprint_reviews/sp20.md): Sprint 20 review summary, CLI ergonomics, composite action authoring, typed action wrapper expansion, CI closeout finding, and Product Owner decision.
 - [sprint_reviews/sp21.md](./sprint_reviews/sp21.md): Sprint 21 review summary, workflow-source modernization, Deno compatibility hardening, onboarding documentation expansion, and Product Owner decision.
-- [sprint_reviews/sp23.md](./sprint_reviews/sp23.md): Sprint 23 review summary, yaml-import Deno hardening, generic job-helper application, empty-backlog closeout, and Product Owner decision.
+- [sprint_reviews/sp23.md](./sprint_reviews/sp23.md): Sprint 23 review summary, reusable-workflow-import Deno hardening, generic job-helper application, empty-backlog closeout, and Product Owner decision.
 - [sprint_reviews/sp24.md](./sprint_reviews/sp24.md): Sprint 24 review summary, render auto-detection cleanup, CLI config-manifest contract, sprint branch synchronization, and Product Owner decision.
 - [sprint_reviews/sp25.md](./sprint_reviews/sp25.md): Sprint 25 review summary, CLI config delivery, render-time config injection, docs drift findings, and Product Owner decision.
 - [sprint_reviews/sp26.md](./sprint_reviews/sp26.md): Sprint 26 review summary, docs contract hardening, job-helper expansion, onboarding clarity, and Product Owner decision.
@@ -89,7 +89,7 @@ This directory contains the source-of-truth project documents for `ghawb`.
 - [sprint_retrospectives/sp18.md](./sprint_retrospectives/sp18.md): Sprint 18 retrospective summary, role reflections, sub-agent usage threshold, sprint-review evidence expectations, Item 65 discovery framing, and follow-up routing.
 - [sprint_retrospectives/sp19.md](./sprint_retrospectives/sp19.md): Sprint 19 retrospective summary, discovery-first delivery reflections, sprint-branch/closeout process gaps, and follow-up routing.
 - [sprint_retrospectives/sp20.md](./sprint_retrospectives/sp20.md): Sprint 20 retrospective summary, closeout CI discipline, branch cleanup hygiene, workflow contract hardening, and follow-up routing.
-- [sprint_retrospectives/sp21.md](./sprint_retrospectives/sp21.md): Sprint 21 retrospective summary, hardening-first delivery reflections, documentation sync follow-up, yaml-import Deno compatibility debt, and follow-up routing.
+- [sprint_retrospectives/sp21.md](./sprint_retrospectives/sp21.md): Sprint 21 retrospective summary, hardening-first delivery reflections, documentation sync follow-up, reusable-workflow-import Deno compatibility debt, and follow-up routing.
 - [sprint_retrospectives/sp23.md](./sprint_retrospectives/sp23.md): Sprint 23 retrospective summary, merge-strategy discipline, branch-state clarity, backlog exhaustion, and follow-up routing.
 - [adrs/0001-record-architecture-principles.md](./adrs/0001-record-architecture-principles.md): Initial architecture principles ADR.
 - [adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md](./adrs/0002-scope-job-recipes-to-a-narrow-node-ci-helper.md): Sprint 19 discovery decision selecting a narrow `@ghawb/sdk` Node CI helper over cookbook-only guidance or a broader preset layer.

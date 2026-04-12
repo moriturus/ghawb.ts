@@ -6,10 +6,10 @@ import { parse } from "yaml";
 
 import { type WorkflowRef, workflowRef } from "@ghawb/sdk";
 
-export class YamlImportError extends Error {
+export class ReusableWorkflowImportError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "YamlImportError";
+    this.name = "ReusableWorkflowImportError";
   }
 }
 
@@ -89,7 +89,7 @@ export async function importReusableWorkflow(
   dependencies: Partial<ImportDependencies> = {}
 ): Promise<WorkflowRef> {
   if (!filePath || filePath.trim().length === 0) {
-    throw new YamlImportError("File path must not be empty");
+    throw new ReusableWorkflowImportError("File path must not be empty");
   }
 
   const readFile = dependencies.readFile ?? defaultReadFile;
@@ -99,7 +99,7 @@ export async function importReusableWorkflow(
     content = await readFile(filePath);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new YamlImportError(`Failed to read file "${filePath}": ${message}`);
+    throw new ReusableWorkflowImportError(`Failed to read file "${filePath}": ${message}`);
   }
 
   let parsed: unknown;
@@ -107,11 +107,11 @@ export async function importReusableWorkflow(
     parsed = parseYamlContent(content);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new YamlImportError(`Failed to parse YAML in "${filePath}": ${message}`);
+    throw new ReusableWorkflowImportError(`Failed to parse YAML in "${filePath}": ${message}`);
   }
 
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new YamlImportError(
+    throw new ReusableWorkflowImportError(
       `Expected "${filePath}" to contain a YAML object, but got ${parsed === null ? "null" : typeof parsed}`
     );
   }
@@ -119,7 +119,7 @@ export async function importReusableWorkflow(
   const workflow = parsed as Record<string, unknown>;
 
   if (!hasWorkflowCallTrigger(workflow["on"] ?? workflow["true"])) {
-    throw new YamlImportError(
+    throw new ReusableWorkflowImportError(
       `Workflow "${filePath}" does not contain a workflow_call trigger. ` +
         "Only reusable workflows (those with workflow_call in their 'on' key) can be imported."
     );

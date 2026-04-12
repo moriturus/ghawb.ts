@@ -1,6 +1,10 @@
 {
   "name": "@ghawb/cli",
-  "version": "1.1.0",
+  "version": "2.0.1",
   "license": "Apache-2.0",
-  "exports": "./src/index.ts"
+  "exports": "./src/index.ts",
+  "imports": {
+    "@ghawb/composite-actions": "jsr:@ghawb/composite-actions@^2.0.1",
+    "@ghawb/sdk": "jsr:@ghawb/sdk@^2.0.1"
+  }
 }

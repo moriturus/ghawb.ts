@@ -3,9 +3,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { importReusableWorkflow, YamlImportError } from "./index.js";
+import { importReusableWorkflow, ReusableWorkflowImportError } from "./index.js";
 
-describe("@ghawb/yaml-import", () => {
+describe("@ghawb/reusable-workflow-import", () => {
   const tempDirs: string[] = [];
 
   afterEach(async () => {
@@ -14,7 +14,7 @@ describe("@ghawb/yaml-import", () => {
   });
 
   async function createTempYaml(content: string): Promise<string> {
-    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-yaml-import-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-reusable-workflow-import-"));
     tempDirs.push(tempDir);
     const filePath = join(tempDir, "shared-build.yml");
     await writeFile(filePath, content, "utf8");
@@ -44,7 +44,7 @@ jobs:
   });
 
   it("imports a workflow with bare workflow_call trigger", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-yaml-import-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-reusable-workflow-import-"));
     tempDirs.push(tempDir);
     const filePath = join(tempDir, "simple-reusable.yml");
     await writeFile(
@@ -58,7 +58,7 @@ jobs:
   });
 
   it("imports a workflow with workflow_call alongside other triggers", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-yaml-import-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-reusable-workflow-import-"));
     tempDirs.push(tempDir);
     const filePath = join(tempDir, "dual-trigger.yml");
     await writeFile(
@@ -72,7 +72,7 @@ jobs:
   });
 
   it("uses the file basename for the ref, not the full path", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-yaml-import-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-reusable-workflow-import-"));
     tempDirs.push(tempDir);
     const filePath = join(tempDir, "deploy-prod.yml");
     await writeFile(
@@ -85,7 +85,7 @@ jobs:
     expect(ref).toBe("./.github/workflows/deploy-prod.yml");
   });
 
-  it("throws YamlImportError when file does not contain workflow_call trigger", async () => {
+  it("throws ReusableWorkflowImportError when file does not contain workflow_call trigger", async () => {
     const filePath = await createTempYaml(`
 name: Not Reusable
 on:
@@ -98,24 +98,24 @@ jobs:
       - run: npm test
 `);
 
-    await expect(importReusableWorkflow(filePath)).rejects.toThrow(YamlImportError);
+    await expect(importReusableWorkflow(filePath)).rejects.toThrow(ReusableWorkflowImportError);
     await expect(importReusableWorkflow(filePath)).rejects.toThrow("workflow_call");
   });
 
-  it("throws YamlImportError when YAML is invalid", async () => {
+  it("throws ReusableWorkflowImportError when YAML is invalid", async () => {
     const filePath = await createTempYaml("{{{{ invalid yaml");
 
-    await expect(importReusableWorkflow(filePath)).rejects.toThrow(YamlImportError);
+    await expect(importReusableWorkflow(filePath)).rejects.toThrow(ReusableWorkflowImportError);
   });
 
-  it("throws YamlImportError when YAML does not parse to an object", async () => {
+  it("throws ReusableWorkflowImportError when YAML does not parse to an object", async () => {
     const filePath = await createTempYaml("just a string");
 
-    await expect(importReusableWorkflow(filePath)).rejects.toThrow(YamlImportError);
+    await expect(importReusableWorkflow(filePath)).rejects.toThrow(ReusableWorkflowImportError);
     await expect(importReusableWorkflow(filePath)).rejects.toThrow("object");
   });
 
-  it("throws YamlImportError when the 'on' key is missing", async () => {
+  it("throws ReusableWorkflowImportError when the 'on' key is missing", async () => {
     const filePath = await createTempYaml(`
 name: No Triggers
 jobs:
@@ -125,7 +125,7 @@ jobs:
       - run: echo ok
 `);
 
-    await expect(importReusableWorkflow(filePath)).rejects.toThrow(YamlImportError);
+    await expect(importReusableWorkflow(filePath)).rejects.toThrow(ReusableWorkflowImportError);
     await expect(importReusableWorkflow(filePath)).rejects.toThrow("workflow_call");
   });
 
@@ -133,13 +133,13 @@ jobs:
     await expect(importReusableWorkflow("/nonexistent/path.yml")).rejects.toThrow();
   });
 
-  it("throws YamlImportError when file path is empty", async () => {
-    await expect(importReusableWorkflow("")).rejects.toThrow(YamlImportError);
+  it("throws ReusableWorkflowImportError when file path is empty", async () => {
+    await expect(importReusableWorkflow("")).rejects.toThrow(ReusableWorkflowImportError);
     await expect(importReusableWorkflow("")).rejects.toThrow("empty");
   });
 
   it("accepts workflow_call as a string in an on-list", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-yaml-import-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "ghawb-reusable-workflow-import-"));
     tempDirs.push(tempDir);
     const filePath = join(tempDir, "list-triggers.yml");
     await writeFile(

@@ -17,8 +17,8 @@ describe("self-hosted workflow output", () => {
     expect(ciContents).toContain("run: bun run coverage");
     expect(ciContents).toContain("uses: actions/upload-artifact@v7");
     expect(ciContents).toContain("path: coverage/lcov.info");
-    expect(ciContents).toContain("run: bun run test:vitest:node");
-    expect(ciContents).toContain("run: npm install --dry-run");
+    expect(ciContents).not.toContain("npm install --dry-run");
+    expect(ciContents).not.toContain("bun run test:vitest:node");
     expect(manualContents).toContain("name: Manual Verify");
     expect(manualContents).toContain("workflow_dispatch: null");
     expect(manualContents).toContain("run: bun run verify:pre-push");

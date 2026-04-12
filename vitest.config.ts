@@ -13,7 +13,10 @@ export default defineConfig({
       "@ghawb/typed-actions": resolve(root, "packages/typed-actions/src/index.ts"),
       "@ghawb/job-helpers": resolve(root, "packages/job-helpers/src/index.ts"),
       "@ghawb/cli": resolve(root, "packages/cli/src/index.ts"),
-      "@ghawb/yaml-import": resolve(root, "packages/yaml-import/src/index.ts"),
+      "@ghawb/reusable-workflow-import": resolve(
+        root,
+        "packages/reusable-workflow-import/src/index.ts"
+      ),
     },
   },
   test: {
@@ -25,7 +28,7 @@ export default defineConfig({
       "packages/sdk/src/**/*.test.ts",
       "packages/typed-actions/src/**/*.test.ts",
       "packages/job-helpers/src/**/*.test.ts",
-      "packages/yaml-import/src/**/*.test.ts",
+      "packages/reusable-workflow-import/src/**/*.test.ts",
       "tests/node/**/*.test.ts",
     ],
     coverage: {

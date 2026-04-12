@@ -17,7 +17,7 @@ The current product boundary is strongly workflow-centric:
 
 - `@ghawb/sdk` owns the workflow AST, workflow builders, workflow validation, and workflow rendering.
 - `@ghawb/cli` currently renders workflow definitions only and its `render` command is documented around `workflows/*.ts -> .github/workflows/*.yml`.
-- Existing opt-in packages (`@ghawb/typed-actions`, `@ghawb/yaml-import`) are used when functionality is valuable but should not widen the core workflow SDK boundary.
+- Existing opt-in packages (`@ghawb/typed-actions`, `@ghawb/reusable-workflow-import`) are used when functionality is valuable but should not widen the core workflow SDK boundary.
 
 The repository architecture principles also bias toward explicit boundaries, additive surfaces, and avoiding convenience-driven abstraction that weakens the core domain model.
 

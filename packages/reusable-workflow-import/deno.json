@@ -1,9 +1,9 @@
 {
-  "name": "@ghawb/sdk",
+  "name": "@ghawb/reusable-workflow-import",
   "version": "2.0.1",
   "license": "Apache-2.0",
   "exports": "./src/index.ts",
   "imports": {
-    "@ghawb/shared": "jsr:@ghawb/shared@^2.0.1"
+    "@ghawb/sdk": "jsr:@ghawb/sdk@^2.0.1"
   }
 }

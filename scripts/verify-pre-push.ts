@@ -62,7 +62,6 @@ if (import.meta.main) {
     await runScript("verify:workflows");
     await runScript("check");
     await runScript("coverage");
-    await runScript("test:vitest:node");
     console.log("Verified pre-push workflow checks");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

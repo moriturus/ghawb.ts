@@ -1,7 +1,5 @@
-import { defineConfig } from "oxlint";
-
-export default defineConfig({
-  ignorePatterns: [
+{
+  "ignorePatterns": [
     ".agents",
     ".codex",
     ".github",
@@ -10,4 +8,4 @@ export default defineConfig({
     "tests/deno",
     "docs",
   ],
-});
+}

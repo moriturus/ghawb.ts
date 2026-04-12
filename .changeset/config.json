@@ -2,9 +2,18 @@
   "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
   "changelog": ["@changesets/changelog-github", { "repo": "moriturus/ghawb.ts" }],
   "commit": false,
-  "fixed": [["@ghawb/sdk", "@ghawb/shared", "@ghawb/cli"]],
+  "fixed": [
+    [
+      "@ghawb/sdk",
+      "@ghawb/shared",
+      "@ghawb/composite-actions",
+      "@ghawb/typed-actions",
+      "@ghawb/job-helpers",
+      "@ghawb/cli",
+      "@ghawb/reusable-workflow-import"
+    ]
+  ],
   "linked": [],
-  "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": []

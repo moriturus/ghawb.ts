@@ -13,19 +13,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Setup Node
-        with:
-          node-version: "24"
-          registry-url: https://registry.npmjs.org
-        uses: actions/setup-node@v6
-      - name: Install
-        run: npm ci
-      - name: Install Changesets CLI
-        run: npm install -g @changesets/cli
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
       - name: Create Release Pull Request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          version: bun x changeset version
           title: "chore(release): version packages"
           commit: "chore(release): version packages"
         uses: changesets/action@v1

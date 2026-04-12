@@ -19,7 +19,7 @@
       "@ghawb/typed-actions": ["./packages/typed-actions/src/index.ts"],
       "@ghawb/job-helpers": ["./packages/job-helpers/src/index.ts"],
       "@ghawb/cli": ["./packages/cli/src/index.ts"],
-      "@ghawb/yaml-import": ["./packages/yaml-import/src/index.ts"]
+      "@ghawb/reusable-workflow-import": ["./packages/reusable-workflow-import/src/index.ts"]
     }
   },
   "include": [

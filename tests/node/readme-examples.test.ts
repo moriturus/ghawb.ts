@@ -9,12 +9,7 @@ import {
   createWorkflowRenderPayload,
   defineWorkflow,
 } from "@ghawb/sdk";
-import {
-  actionsCache,
-  actionsCheckout,
-  actionsSetupNode,
-  actionsUploadArtifact,
-} from "@ghawb/typed-actions";
+import { actionsCache, actionsCheckout, actionsUploadArtifact } from "@ghawb/typed-actions";
 import { nodeCi } from "@ghawb/job-helpers";
 
 describe("README examples", () => {
@@ -73,9 +68,9 @@ describe("README examples", () => {
           .environment({ name: "production", url: "https://example.com" })
           .permissions({ contents: "read", deployments: "write" })
           .uses("actions/checkout@v6")
-          .run("npm ci")
-          .run("npm run build")
-          .run("npm run deploy");
+          .run("bun install --frozen-lockfile")
+          .run("bun run build")
+          .run("bun run deploy");
       })
       .build();
 
@@ -94,15 +89,15 @@ describe("README examples", () => {
         job
           .runsOn("ubuntu-latest")
           .strategyMatrix({
-            node: ["20", "22", "24"],
+            bun: ["1.2", "1.3"],
             os: ["ubuntu-latest", "windows-latest"],
           })
           .uses("actions/checkout@v6")
-          .uses("actions/setup-node@v6", {
-            with: { "node-version": "${{ matrix.node }}" },
+          .uses("oven-sh/setup-bun@v2", {
+            with: { "bun-version": "${{ matrix.bun }}" },
           })
-          .run("npm ci")
-          .run("npm test");
+          .run("bun install --frozen-lockfile")
+          .run("bun test");
       })
       .build();
 
@@ -146,24 +141,17 @@ describe("README examples", () => {
         job
           .runsOn("ubuntu-latest")
           .uses(actionsCheckout({ fetchDepth: 0 }), "Checkout")
-          .uses(
-            actionsSetupNode({
-              nodeVersion: "24",
-              cache: "pnpm",
-              cacheDependencyPath: ["pnpm-lock.yaml", "packages/*/pnpm-lock.yaml"],
-            }),
-            "Setup Node"
-          )
+          .uses("oven-sh/setup-bun@v2", "Setup Bun")
           .uses(
             actionsCache({
-              path: "~/.pnpm-store",
-              key: "pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}",
-              restoreKeys: "pnpm-${{ runner.os }}-",
+              path: "~/.bun/install/cache",
+              key: "bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}",
+              restoreKeys: "bun-${{ runner.os }}-",
             }),
             "Cache Store"
           )
-          .run("pnpm install --frozen-lockfile")
-          .run("pnpm test")
+          .run("bun install --frozen-lockfile")
+          .run("bun test")
           .uses(actionsUploadArtifact({ name: "coverage", path: "coverage" }), "Upload Coverage");
       })
       .build();

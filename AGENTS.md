@@ -36,8 +36,8 @@ This file defines repository-specific instructions for contributors and coding a
 - Keep core workflow AST construction, builders, and validation independent from any concrete YAML library.
 - Prioritize SDK and renderer work ahead of CLI work.
 - Treat self-hosting changes as post-CLI work.
-- Treat Bun as the standard development environment while preserving compatibility with Node and Deno.
-- Consider package manager compatibility across npm, yarn, and pnpm where tooling choices matter.
+- Treat Bun as the standard development environment while preserving Deno compatibility.
+- Treat JSR as the only supported package distribution channel.
 
 ## Sprint Execution
 

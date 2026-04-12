@@ -1,6 +1,6 @@
 # API Reference
 
-This document covers the public API of `@ghawb/sdk`. For a quick-start guide and the canonical `ghawb render` CLI path, see the [README](../README.md). For the specification source of truth, see [SPEC.md](SPEC.md). Related opt-in packages are `@ghawb/job-helpers`, `@ghawb/typed-actions`, `@ghawb/composite-actions`, and `@ghawb/yaml-import`.
+This document covers the public API of `@ghawb/sdk`. For a quick-start guide and the canonical `ghawb render` CLI path, see the [README](../README.md). For the specification source of truth, see [SPEC.md](SPEC.md). Related opt-in packages are `@ghawb/job-helpers`, `@ghawb/typed-actions`, `@ghawb/composite-actions`, and `@ghawb/reusable-workflow-import`.
 
 ## Table of Contents
 
@@ -137,7 +137,7 @@ job.apply(nodeBootstrap(options));
 
 `nodeCi(options)` returns a helper function for `JobBuilder.apply(...)` that appends a standard Node CI step sequence (checkout, setup-node, install, test) to the given job builder. Requires `nodeVersion` and defaults `install` to `npm ci` plus `test` to `npm test`. Optional `cache` follows the `actions/setup-node` allowlist (`npm`, `pnpm`, `yarn`), and `cacheDependencyPath` accepts either a string or string array. Existing `nodeCi(job, options)` calls remain supported as a migration path.
 
-`nodeBootstrap(options)` returns a helper function for `JobBuilder.apply(...)` that appends the shared bootstrap prefix used by release and publish jobs (checkout, setup-node, install) to the given job builder. It requires `nodeVersion`, defaults `install` to `npm ci`, supports the same `cache` and `cacheDependencyPath` setup-node options as the Node CI helper, and adds a `registryUrl` setup-node option for release/publish bootstrapping. The helper stays outside `@ghawb/sdk` and keeps release-specific or publish-specific steps explicit at the call site.
+`nodeBootstrap(options)` returns a helper function for `JobBuilder.apply(...)` that appends a shared Node bootstrap prefix (checkout, setup-node, install) to the given job builder. It requires `nodeVersion`, defaults `install` to `npm ci`, supports the same `cache` and `cacheDependencyPath` setup-node options as the Node CI helper, and adds a `registryUrl` setup-node option for registry bootstrapping. The helper stays outside `@ghawb/sdk` and keeps follow-up steps explicit at the call site.
 
 ---
 

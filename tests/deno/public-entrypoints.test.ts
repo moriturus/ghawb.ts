@@ -43,7 +43,7 @@ Deno.test("Deno supports representative workflow authoring through public packag
     "expected setup-node wrapper to render"
   );
   assert(
-    checkJob.steps[4]?.uses === "actions/upload-artifact@v4",
+    checkJob.steps[4]?.uses === "actions/upload-artifact@v7",
     "expected upload-artifact wrapper to render"
   );
 });

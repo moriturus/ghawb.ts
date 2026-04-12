@@ -1,6 +1,6 @@
 {
   "name": "@ghawb/shared",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Build GitHub Actions workflows and composite actions in TypeScript with full type safety, deterministic output, and zero non-Node dependencies.",
   "license": "Apache-2.0",
   "author": {

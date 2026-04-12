@@ -290,7 +290,7 @@ export default defineWorkflow({
   .build();
 ```
 
-Use `@ghawb/typed-actions` when you want autocomplete and typed `with` inputs for stable, common actions. Use raw `.uses("owner/repo@ref", { with: ... })` for one-off actions that do not justify a wrapper, and prefer `job.apply(nodeCi(...))` from `@ghawb/job-helpers` when the default Node CI sequence is sufficient without action-level customization, or `job.apply(nodeBootstrap(...))` when you only need the checkout/setup/install prefix before custom release or publish steps. Existing `nodeCi(job, options)` calls remain supported as a migration path.
+Use `@ghawb/typed-actions` when you want autocomplete and typed `with` inputs for stable, common actions. Each wrapper defaults to the package's current pinned major and also accepts an optional second argument such as `actionsCheckout({}, { version: "v5" })` when you need a different ref. Use raw `.uses("owner/repo@ref", { with: ... })` for one-off actions that do not justify a wrapper, and prefer `job.apply(nodeCi(...))` from `@ghawb/job-helpers` when the default Node CI sequence is sufficient without action-level customization, or `job.apply(nodeBootstrap(...))` when you only need the checkout/setup/install prefix before custom release or publish steps. Existing `nodeCi(job, options)` calls remain supported as a migration path.
 
 ### Reusable Workflow
 

@@ -23,14 +23,14 @@ describe("@ghawb/typed-actions", () => {
   it("omits with when a typed action wrapper has no inputs", () => {
     expect(actionsCheckout()).toEqual({ uses: "actions/checkout@v6" });
     expect(actionsSetupNode()).toEqual({ uses: "actions/setup-node@v6" });
-    expect(actionsUploadArtifact()).toEqual({ uses: "actions/upload-artifact@v4" });
-    expect(actionsDownloadArtifact()).toEqual({ uses: "actions/download-artifact@v4" });
-    expect(actionsSetupPython()).toEqual({ uses: "actions/setup-python@v5" });
-    expect(actionsSetupGo()).toEqual({ uses: "actions/setup-go@v5" });
-    expect(actionsSetupDotnet()).toEqual({ uses: "actions/setup-dotnet@v4" });
-    expect(actionsConfigurePages()).toEqual({ uses: "actions/configure-pages@v5" });
-    expect(actionsDeployPages()).toEqual({ uses: "actions/deploy-pages@v4" });
-    expect(actionsLabeler()).toEqual({ uses: "actions/labeler@v5" });
+    expect(actionsUploadArtifact()).toEqual({ uses: "actions/upload-artifact@v7" });
+    expect(actionsDownloadArtifact()).toEqual({ uses: "actions/download-artifact@v8" });
+    expect(actionsSetupPython()).toEqual({ uses: "actions/setup-python@v6" });
+    expect(actionsSetupGo()).toEqual({ uses: "actions/setup-go@v6" });
+    expect(actionsSetupDotnet()).toEqual({ uses: "actions/setup-dotnet@v5" });
+    expect(actionsConfigurePages()).toEqual({ uses: "actions/configure-pages@v6" });
+    expect(actionsDeployPages()).toEqual({ uses: "actions/deploy-pages@v5" });
+    expect(actionsLabeler()).toEqual({ uses: "actions/labeler@v6" });
   });
 
   it("builds checkout wrapper inputs with serialized booleans and numbers", () => {
@@ -82,7 +82,7 @@ describe("@ghawb/typed-actions", () => {
         retentionDays: 7,
       })
     ).toEqual({
-      uses: "actions/upload-artifact@v4",
+      uses: "actions/upload-artifact@v7",
       with: {
         name: "dist",
         path: "dist\ncoverage",
@@ -98,7 +98,7 @@ describe("@ghawb/typed-actions", () => {
         runId: 789,
       })
     ).toEqual({
-      uses: "actions/download-artifact@v4",
+      uses: "actions/download-artifact@v8",
       with: {
         "artifact-ids": "123,456",
         "merge-multiple": "true",
@@ -183,7 +183,7 @@ describe("@ghawb/typed-actions", () => {
         includeHiddenFiles: true,
       })
     ).toEqual({
-      uses: "actions/upload-artifact@v4",
+      uses: "actions/upload-artifact@v7",
       with: {
         "if-no-files-found": "error",
         "compression-level": "0",
@@ -203,7 +203,7 @@ describe("@ghawb/typed-actions", () => {
         digestMismatch: "warn",
       })
     ).toEqual({
-      uses: "actions/download-artifact@v4",
+      uses: "actions/download-artifact@v8",
       with: {
         name: "dist",
         "artifact-ids": "123",
@@ -230,7 +230,7 @@ describe("@ghawb/typed-actions", () => {
         saveAlways: false,
       })
     ).toEqual({
-      uses: "actions/cache@v4",
+      uses: "actions/cache@v5",
       with: {
         path: "~/.cache/pip\n.venv",
         key: "pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}",
@@ -257,7 +257,7 @@ describe("@ghawb/typed-actions", () => {
         freethreaded: false,
       })
     ).toEqual({
-      uses: "actions/setup-python@v5",
+      uses: "actions/setup-python@v6",
       with: {
         "python-version": "3.12",
         "python-version-file": ".python-version",
@@ -283,7 +283,7 @@ describe("@ghawb/typed-actions", () => {
         architecture: "x64",
       })
     ).toEqual({
-      uses: "actions/setup-go@v5",
+      uses: "actions/setup-go@v6",
       with: {
         "go-version": "1.24",
         "go-version-file": "go.mod",
@@ -318,7 +318,7 @@ describe("@ghawb/typed-actions", () => {
         mvnToolchainVendor: "temurin",
       })
     ).toEqual({
-      uses: "actions/setup-java@v4",
+      uses: "actions/setup-java@v5",
       with: {
         "java-version": "21",
         "java-version-file": ".java-version",
@@ -354,7 +354,7 @@ describe("@ghawb/typed-actions", () => {
         cacheDependencyPath: ["packages.lock.json", "src/*/packages.lock.json"],
       })
     ).toEqual({
-      uses: "actions/setup-dotnet@v4",
+      uses: "actions/setup-dotnet@v5",
       with: {
         "dotnet-version": "8.0.x\n9.0.x",
         "dotnet-quality": "preview",
@@ -382,7 +382,7 @@ describe("@ghawb/typed-actions", () => {
         baseUrl: "https://ghe.example.com/api/v3",
       })
     ).toEqual({
-      uses: "actions/github-script@v7",
+      uses: "actions/github-script@v9",
       with: {
         script: "return { ok: true };",
         "github-token": "${{ secrets.GITHUB_TOKEN }}",
@@ -404,7 +404,7 @@ describe("@ghawb/typed-actions", () => {
         enablement: true,
       })
     ).toEqual({
-      uses: "actions/configure-pages@v5",
+      uses: "actions/configure-pages@v6",
       with: {
         static_site_generator: "next",
         generator_config_file: "apps/web/next.config.js",
@@ -420,7 +420,7 @@ describe("@ghawb/typed-actions", () => {
         retentionDays: 7,
       })
     ).toEqual({
-      uses: "actions/upload-pages-artifact@v3",
+      uses: "actions/upload-pages-artifact@v5",
       with: {
         name: "docs-site",
         path: "dist/docs",
@@ -438,7 +438,7 @@ describe("@ghawb/typed-actions", () => {
         preview: true,
       })
     ).toEqual({
-      uses: "actions/deploy-pages@v4",
+      uses: "actions/deploy-pages@v5",
       with: {
         token: "${{ secrets.GITHUB_TOKEN }}",
         timeout: "900000",
@@ -458,7 +458,7 @@ describe("@ghawb/typed-actions", () => {
         prNumber: [123, "456"],
       })
     ).toEqual({
-      uses: "actions/labeler@v5",
+      uses: "actions/labeler@v6",
       with: {
         "repo-token": "${{ secrets.GITHUB_TOKEN }}",
         "configuration-path": ".github/labeler.yml",
@@ -467,6 +467,36 @@ describe("@ghawb/typed-actions", () => {
         "pr-number": "123,456",
       },
     });
+  });
+
+  it("allows overriding the internal action ref version per wrapper call", () => {
+    expect(actionsCheckout({}, { version: "v5" })).toEqual({ uses: "actions/checkout@v5" });
+    expect(actionsCache({ path: ".cache", key: "cache-key" }, { version: "v4" })).toEqual({
+      uses: "actions/cache@v4",
+      with: {
+        path: ".cache",
+        key: "cache-key",
+      },
+    });
+    expect(
+      actionsGithubScript(
+        {
+          script: "return true;",
+        },
+        { version: "main" }
+      )
+    ).toEqual({
+      uses: "actions/github-script@main",
+      with: {
+        script: "return true;",
+      },
+    });
+  });
+
+  it("rejects blank action ref overrides", () => {
+    expect(() => actionsCheckout({}, { version: "   " })).toThrow(
+      'typed action wrapper option "version" must not be empty'
+    );
   });
 
   it("allows job.uses() to accept a typed action wrapper from the opt-in package", () => {
@@ -512,7 +542,7 @@ describe("@ghawb/typed-actions", () => {
       {
         kind: "uses",
         name: "Cache",
-        uses: "actions/cache@v4",
+        uses: "actions/cache@v5",
         with: {
           path: "~/.pnpm-store",
           key: "pnpm-${{ runner.os }}",
@@ -521,7 +551,7 @@ describe("@ghawb/typed-actions", () => {
       {
         kind: "uses",
         name: "Setup Python",
-        uses: "actions/setup-python@v5",
+        uses: "actions/setup-python@v6",
         with: {
           "python-version": "3.12",
           cache: "pip",
@@ -530,7 +560,7 @@ describe("@ghawb/typed-actions", () => {
       {
         kind: "uses",
         name: "Upload Pages Artifact",
-        uses: "actions/upload-pages-artifact@v3",
+        uses: "actions/upload-pages-artifact@v5",
         with: {
           path: "dist",
         },

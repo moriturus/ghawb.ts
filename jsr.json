@@ -4,6 +4,7 @@
     "./packages/shared",
     "./packages/composite-actions",
     "./packages/job-helpers",
+    "./packages/typed-actions",
     "./packages/cli",
     "./packages/yaml-import"
   ]
